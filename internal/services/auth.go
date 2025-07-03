@@ -2,11 +2,13 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/pkg/security"
+	"github.com/markbates/goth"
 )
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
@@ -15,10 +17,11 @@ type AuthService struct {
 	users     repository.UserRepository
 	jwtSecret []byte
 	ttl       time.Duration
+	clientURL string
 }
 
-func NewAuthService(repo repository.UserRepository, secret []byte, ttl time.Duration) *AuthService {
-	return &AuthService{users: repo, jwtSecret: secret, ttl: ttl}
+func NewAuthService(repo repository.UserRepository, secret []byte, ttl time.Duration, clientURL string) *AuthService {
+	return &AuthService{users: repo, jwtSecret: secret, ttl: ttl, clientURL: clientURL}
 }
 
 func (s *AuthService) Register(email, password, name string) error {
@@ -42,7 +45,12 @@ func (s *AuthService) Register(email, password, name string) error {
 }
 
 func (s *AuthService) Login(email, password string) (string, error) {
-	user, _ := s.users.FindByEmail(email)
+	user, err := s.users.FindByEmail(email)
+
+	if err != nil {
+		return "", err
+	}
+
 	if user == nil {
 		return "", ErrInvalidCredentials
 	}
@@ -53,4 +61,18 @@ func (s *AuthService) Login(email, password string) (string, error) {
 	}
 
 	return security.GenerateToken(email, s.jwtSecret, s.ttl)
+}
+
+func (s *AuthService) HandleCallback(user goth.User) (string, error) {
+
+	token, err := security.GenerateToken(user.Email, s.jwtSecret, s.ttl)
+	if err != nil {
+		return "", err
+	}
+
+	// Generate address for redirect for client
+	clientURL := s.clientURL + "/oauth-success"
+	redirectURL := fmt.Sprintf("%s?token=%s", clientURL, token)
+
+	return redirectURL, nil
 }

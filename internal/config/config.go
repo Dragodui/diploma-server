@@ -8,9 +8,13 @@ import (
 )
 
 type Config struct {
-	DB_DSN    string
-	JWTSecret string
-	Port      string
+	DB_DSN       string
+	JWTSecret    string
+	Port         string
+	ClientId     string
+	ClientSecret string
+	CallbackURL  string
+	ClientURL    string
 }
 
 func Load() *Config {
@@ -18,15 +22,27 @@ func Load() *Config {
 		log.Fatal(".env file is not exist or load incorrectly")
 	}
 	cfg := &Config{
-		DB_DSN:    os.Getenv("DB_DSN"),
-		JWTSecret: os.Getenv("JWT_SECRET"),
-		Port:      os.Getenv("PORT"),
+		DB_DSN:       os.Getenv("DB_DSN"),
+		JWTSecret:    os.Getenv("JWT_SECRET"),
+		Port:         os.Getenv("PORT"),
+		ClientId:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		CallbackURL:  os.Getenv("CLIENT_CALLBACK_URL"),
+		ClientURL:    os.Getenv("CLIENT_URL"),
 	}
 	if cfg.Port == "" {
 		cfg.Port = "8000"
 	}
 
-	if cfg.DB_DSN == "" || cfg.JWTSecret == "" {
+	if cfg.ClientURL == "" {
+		cfg.ClientURL = "http://localhost:5173"
+	}
+
+	if cfg.CallbackURL == "" {
+		cfg.CallbackURL = "http://locahost:" + cfg.Port + "/auth/google/callback"
+	}
+
+	if cfg.DB_DSN == "" || cfg.JWTSecret == "" || cfg.ClientId == "" || cfg.ClientSecret == "" {
 		log.Fatal("All environment variables must be set")
 	}
 

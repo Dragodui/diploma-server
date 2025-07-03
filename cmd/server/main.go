@@ -11,6 +11,8 @@ import (
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/providers/google"
 
 	"github.com/go-chi/chi/v5"
 	"gorm.io/driver/postgres"
@@ -24,17 +26,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	if err = db.AutoMigrate(
 		&models.User{},
 		&models.Login{},
 		&models.LoginInput{},
 		&models.RegisterInput{},
-	); err !=nil {
+	); err != nil {
 		panic(err)
 	}
 
+	// OAuth
+	goth.UseProviders(
+		google.New(cfg.ClientId, cfg.ClientSecret, cfg.CallbackURL),
+	)
 	userRepo := repository.NewUserRepository(db)
-	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), 24*time.Hour)
+	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), 24*time.Hour, cfg.ClientURL)
 	authHandler := handlers.NewAuthHandler(authSvc)
 
 	r := chi.NewRouter()
@@ -43,6 +50,8 @@ func main() {
 	r.Route("/api/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
+		r.Get("/:provider", authHandler.SignInWithProvider)
+		r.Get("/:provider/callback", authHandler.CallbackHandler)
 	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
