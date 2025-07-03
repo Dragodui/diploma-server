@@ -3,6 +3,8 @@ package config
 import (
 	"log"
 	"os"
+
+	"github.com/lpernett/godotenv"
 )
 
 type Config struct {
@@ -12,6 +14,9 @@ type Config struct {
 }
 
 func Load() *Config {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal(".env file is not exist or load incorrectly")
+	}
 	cfg := &Config{
 		DB_DSN:    os.Getenv("DB_DSN"),
 		JWTSecret: os.Getenv("JWT_SECRET"),

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/config"
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/http/middleware"
+	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services"
 
@@ -22,6 +24,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if err = db.AutoMigrate(
+		&models.User{},
+		&models.Login{},
+		&models.LoginInput{},
+		&models.RegisterInput{},
+	); err !=nil {
+		panic(err)
+	}
 
 	userRepo := repository.NewUserRepository(db)
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), 24*time.Hour)
@@ -33,6 +43,12 @@ func main() {
 	r.Route("/api/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
+	})
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode("Hi")
 	})
 
 	r.Group(func(r chi.Router) {
