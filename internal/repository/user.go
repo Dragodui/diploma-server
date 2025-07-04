@@ -9,7 +9,7 @@ import (
 
 type UserRepository interface {
 	Create(u *models.User) error
-	FindById(id int) (*models.User, error)
+	FindByID(id int) (*models.User, error)
 	FindByName(name string) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
 }
@@ -26,7 +26,7 @@ func (r *userRepo) Create(u *models.User) error {
 	return r.db.Create(u).Error
 }
 
-func (r *userRepo) FindById(id int) (*models.User, error) {
+func (r *userRepo) FindByID(id int) (*models.User, error) {
 	var u models.User
 	err := r.db.Where("id=?", id).First(&u).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -9,15 +9,15 @@ import (
 type HomeRepository interface {
 	// home
 	Create(h *models.Home) error
-	FindById(id int) (*models.Home, error)
+	FindByID(id int) (*models.Home, error)
 	FindByInviteCode(inviteCode string) (*models.Home, error)
 	Delete(id int) error
-	IsAdmin(id int, userId int) (bool, error)
+	IsAdmin(id int, userID int) (bool, error)
 
 	// home memberships
-	AddMember(id int, userId int, role string) error
-	IsMember(id int, userId int) (bool, error)
-	DeleteMember(id int, userId int) error
+	AddMember(id int, userID int, role string) error
+	IsMember(id int, userID int) (bool, error)
+	DeleteMember(id int, userID int) error
 	GenerateUniqueInviteCode() (string, error)
 }
 
@@ -33,7 +33,7 @@ func (r *homeRepo) Create(h *models.Home) error {
 	return r.db.Create(h).Error
 }
 
-func (r *homeRepo) FindById(id int) (*models.Home, error) {
+func (r *homeRepo) FindByID(id int) (*models.Home, error) {
 	var home models.Home
 
 	// taking memberships also
@@ -64,11 +64,11 @@ func (r *homeRepo) Delete(id int) error {
 	return nil
 }
 
-func (r *homeRepo) AddMember(id int, userId int, role string) error {
+func (r *homeRepo) AddMember(id int, userID int, role string) error {
 
 	if err := r.db.Create(&models.HomeMembership{
 		HomeID: id,
-		UserID: userId,
+		UserID: userID,
 		Role:   role,
 	}).Error; err != nil {
 		return err
@@ -77,19 +77,19 @@ func (r *homeRepo) AddMember(id int, userId int, role string) error {
 	return nil
 }
 
-func (r *homeRepo) IsMember(id int, userId int) (bool, error) {
+func (r *homeRepo) IsMember(id int, userID int) (bool, error) {
 
 	var count int64
-	if err := r.db.Model(&models.HomeMembership{}).Where("home_id = ? AND user_id = ?", id, userId).Count(&count).Error; err != nil {
+	if err := r.db.Model(&models.HomeMembership{}).Where("home_id = ? AND user_id = ?", id, userID).Count(&count).Error; err != nil {
 		return false, err
 	}
 
 	return count > 0, nil
 }
 
-func (r *homeRepo) DeleteMember(id int, userId int) error {
+func (r *homeRepo) DeleteMember(id int, userID int) error {
 
-	if err := r.db.Where("home_id = ? AND user_id = ?", id, userId).Delete(&models.HomeMembership{}).Error; err != nil {
+	if err := r.db.Where("home_id = ? AND user_id = ?", id, userID).Delete(&models.HomeMembership{}).Error; err != nil {
 		return err
 	}
 
@@ -113,9 +113,9 @@ func (r *homeRepo) GenerateUniqueInviteCode() (string, error) {
 	}
 }
 
-func (r *homeRepo) IsAdmin(id int, userId int) (bool, error) {
+func (r *homeRepo) IsAdmin(id int, userID int) (bool, error) {
 	var count int64
-	if err := r.db.Model(&models.HomeMembership{}).Where("home_id = ? AND user_id = ? AND role='admin'", id, userId).Count(&count).Error; err != nil {
+	if err := r.db.Model(&models.HomeMembership{}).Where("home_id = ? AND user_id = ? AND role='admin'", id, userID).Count(&count).Error; err != nil {
 		return false, err
 	}
 

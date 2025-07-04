@@ -50,13 +50,13 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId := middleware.GetUserID(r)
-	if userId == 0 {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
 		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if err := h.svc.JoinHomeByCode(req.Code, userId); err != nil {
+	if err := h.svc.JoinHomeByCode(req.Code, userID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -65,13 +65,13 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	homeIdStr := chi.URLParam(r, "id")
-	homeId, err := strconv.Atoi(homeIdStr)
+	homeIDStr := chi.URLParam(r, "id")
+	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
 		http.Error(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
-	home, err := h.svc.GetHomeByID(homeId)
+	home, err := h.svc.GetHomeByID(homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -82,13 +82,13 @@ func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	homeIdStr := chi.URLParam(r, "id")
-	homeId, err := strconv.Atoi(homeIdStr)
+	homeIDStr := chi.URLParam(r, "id")
+	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
 		http.Error(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
-	if err := h.svc.DeleteHome(homeId); err != nil {
+	if err := h.svc.DeleteHome(homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -103,19 +103,19 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	homeId, err := strconv.Atoi(req.HomeID)
+	homeID, err := strconv.Atoi(req.HomeID)
 	if err != nil {
 		http.Error(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 
-	userId := middleware.GetUserID(r)
-	if userId == 0 {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
 		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if err := h.svc.LeaveHome(homeId, userId); err != nil {
+	if err := h.svc.LeaveHome(homeID, userID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -131,25 +131,25 @@ func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	homeId, err := strconv.Atoi(req.HomeID)
+	homeID, err := strconv.Atoi(req.HomeID)
 	if err != nil {
 		http.Error(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 
-	userId, err := strconv.Atoi(req.UserID)
+	userID, err := strconv.Atoi(req.UserID)
 	if err != nil {
 		http.Error(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 
-	currentUserId := middleware.GetUserID(r)
-	if currentUserId == 0 {
+	currentUserID := middleware.GetUserID(r)
+	if currentUserID == 0 {
 		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if err := h.svc.RemoveMember(homeId, userId, currentUserId); err != nil {
+	if err := h.svc.RemoveMember(homeID, userID, currentUserID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

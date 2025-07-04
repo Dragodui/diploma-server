@@ -39,7 +39,7 @@ func main() {
 
 	// OAuth
 	goth.UseProviders(
-		google.New(cfg.ClientId, cfg.ClientSecret, cfg.CallbackURL),
+		google.New(cfg.ClientID, cfg.ClientSecret, cfg.CallbackURL),
 	)
 	// repos
 	userRepo := repository.NewUserRepository(db)
