@@ -29,9 +29,10 @@ func main() {
 
 	if err = db.AutoMigrate(
 		&models.User{},
-		&models.Login{},
-		&models.LoginInput{},
-		&models.RegisterInput{},
+		&models.Home{},
+		&models.HomeMembership{},
+		&models.Task{},
+		&models.TaskAssignment{},
 	); err != nil {
 		panic(err)
 	}
@@ -40,18 +41,36 @@ func main() {
 	goth.UseProviders(
 		google.New(cfg.ClientId, cfg.ClientSecret, cfg.CallbackURL),
 	)
+	// repos
 	userRepo := repository.NewUserRepository(db)
+	homeRepo := repository.NewHomeRepository(db)
+
+	// services
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), 24*time.Hour, cfg.ClientURL)
+	homeSvc := services.NewHomeService(homeRepo)
+
+	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
+	homeHandler := handlers.NewHomeHandler(homeSvc)
 
 	r := chi.NewRouter()
 
-	// /api/auth/*
-	r.Route("/api/auth", func(r chi.Router) {
-		r.Post("/register", authHandler.Register)
-		r.Post("/login", authHandler.Login)
-		r.Get("/:provider", authHandler.SignInWithProvider)
-		r.Get("/:provider/callback", authHandler.CallbackHandler)
+	r.Route("/api", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", authHandler.Register)
+			r.Post("/login", authHandler.Login)
+			r.Get("/:provider", authHandler.SignInWithProvider)
+			r.Get("/:provider/callback", authHandler.CallbackHandler)
+		})
+
+		r.Route("/home", func(r chi.Router) {
+			r.With(middleware.JWTAuth([]byte(cfg.JWTSecret))).Post("/create", homeHandler.Create)
+			r.With(middleware.JWTAuth([]byte(cfg.JWTSecret))).Post("/join", homeHandler.Join)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:id", homeHandler.GetByID)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:id", homeHandler.Delete)
+			r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/remove_member", homeHandler.RemoveMember)
+		})
 	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {

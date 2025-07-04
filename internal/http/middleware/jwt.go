@@ -1,12 +1,18 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/Dragodui/diploma-server/pkg/security"
 )
+
+type contextKey string
+
+const userIDKey contextKey = "userID"
 
 func JWTAuth(secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -18,13 +24,23 @@ func JWTAuth(secret []byte) func(http.Handler) http.Handler {
 			}
 
 			tokenStr := strings.TrimPrefix(auth, "Bearer ")
-			_, err := security.ParseToken(tokenStr, secret)
+			claims, err := security.ParseToken(tokenStr, secret)
 			if err != nil {
 				utils.JSONError(w, "invalid token", http.StatusUnauthorized)
 				return
 			}
 
-			next.ServeHTTP(w, r)
+			ctx := context.WithValue(r.Context(), userIDKey, claims.Subject)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func GetUserID(r *http.Request) int {
+	val := r.Context().Value(userIDKey)
+	if str, ok := val.(string); ok {
+		id, _ := strconv.Atoi(str)
+		return id
+	}
+	return 0
 }
