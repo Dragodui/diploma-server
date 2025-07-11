@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/cache"
 	"github.com/Dragodui/diploma-server/internal/config"
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/http/middleware"
@@ -37,6 +38,8 @@ func main() {
 		panic(err)
 	}
 
+	cache := cache.NewRedisClient()
+
 	// OAuth
 	goth.UseProviders(
 		google.New(cfg.ClientID, cfg.ClientSecret, cfg.CallbackURL),
@@ -46,8 +49,8 @@ func main() {
 	homeRepo := repository.NewHomeRepository(db)
 
 	// services
-	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), 24*time.Hour, cfg.ClientURL)
-	homeSvc := services.NewHomeService(homeRepo)
+	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL)
+	homeSvc := services.NewHomeService(homeRepo, cache)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)

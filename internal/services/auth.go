@@ -9,6 +9,7 @@ import (
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/pkg/security"
 	"github.com/markbates/goth"
+	"github.com/redis/go-redis/v9"
 )
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
@@ -16,12 +17,13 @@ var ErrInvalidCredentials = errors.New("invalid credentials")
 type AuthService struct {
 	users     repository.UserRepository
 	jwtSecret []byte
+	cache     *redis.Client
 	ttl       time.Duration
 	clientURL string
 }
 
-func NewAuthService(repo repository.UserRepository, secret []byte, ttl time.Duration, clientURL string) *AuthService {
-	return &AuthService{users: repo, jwtSecret: secret, ttl: ttl, clientURL: clientURL}
+func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string) *AuthService {
+	return &AuthService{users: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL}
 }
 
 func (s *AuthService) Register(email, password, name string) error {

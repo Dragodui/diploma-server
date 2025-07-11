@@ -14,7 +14,12 @@ services:
       - db
     ports:
       - "8000:8000"         
-
+  redis:
+    image: redis:7
+    container_name: redis-cache
+    restart: always
+    ports:
+      - "6379:6379"
   db:
     image: postgres:15
     container_name: postgres-db

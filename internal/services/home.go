@@ -5,14 +5,16 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
+	"github.com/redis/go-redis/v9"
 )
 
 type HomeService struct {
 	homes repository.HomeRepository
+	cache *redis.Client
 }
 
-func NewHomeService(repo repository.HomeRepository) *HomeService {
-	return &HomeService{homes: repo}
+func NewHomeService(repo repository.HomeRepository, cache *redis.Client) *HomeService {
+	return &HomeService{homes: repo, cache: cache}
 }
 
 func (s *HomeService) CreateHome(name string) error {
