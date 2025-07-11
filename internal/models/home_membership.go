@@ -9,6 +9,7 @@ type HomeMembership struct {
 	Role     string    `gorm:"size:64;not null" json:"role"`
 	JoinedAt time.Time `json:"joined_at"`
 
+	// relations
 	User *User `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 	Home *Home `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
 }

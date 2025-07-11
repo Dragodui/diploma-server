@@ -10,5 +10,6 @@ type Task struct {
 	ScheduleType string    `gorm:"not null;size:64" json:"schedule_type"`
 	CreatedAt    time.Time `json:"created_at"`
 
+	// relations
 	Home *Home `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
 }

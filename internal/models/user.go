@@ -26,6 +26,7 @@ type User struct {
 	Avatar       string    `json:"avatar"`
 	CreatedAt    time.Time `json:"created_at"`
 
+	// relations
 	Memberships     []HomeMembership `gorm:"foreignKey:UserID" json:"memberships,omitempty"`
 	TaskAssignments []TaskAssignment `gorm:"foreignKey:UserID" json:"task_assignments,omitempty"`
 }

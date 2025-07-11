@@ -9,6 +9,7 @@ type TaskAssignment struct {
 	Status       string    `gorm:"not null;size:64" json:"status"`
 	AssignedDate time.Time `json:"assigned_date"`
 
+	// relations
 	User *User `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 	Home *Home `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
 }
