@@ -1,0 +1,69 @@
+package router
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/Dragodui/diploma-server/internal/config"
+	"github.com/Dragodui/diploma-server/internal/http/handlers"
+	"github.com/Dragodui/diploma-server/internal/http/middleware"
+	"github.com/Dragodui/diploma-server/internal/repository"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
+)
+
+func SetupRoutes(cfg *config.Config, authHandler *handlers.AuthHandler, homeHandler *handlers.HomeHandler, taskHandler *handlers.TaskHandler, homeRepo repository.HomeRepository) http.Handler {
+	r := chi.NewRouter()
+	// add cors
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{cfg.ClientURL},
+		AllowedMethods:   []string{"GET", "POST", "DELETE", "PATCH"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowCredentials: true,
+	}))
+	r.Route("/api", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", authHandler.Register)
+			r.Post("/login", authHandler.Login)
+			r.Get("/:provider", authHandler.SignInWithProvider)
+			r.Get("/:provider/callback", authHandler.CallbackHandler)
+		})
+
+		r.Route("/home", func(r chi.Router) {
+			r.With(middleware.JWTAuth([]byte(cfg.JWTSecret))).Post("/create", homeHandler.Create)
+			r.With(middleware.JWTAuth([]byte(cfg.JWTSecret))).Post("/join", homeHandler.Join)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:homeID", homeHandler.GetByID)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:homeID", homeHandler.Delete)
+			r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/remove_member", homeHandler.RemoveMember)
+		})
+
+		r.Route("/task", func(r chi.Router) {
+			r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
+			r.With(middleware.RequireMember(homeRepo)).Post("/create", taskHandler.Create)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:task_id", taskHandler.GetTaskByID)
+			r.With(middleware.RequireMember(homeRepo)).Get("/home/:home_id", taskHandler.GetTasksByHomeID)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:task_id", taskHandler.DeleteTask)
+			r.With(middleware.RequireMember(homeRepo)).Post("/assign_user", taskHandler.AssignUser)
+			r.With(middleware.RequireMember(homeRepo)).Post("/:user_id", taskHandler.GetAssignmentsForUser)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:user_id", taskHandler.GetClosestAssignmentForUser)
+			r.With(middleware.RequireMember(homeRepo)).Patch("/mark_completed", taskHandler.MarkAssignmentCompleted)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:assignment_id", taskHandler.DeleteAssignment)
+		})
+	})
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode("Hi")
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
+		r.Get("/protected", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Protected content"))
+		})
+	})
+
+	return r
+}
