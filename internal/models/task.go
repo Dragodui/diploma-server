@@ -11,5 +11,13 @@ type Task struct {
 	CreatedAt    time.Time `json:"created_at"`
 
 	// relations
-	Home *Home `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
+	Home            *Home            `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
+	TaskAssignments []TaskAssignment `gorm:"foreignKey:TaskID" json:"assignments,omitempty"`
+}
+
+type CreateTaskRequest struct {
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	ScheduleType string `json:"schedule_type"`
+	HomeID       int    `json:"home_id"`
 }

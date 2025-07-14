@@ -16,6 +16,6 @@ type Home struct {
 
 
 type CreateHomeRequest struct {
-	Name string
+	Name string `json:"name"`
 }
 

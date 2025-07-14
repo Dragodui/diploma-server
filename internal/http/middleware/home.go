@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -9,18 +12,41 @@ import (
 )
 
 func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Handler {
+	type bodyWithHomeID struct {
+		HomeID int `json:"home_id"`
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userID := GetUserID(r)
+
+			// Try to get from URL first
 			homeIDStr := chi.URLParam(r, "homeID")
-			homeID, err := strconv.Atoi(homeIDStr)
-			if err != nil {
-				http.Error(w, "invalid home ID", http.StatusBadRequest)
+			if homeIDStr != "" {
+				if homeID, err := strconv.Atoi(homeIDStr); err == nil {
+					if ok, _ := homeRepo.IsMember(homeID, userID); ok {
+						next.ServeHTTP(w, r)
+						return
+					}
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+			}
+
+			// Try to get from body
+			var bodyCopy bytes.Buffer
+			tee := io.TeeReader(r.Body, &bodyCopy)
+
+			var req bodyWithHomeID
+			if err := json.NewDecoder(tee).Decode(&req); err != nil || req.HomeID == 0 {
+				http.Error(w, "invalid or missing home_id", http.StatusBadRequest)
 				return
 			}
 
-			isAdmin, err := homeRepo.IsAdmin(homeID, userID)
-			if err != nil || !isAdmin {
+			// Restore the original body for the next handler
+			r.Body = io.NopCloser(&bodyCopy)
+
+			ok, err := homeRepo.IsAdmin(req.HomeID, userID)
+			if err != nil || !ok {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -31,18 +57,42 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 }
 
 func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.Handler {
+	type bodyWithHomeID struct {
+		HomeID int `json:"home_id"`
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userID := GetUserID(r)
+
+			// Try to get from URL first
 			homeIDStr := chi.URLParam(r, "homeID")
-			homeID, err := strconv.Atoi(homeIDStr)
-			if err != nil {
-				http.Error(w, "invalid home ID", http.StatusBadRequest)
+			if homeIDStr != "" {
+				if homeID, err := strconv.Atoi(homeIDStr); err == nil {
+					if ok, _ := homeRepo.IsMember(homeID, userID); ok {
+						next.ServeHTTP(w, r)
+						return
+					}
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+			}
+
+			// Try to get from body
+			var bodyCopy bytes.Buffer
+			tee := io.TeeReader(r.Body, &bodyCopy)
+
+			var req bodyWithHomeID
+			if err := json.NewDecoder(tee).Decode(&req); err != nil || req.HomeID == 0 {
+				http.Error(w, "invalid or missing home_id", http.StatusBadRequest)
 				return
 			}
 
-			isMember, err := homeRepo.IsMember(homeID, userID)
-			if err != nil || !isMember {
+			// Restore the original body for the next handler
+			r.Body = io.NopCloser(&bodyCopy)
+
+			ok, err := homeRepo.IsMember(req.HomeID, userID)
+			if err != nil || !ok {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}

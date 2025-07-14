@@ -47,14 +47,17 @@ func main() {
 	// repos
 	userRepo := repository.NewUserRepository(db)
 	homeRepo := repository.NewHomeRepository(db)
+	taskRepo := repository.NewTaskRepository(db)
 
 	// services
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL)
 	homeSvc := services.NewHomeService(homeRepo, cache)
+	taskSvc := services.NewTaskService(taskRepo, cache)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
 	homeHandler := handlers.NewHomeHandler(homeSvc)
+	taskHandler := handlers.NewTaskHandler(taskSvc)
 
 	r := chi.NewRouter()
 
@@ -69,10 +72,22 @@ func main() {
 		r.Route("/home", func(r chi.Router) {
 			r.With(middleware.JWTAuth([]byte(cfg.JWTSecret))).Post("/create", homeHandler.Create)
 			r.With(middleware.JWTAuth([]byte(cfg.JWTSecret))).Post("/join", homeHandler.Join)
-			r.With(middleware.RequireMember(homeRepo)).Get("/:id", homeHandler.GetByID)
-			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:id", homeHandler.Delete)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:homeID", homeHandler.GetByID)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:homeID", homeHandler.Delete)
 			r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
 			r.With(middleware.RequireAdmin(homeRepo)).Delete("/remove_member", homeHandler.RemoveMember)
+		})
+
+		r.Route("/task", func(r chi.Router) {
+			r.With(middleware.RequireMember(homeRepo)).Post("/create", taskHandler.Create)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:task_id", taskHandler.GetTaskByID)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:home_id", taskHandler.GetTasksByHomeID)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:task_id", taskHandler.DeleteTask)
+			r.With(middleware.RequireMember(homeRepo)).Post("/assign_user", taskHandler.AssignUser)
+			r.With(middleware.RequireMember(homeRepo)).Post("/:user_id", taskHandler.GetAssignmentsForUser)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:user_id", taskHandler.GetClosestAssignmentForUser)
+			r.With(middleware.RequireMember(homeRepo)).Patch("/mark_completed", taskHandler.MarkAssignmentCompleted)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:assignment_id", taskHandler.DeleteAssignment)
 		})
 	})
 
