@@ -81,7 +81,7 @@ func main() {
 		r.Route("/task", func(r chi.Router) {
 			r.With(middleware.RequireMember(homeRepo)).Post("/create", taskHandler.Create)
 			r.With(middleware.RequireMember(homeRepo)).Get("/:task_id", taskHandler.GetTaskByID)
-			r.With(middleware.RequireMember(homeRepo)).Get("/:home_id", taskHandler.GetTasksByHomeID)
+			r.With(middleware.RequireMember(homeRepo)).Get("/home/:home_id", taskHandler.GetTasksByHomeID)
 			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:task_id", taskHandler.DeleteTask)
 			r.With(middleware.RequireMember(homeRepo)).Post("/assign_user", taskHandler.AssignUser)
 			r.With(middleware.RequireMember(homeRepo)).Post("/:user_id", taskHandler.GetAssignmentsForUser)
