@@ -34,7 +34,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
 }
 
-func (h *TaskHandler) GetTaskByID(w http.ResponseWriter, r *http.Request) {
+func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := chi.URLParam(r, "task_id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {

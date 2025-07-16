@@ -8,12 +8,8 @@ import (
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/validator/v10"
 	"github.com/markbates/goth/gothic"
 )
-
-// Create new validator
-var validate = validator.New()
 
 type AuthHandler struct {
 	svc *services.AuthService
@@ -33,7 +29,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate the fields
-	if err := validate.Struct(input); err != nil {
+	if err := utils.Validate.Struct(input); err != nil {
 		utils.JSONValidationErrors(w, err)
 		return
 	}
@@ -56,7 +52,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate the fields
-	if err := validate.Struct(input); err != nil {
+	if err := utils.Validate.Struct(input); err != nil {
 		utils.JSONValidationErrors(w, err)
 		return
 	}

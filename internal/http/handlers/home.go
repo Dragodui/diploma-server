@@ -29,7 +29,18 @@ func (h *HomeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateHome(req.Name); err != nil {
+	// validation
+	if err := utils.Validate.Struct(req); err != nil {
+		utils.JSONValidationErrors(w, err)
+		return
+	}
+
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if err := h.svc.CreateHome(req.Name, userID); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -42,6 +53,12 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// validation
+	if err := utils.Validate.Struct(req); err != nil {
+		utils.JSONValidationErrors(w, err)
 		return
 	}
 
@@ -65,7 +82,7 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	homeIDStr := chi.URLParam(r, "id")
+	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
 		http.Error(w, "invalid home ID", http.StatusBadRequest)
@@ -82,7 +99,7 @@ func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	homeIDStr := chi.URLParam(r, "id")
+	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
 		http.Error(w, "invalid home ID", http.StatusBadRequest)
@@ -100,6 +117,12 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// validation
+	if err := utils.Validate.Struct(req); err != nil {
+		utils.JSONValidationErrors(w, err)
 		return
 	}
 
@@ -128,6 +151,12 @@ func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// validation
+	if err := utils.Validate.Struct(req); err != nil {
+		utils.JSONValidationErrors(w, err)
 		return
 	}
 

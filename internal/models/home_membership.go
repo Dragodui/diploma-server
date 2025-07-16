@@ -15,14 +15,14 @@ type HomeMembership struct {
 }
 
 type JoinRequest struct {
-	Code string
+	Code string `json:"code" validate:"required"`
 }
 
 type LeaveRequest struct {
-	HomeID string
+	HomeID string `json:"home_id" validate:"required"`
 }
 
 type RemoveMemberRequest struct {
-	HomeID string
-	UserID string
+	HomeID string `json:"home_id" validate:"required"`
+	UserID string `json:"user_id" validate:"required"`
 }

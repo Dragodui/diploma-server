@@ -14,8 +14,6 @@ type Home struct {
 	TaskAssignments []TaskAssignment `gorm:"foreignKey:HomeID" json:"task_assignments,omitempty"`
 }
 
-
 type CreateHomeRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" validate:"required,min=8"`
 }
-

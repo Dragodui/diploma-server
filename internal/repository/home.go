@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"errors"
+
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"gorm.io/gorm"
@@ -38,7 +40,9 @@ func (r *homeRepo) FindByID(id int) (*models.Home, error) {
 
 	// taking memberships also
 	if err := r.db.Preload("Memberships").First(&home, id).Error; err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 	}
 
 	return &home, nil

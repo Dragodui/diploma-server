@@ -1,8 +1,6 @@
 package services
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"time"
@@ -39,12 +37,9 @@ func (s *TaskService) GetTaskByID(taskID int) (*models.Task, error) {
 	key := utils.GetTaskKey(taskID)
 
 	// try to get from cache
-	cached, err := s.cache.Get(context.Background(), key).Result()
-	if err == nil && cached != "" {
-		var task models.Task
-		if err := json.Unmarshal([]byte(cached), &task); err == nil {
-			return &task, nil
-		}
+	cached, err := utils.GetFromCache[models.Task](key, s.cache)
+	if cached != nil && err == nil {
+		return cached, nil
 	}
 
 	task, err := s.tasks.FindByID(taskID)
@@ -53,9 +48,8 @@ func (s *TaskService) GetTaskByID(taskID int) (*models.Task, error) {
 	}
 
 	// save to cache
-	data, err := json.Marshal(task)
-	if err == nil {
-		s.cache.Set(context.Background(), key, data, time.Hour)
+	if err := utils.WriteToCache(key, task, s.cache); err != nil {
+		log.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return task, nil
@@ -65,12 +59,9 @@ func (s *TaskService) GetTasksByHomeID(homeID int) (*[]models.Task, error) {
 	key := utils.GetTasksForHomeKey(homeID)
 
 	// try to get from cache
-	cached, err := s.cache.Get(context.Background(), key).Result()
-	if err == nil && cached != "" {
-		var tasks []models.Task
-		if err := json.Unmarshal([]byte(cached), &tasks); err == nil {
-			return &tasks, nil
-		}
+	cached, err := utils.GetFromCache[[]models.Task](key, s.cache)
+	if cached != nil && err == nil {
+		return cached, nil
 	}
 
 	tasks, err := s.tasks.FindByHomeID(homeID)
@@ -79,9 +70,8 @@ func (s *TaskService) GetTasksByHomeID(homeID int) (*[]models.Task, error) {
 	}
 
 	// save to cache
-	data, err := json.Marshal(tasks)
-	if err == nil {
-		s.cache.Set(context.Background(), key, data, time.Hour)
+	if err := utils.WriteToCache(key, tasks, s.cache); err != nil {
+		log.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return tasks, nil
@@ -103,13 +93,13 @@ func (s *TaskService) DeleteTask(taskID int) error {
 
 	// delete task from cache
 	taskKey := utils.GetTaskKey(taskID)
-	if err := s.cache.Del(context.Background(), taskKey).Err(); err != nil {
+	if err := utils.DeleteFromCache(taskKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", taskKey, err)
 	}
 
 	// delete tasks for home from cache
 	homeTasksKey := utils.GetTasksForHomeKey(task.HomeID)
-	if err := s.cache.Del(context.Background(), homeTasksKey).Err(); err != nil {
+	if err := utils.DeleteFromCache(homeTasksKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for home %d: %v", task.HomeID, err)
 	}
 
@@ -119,13 +109,13 @@ func (s *TaskService) DeleteTask(taskID int) error {
 func (s *TaskService) AssignUser(taskID, userID, homeID int, date time.Time) error {
 	// delete task from cache
 	key := utils.GetTaskKey(taskID)
-	if err := s.cache.Del(context.Background(), key).Err(); err != nil {
+	if err := utils.DeleteFromCache(key, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for task %d: %v", taskID, err)
 	}
 
 	// delete tasks for home from cache
 	homeTasksKey := utils.GetTasksForHomeKey(homeID)
-	if err := s.cache.Del(context.Background(), homeTasksKey).Err(); err != nil {
+	if err := utils.DeleteFromCache(homeTasksKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for home %d: %v", homeID, err)
 	}
 
@@ -139,12 +129,9 @@ func (s *TaskService) AssignUser(taskID, userID, homeID int, date time.Time) err
 func (s *TaskService) GetAssignmentsForUser(userID int) (*[]models.TaskAssignment, error) {
 	// get assignments from cache if exists
 	key := utils.GetAssignmentsForUserKey(userID)
-	cached, err := s.cache.Get(context.Background(), key).Result()
-	if cached != "" && err == nil {
-		var assignments []models.TaskAssignment
-		if err := json.Unmarshal([]byte(cached), &assignments); err == nil {
-			return &assignments, nil
-		}
+	cached, err := utils.GetFromCache[[]models.TaskAssignment](key, s.cache)
+	if cached != nil && err == nil {
+		return cached, nil
 	}
 
 	assignments, err := s.tasks.FindAssignmentsForUser(userID)
@@ -153,9 +140,8 @@ func (s *TaskService) GetAssignmentsForUser(userID int) (*[]models.TaskAssignmen
 	}
 
 	// save to cache
-	data, err := json.Marshal(assignments)
-	if err == nil {
-		s.cache.Set(context.Background(), key, data, time.Hour)
+	if err := utils.WriteToCache(key, assignments, s.cache); err != nil {
+		log.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return assignments, nil
@@ -165,12 +151,9 @@ func (s *TaskService) GetAssignmentsForUser(userID int) (*[]models.TaskAssignmen
 func (s *TaskService) GetClosestAssignmentForUser(userID int) (*models.TaskAssignment, error) {
 	// get assignment form cache if exists
 	key := utils.GetClosestAssignmentsForUserKey(userID)
-	cached, err := s.cache.Get(context.Background(), key).Result()
-	if cached != "" && err == nil {
-		var assignment models.TaskAssignment
-		if err := json.Unmarshal([]byte(cached), &assignment); err == nil {
-			return &assignment, nil
-		}
+	cached, err := utils.GetFromCache[models.TaskAssignment](key, s.cache)
+	if cached != nil && err == nil {
+		return cached, nil
 	}
 	assignment, err := s.tasks.FindClosestAssignmentForUser(userID)
 	if err != nil {
@@ -178,10 +161,8 @@ func (s *TaskService) GetClosestAssignmentForUser(userID int) (*models.TaskAssig
 	}
 
 	// save to cache
-	data, err := json.Marshal(assignment)
-	if err == nil {
-		s.cache.Set(context.Background(), key, data, time.Hour)
-
+	if err := utils.WriteToCache(key, assignment, s.cache); err != nil {
+		log.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return assignment, nil
@@ -190,7 +171,7 @@ func (s *TaskService) GetClosestAssignmentForUser(userID int) (*models.TaskAssig
 func (s *TaskService) MarkAssignmentCompleted(assignmentID int) error {
 	// delete assignment from cache
 	key := utils.GetAssignmentKey(assignmentID)
-	if err := s.cache.Del(context.Background(), key); err != nil {
+	if err := utils.DeleteFromCache(key, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
@@ -201,13 +182,13 @@ func (s *TaskService) MarkAssignmentCompleted(assignmentID int) error {
 
 	// delete user assignments from cache
 	userAssignmentsKey := utils.GetAssignmentsForUserKey(user.ID)
-	if err := s.cache.Del(context.Background(), userAssignmentsKey); err != nil {
+	if err := utils.DeleteFromCache(userAssignmentsKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 	}
 
 	// delete closest user assignment from cache
 	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(user.ID)
-	if err := s.cache.Del(context.Background(), userClosestAssignmentsKey); err != nil {
+	if err := utils.DeleteFromCache(userClosestAssignmentsKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}
 	if err := s.tasks.MarkCompleted(assignmentID); err != nil {
@@ -220,7 +201,7 @@ func (s *TaskService) MarkAssignmentCompleted(assignmentID int) error {
 func (s *TaskService) DeleteAssignment(assignmentID int) error {
 	// delete assignment from cache
 	key := utils.GetAssignmentKey(assignmentID)
-	if err := s.cache.Del(context.Background(), key); err != nil {
+	if err := utils.DeleteFromCache(key, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
@@ -231,13 +212,13 @@ func (s *TaskService) DeleteAssignment(assignmentID int) error {
 
 	// delete user assignments from cache
 	userAssignmentsKey := utils.GetAssignmentsForUserKey(user.ID)
-	if err := s.cache.Del(context.Background(), userAssignmentsKey); err != nil {
+	if err := utils.DeleteFromCache(userAssignmentsKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 	}
 
 	// delete closest user assignment from cache
 	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(user.ID)
-	if err := s.cache.Del(context.Background(), userClosestAssignmentsKey); err != nil {
+	if err := utils.DeleteFromCache(userClosestAssignmentsKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}
 	if err := s.tasks.DeleteAssignment(assignmentID); err != nil {

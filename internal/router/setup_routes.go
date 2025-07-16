@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func SetupRoutes(cfg *config.Config, authHandler *handlers.AuthHandler, homeHandler *handlers.HomeHandler, taskHandler *handlers.TaskHandler, homeRepo repository.HomeRepository) http.Handler {
+func SetupRoutes(cfg *config.Config, authHandler *handlers.AuthHandler, homeHandler *handlers.HomeHandler, taskHandler *handlers.TaskHandler, billHandler *handlers.BillHandler, homeRepo repository.HomeRepository) http.Handler {
 	r := chi.NewRouter()
 	// add cors
 	r.Use(cors.Handler(cors.Options{
@@ -32,8 +32,8 @@ func SetupRoutes(cfg *config.Config, authHandler *handlers.AuthHandler, homeHand
 		r.Route("/home", func(r chi.Router) {
 			r.With(middleware.JWTAuth([]byte(cfg.JWTSecret))).Post("/create", homeHandler.Create)
 			r.With(middleware.JWTAuth([]byte(cfg.JWTSecret))).Post("/join", homeHandler.Join)
-			r.With(middleware.RequireMember(homeRepo)).Get("/:homeID", homeHandler.GetByID)
-			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:homeID", homeHandler.Delete)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:home_id", homeHandler.GetByID)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:home_id", homeHandler.Delete)
 			r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
 			r.With(middleware.RequireAdmin(homeRepo)).Delete("/remove_member", homeHandler.RemoveMember)
 		})
@@ -41,7 +41,7 @@ func SetupRoutes(cfg *config.Config, authHandler *handlers.AuthHandler, homeHand
 		r.Route("/task", func(r chi.Router) {
 			r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
 			r.With(middleware.RequireMember(homeRepo)).Post("/create", taskHandler.Create)
-			r.With(middleware.RequireMember(homeRepo)).Get("/:task_id", taskHandler.GetTaskByID)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:task_id", taskHandler.GetByID)
 			r.With(middleware.RequireMember(homeRepo)).Get("/home/:home_id", taskHandler.GetTasksByHomeID)
 			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:task_id", taskHandler.DeleteTask)
 			r.With(middleware.RequireMember(homeRepo)).Post("/assign_user", taskHandler.AssignUser)
@@ -49,6 +49,15 @@ func SetupRoutes(cfg *config.Config, authHandler *handlers.AuthHandler, homeHand
 			r.With(middleware.RequireMember(homeRepo)).Get("/:user_id", taskHandler.GetClosestAssignmentForUser)
 			r.With(middleware.RequireMember(homeRepo)).Patch("/mark_completed", taskHandler.MarkAssignmentCompleted)
 			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:assignment_id", taskHandler.DeleteAssignment)
+		})
+
+		r.Route("/bill", func(r chi.Router) {
+			r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
+			r.With(middleware.RequireMember(homeRepo)).Post("/create", billHandler.Create)
+			r.With(middleware.RequireMember(homeRepo)).Get("/:bill_id", billHandler.GetById)
+			r.With(middleware.RequireAdmin(homeRepo)).Delete("/:bill_id", billHandler.Delete)
+			r.With(middleware.RequireMember(homeRepo)).Patch("/:bill_id", billHandler.MarkPayed)
+
 		})
 	})
 

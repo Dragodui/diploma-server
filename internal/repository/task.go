@@ -37,7 +37,7 @@ func (r *taskRepo) Create(t *models.Task) error {
 
 func (r *taskRepo) FindByID(id int) (*models.Task, error) {
 	var task models.Task
-	err := r.db.Where("id=?", id).First(&task).Error
+	err := r.db.First(&task, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}

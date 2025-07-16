@@ -37,6 +37,7 @@ func NewServer() *Server {
 		&models.HomeMembership{},
 		&models.Task{},
 		&models.TaskAssignment{},
+		&models.Bill{},
 	); err != nil {
 		panic(err)
 	}
@@ -51,19 +52,22 @@ func NewServer() *Server {
 	userRepo := repository.NewUserRepository(db)
 	homeRepo := repository.NewHomeRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
+	billRepo := repository.NewBillRepository(db)
 
 	// services
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL)
 	homeSvc := services.NewHomeService(homeRepo, cache)
 	taskSvc := services.NewTaskService(taskRepo, cache)
+	billSvc := services.NewBillService(billRepo, cache)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
 	homeHandler := handlers.NewHomeHandler(homeSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
+	billHandler := handlers.NewBillHandler(billSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }
