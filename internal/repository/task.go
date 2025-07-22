@@ -13,9 +13,10 @@ type TaskRepository interface {
 	FindByID(id int) (*models.Task, error)
 	FindByHomeID(homeID int) (*[]models.Task, error)
 	Delete(id int) error
+	ReassignRoom(taskID, roomID int) error
 
 	// task assignments
-	AssignUser(taskID, userID, homeID int, date time.Time) error
+	AssignUser(taskID, userID int, date time.Time) error
 	FindAssignmentsForUser(userID int) (*[]models.TaskAssignment, error)
 	FindClosestAssignmentForUser(userID int) (*models.TaskAssignment, error)
 	MarkCompleted(assignmentID int) error
@@ -37,7 +38,8 @@ func (r *taskRepo) Create(t *models.Task) error {
 
 func (r *taskRepo) FindByID(id int) (*models.Task, error) {
 	var task models.Task
-	err := r.db.First(&task, id).Error
+	// we need preload to room field was not empty
+	err := r.db.Preload("Room").First(&task, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -46,7 +48,7 @@ func (r *taskRepo) FindByID(id int) (*models.Task, error) {
 
 func (r *taskRepo) FindByHomeID(homeID int) (*[]models.Task, error) {
 	var tasks []models.Task
-	if err := r.db.Where("home_id=?", homeID).Find(&tasks).Error; err != nil {
+	if err := r.db.Preload("Room").Where("home_id=?", homeID).Find(&tasks).Error; err != nil {
 		return nil, err
 	}
 
@@ -60,17 +62,13 @@ func (r *taskRepo) Delete(id int) error {
 	return nil
 }
 
-func (r *taskRepo) AssignUser(taskID, userID, homeID int, date time.Time) error {
+func (r *taskRepo) AssignUser(taskID, userID int, date time.Time) error {
 	var task models.Task
 	if err := r.db.First(&task, taskID).Error; err != nil {
 		return err
 	}
-	if task.HomeID != homeID {
-		return errors.New("incorrect homeID for this task")
-	}
 	newTaskAssignment := models.TaskAssignment{
 		TaskID:       taskID,
-		HomeID:       homeID,
 		UserID:       userID,
 		Status:       "assigned",
 		AssignedDate: date,
@@ -137,6 +135,21 @@ func (r *taskRepo) MarkCompleted(assignmentID int) error {
 
 func (r *taskRepo) DeleteAssignment(assignmentID int) error {
 	if err := r.db.Delete(&models.TaskAssignment{}, assignmentID).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *taskRepo) ReassignRoom(taskID, roomID int) error {
+	var task models.Task
+
+	if err := r.db.First(&task, taskID).Error; err != nil {
+		return err
+	}
+
+	task.RoomID = &roomID
+	if err := r.db.Save(&task).Error; err != nil {
 		return err
 	}
 

@@ -43,6 +43,7 @@ func (r *homeRepo) FindByID(id int) (*models.Home, error) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
+		return nil, err
 	}
 
 	return &home, nil
@@ -60,12 +61,7 @@ func (r *homeRepo) FindByInviteCode(inviteCode string) (*models.Home, error) {
 }
 
 func (r *homeRepo) Delete(id int) error {
-
-	if err := r.db.Delete(&models.Home{}, id).Error; err != nil {
-		return err
-	}
-
-	return nil
+	return r.db.Delete(&models.Home{}, id).Error
 }
 
 func (r *homeRepo) AddMember(id int, userID int, role string) error {

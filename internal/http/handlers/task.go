@@ -26,7 +26,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateTask(req.HomeID, req.Name, req.Description, req.ScheduleType); err != nil {
+	if err := h.svc.CreateTask(req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -163,11 +163,23 @@ func (h *TaskHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.svc.DeleteAssignment(assignmentID)
-	if err != nil {
+	if err := h.svc.DeleteAssignment(assignmentID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	utils.JSON(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
+}
+
+func (h *TaskHandler) ReassignRoom(w http.ResponseWriter, r *http.Request) {
+	var req models.ReassignRoomRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.ReassignRoom(req.TaskID, req.RoomID); err != nil {
+		utils.JSON(w, http.StatusOK, map[string]string{"message": "Updated successfully"})
+	}
 }

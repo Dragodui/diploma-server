@@ -7,7 +7,6 @@ import (
 type TaskAssignment struct {
 	ID           int        `gorm:"primaryKey" json:"id"`
 	TaskID       int        `gorm:"not null" json:"task_id"`
-	HomeID       int        `gorm:"not null" json:"home_id"`
 	UserID       int        `gorm:"not null" json:"user_id"`
 	Status       string     `gorm:"not null;size:64;default:assigned" json:"status"`
 	AssignedDate time.Time  `json:"assigned_date"`

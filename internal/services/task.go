@@ -20,11 +20,12 @@ func NewTaskService(repo repository.TaskRepository, cache *redis.Client) *TaskSe
 	return &TaskService{tasks: repo, cache: cache}
 }
 
-func (s *TaskService) CreateTask(homeID int, name, description, scheduleType string) error {
+func (s *TaskService) CreateTask(homeID int, roomID *int, name, description, scheduleType string) error {
 	if err := s.tasks.Create(&models.Task{
 		Name:         name,
 		Description:  description,
 		HomeID:       homeID,
+		RoomID:       roomID,
 		ScheduleType: scheduleType,
 	}); err != nil {
 		return err
@@ -119,7 +120,7 @@ func (s *TaskService) AssignUser(taskID, userID, homeID int, date time.Time) err
 		log.Printf("Failed to delete redis cache for home %d: %v", homeID, err)
 	}
 
-	if err := s.tasks.AssignUser(taskID, userID, homeID, date); err != nil {
+	if err := s.tasks.AssignUser(taskID, userID, date); err != nil {
 		return err
 	}
 
@@ -222,6 +223,25 @@ func (s *TaskService) DeleteAssignment(assignmentID int) error {
 		log.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}
 	if err := s.tasks.DeleteAssignment(assignmentID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *TaskService) ReassignRoom(taskID, roomID int) error {
+	// delete from cache
+	taskKey := utils.GetTaskKey(taskID)
+	if err := utils.DeleteFromCache(taskKey, s.cache); err != nil {
+		log.Printf("Failed to delete redis cache for key %s: %v", taskKey, err)
+	}
+
+	roomKey := utils.GetRoomKey(roomID)
+	if err := utils.DeleteFromCache(roomKey, s.cache); err != nil {
+		log.Printf("Failed to delete redis cache for key %s: %v", roomKey, err)
+	}
+
+	if err := s.tasks.ReassignRoom(taskID, roomID); err != nil {
 		return err
 	}
 

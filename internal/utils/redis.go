@@ -60,3 +60,11 @@ func GetClosestAssignmentsForUserKey(userID int) string {
 func GetBillKey(billID int) string {
 	return "bill:" + strconv.Itoa(billID)
 }
+
+func GetRoomKey(roomID int) string {
+	return "room:" + strconv.Itoa(roomID)
+}
+
+func GetRoomsForHomeKey(homeID int) string {
+	return "rooms:home:" + strconv.Itoa(homeID)
+}
