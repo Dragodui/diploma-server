@@ -43,7 +43,7 @@ func Load() *Config {
 	}
 
 	if cfg.CallbackURL == "" {
-		cfg.CallbackURL = "http://locahost:" + cfg.Port + "/auth/google/callback"
+		cfg.CallbackURL = "http://localhost:" + cfg.Port + "/auth/google/callback"
 	}
 
 	if cfg.DB_DSN == "" || cfg.JWTSecret == "" || cfg.ClientID == "" || cfg.ClientSecret == "" {

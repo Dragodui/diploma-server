@@ -21,6 +21,11 @@ func NewTaskService(repo repository.TaskRepository, cache *redis.Client) *TaskSe
 }
 
 func (s *TaskService) CreateTask(homeID int, roomID *int, name, description, scheduleType string) error {
+	tasksKey := utils.GetTasksForHomeKey(homeID)
+	if err := utils.DeleteFromCache(tasksKey, s.cache); err != nil {
+		log.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
+	}
+
 	if err := s.tasks.Create(&models.Task{
 		Name:         name,
 		Description:  description,
@@ -239,6 +244,15 @@ func (s *TaskService) ReassignRoom(taskID, roomID int) error {
 	roomKey := utils.GetRoomKey(roomID)
 	if err := utils.DeleteFromCache(roomKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", roomKey, err)
+	}
+
+	task, err := s.tasks.FindByID(taskID)
+	if err != nil {
+		return err
+	}
+	homeTasksKey := utils.GetTasksForHomeKey(task.HomeID)
+	if err := utils.DeleteFromCache(homeTasksKey, s.cache); err != nil {
+		log.Printf("Failed to delete redis cache for key %s: %v", homeTasksKey, err)
 	}
 
 	if err := s.tasks.ReassignRoom(taskID, roomID); err != nil {

@@ -51,7 +51,7 @@ func (h *BillHandler) GetById(w http.ResponseWriter, r *http.Request) {
 	billIDStr := chi.URLParam(r, "bill_id")
 	billID, err := strconv.Atoi(billIDStr)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		http.Error(w, "invalid bill ID", http.StatusBadRequest)
 		return
 	}
 	bill, err := h.svc.GetBillByID(billID)
@@ -68,7 +68,7 @@ func (h *BillHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	billIDStr := chi.URLParam(r, "bill_id")
 	billID, err := strconv.Atoi(billIDStr)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		http.Error(w, "invalid bill ID", http.StatusBadRequest)
 		return
 	}
 	if err := h.svc.Delete(billID); err != nil {
@@ -82,7 +82,7 @@ func (h *BillHandler) MarkPayed(w http.ResponseWriter, r *http.Request) {
 	billIDStr := chi.URLParam(r, "bill_id")
 	billID, err := strconv.Atoi(billIDStr)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		http.Error(w, "invalid bill ID", http.StatusBadRequest)
 		return
 	}
 

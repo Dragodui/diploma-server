@@ -74,9 +74,14 @@ func (s *RoomService) GetRoomsByHomeID(homeID int) (*[]models.Room, error) {
 	return rooms, nil
 }
 
-func (s *RoomService) DeleteRoom(roomID, homeID int) error {
+func (s *RoomService) DeleteRoom(roomID int) error {
 	// delete from cache
 	roomKey := utils.GetRoomKey(roomID)
+	room, err := s.rooms.FindByID(roomID)
+	if err != nil {
+		return err
+	}
+	homeID := room.HomeID
 	roomsKey := utils.GetRoomsForHomeKey(homeID)
 	if err := utils.DeleteFromCache(roomKey, s.cache); err != nil {
 		log.Printf("Failed to delete redis cache for key %s: %v", roomKey, err)

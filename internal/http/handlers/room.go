@@ -78,14 +78,8 @@ func (h *RoomHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid room ID", http.StatusBadRequest)
 		return
 	}
-	homeIDStr := chi.URLParam(r, "home_id")
-	homeID, err := strconv.Atoi(homeIDStr)
-	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
-		return
-	}
 
-	err = h.svc.DeleteRoom(roomID, homeID)
+	err = h.svc.DeleteRoom(roomID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -20,7 +20,7 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 			userID := GetUserID(r)
 
 			// Try to get from URL first
-			homeIDStr := chi.URLParam(r, "homeID")
+			homeIDStr := chi.URLParam(r, "home_id")
 			if homeIDStr != "" {
 				if homeID, err := strconv.Atoi(homeIDStr); err == nil {
 					if ok, _ := homeRepo.IsMember(homeID, userID); ok {
@@ -66,7 +66,7 @@ func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.H
 			userID := GetUserID(r)
 
 			// Try to get from URL first
-			homeIDStr := chi.URLParam(r, "homeID")
+			homeIDStr := chi.URLParam(r, "home_id")
 			if homeIDStr != "" {
 				if homeID, err := strconv.Atoi(homeIDStr); err == nil {
 					if ok, _ := homeRepo.IsMember(homeID, userID); ok {
