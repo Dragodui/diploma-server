@@ -17,7 +17,7 @@ type Bill struct {
 	End         time.Time      `json:"period_end"`
 	UploadedBy  int            `json:"uploaded_by"`
 	OCRData     datatypes.JSON `json:"ocr_data"`
-	CreatedAt   time.Time      `json:"created_at"`
+	CreatedAt   time.Time      `gorm:"autoCreateTime" json:"created_at"`
 
 	//relations
 	Home *Home `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`

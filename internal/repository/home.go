@@ -21,6 +21,7 @@ type HomeRepository interface {
 	IsMember(id int, userID int) (bool, error)
 	DeleteMember(id int, userID int) error
 	GenerateUniqueInviteCode() (string, error)
+	GetUserHome(userID int) (*models.Home, error)
 }
 
 type homeRepo struct {
@@ -120,4 +121,14 @@ func (r *homeRepo) IsAdmin(id int, userID int) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+func (r *homeRepo) GetUserHome(userID int) (*models.Home, error) {
+	var home models.Home
+
+	if err := r.db.Model(&models.Home{}).Joins("JOIN home_memberships ON home_memberships.home_id = homes.id").Where("home_memberships.user_id = ?", userID).Preload("Memberships").Preload("Memberships.User").First(&home).Error; err != nil {
+		return nil, err
+	}
+
+	return &home, nil
 }

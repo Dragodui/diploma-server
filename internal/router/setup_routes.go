@@ -58,6 +58,7 @@ func SetupRoutes(
 			r.Route("/homes", func(r chi.Router) {
 				r.Post("/create", homeHandler.Create) // Create home
 				r.Post("/join", homeHandler.Join)     // Join home
+				r.Get("/my", homeHandler.GetUserHome) // Get user home
 
 				// Home-specific actions
 				r.Route("/{home_id}", func(r chi.Router) {

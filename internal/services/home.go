@@ -115,3 +115,22 @@ func (s *HomeService) RemoveMember(homeID int, userID int, currentUserID int) er
 
 	return s.homes.DeleteMember(homeID, userID)
 }
+
+func (s *HomeService) GetUserHome(userID int) (*models.Home, error) {
+	key := utils.GetUserHomeKey(userID)
+	cached, err := utils.GetFromCache[models.Home](key, s.cache)
+	if cached != nil && err == nil {
+		return cached, nil
+	}
+
+	home, err := s.homes.GetUserHome(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := utils.WriteToCache(key, home, s.cache); err != nil {
+		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
+	}
+
+	return home, nil
+}

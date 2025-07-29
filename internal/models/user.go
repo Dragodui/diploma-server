@@ -24,7 +24,7 @@ type User struct {
 	Name         string    `gorm:"size:64;not null" json:"name"`
 	PasswordHash string    `gorm:"not null" json:"-"`
 	Avatar       string    `json:"avatar"`
-	CreatedAt    time.Time `json:"created_at"`
+	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
 
 	// relations
 	Memberships     []HomeMembership `gorm:"foreignKey:UserID" json:"memberships,omitempty"`

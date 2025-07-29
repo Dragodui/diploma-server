@@ -9,7 +9,7 @@ type TaskAssignment struct {
 	TaskID       int        `gorm:"not null" json:"task_id"`
 	UserID       int        `gorm:"not null" json:"user_id"`
 	Status       string     `gorm:"not null;size:64;default:assigned" json:"status"`
-	AssignedDate time.Time  `json:"assigned_date"`
+	AssignedDate time.Time  `gorm:"autoCreateTime" json:"assigned_date"`
 	CompleteDate *time.Time `json:"complete_date"`
 
 	// relations

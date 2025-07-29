@@ -60,7 +60,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Get token from Service
 	token, err := h.svc.Login(input.Email, input.Password)
 	if err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		utils.JSONError(w, "Invalid credentials", http.StatusUnauthorized)
+		return
 	}
 
 	// Response to client

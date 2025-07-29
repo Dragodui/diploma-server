@@ -62,12 +62,16 @@ func (s *AuthService) Login(email, password string) (string, error) {
 		return "", ErrInvalidCredentials
 	}
 
-	return security.GenerateToken(email, s.jwtSecret, s.ttl)
+	return security.GenerateToken(user.ID, email, s.jwtSecret, s.ttl)
 }
 
 func (s *AuthService) HandleCallback(user goth.User) (string, error) {
+	u, err := s.users.FindByEmail(user.Email)
+	if err != nil {
+		return "", err
+	}
 
-	token, err := security.GenerateToken(user.Email, s.jwtSecret, s.ttl)
+	token, err := security.GenerateToken(u.ID, user.Email, s.jwtSecret, s.ttl)
 	if err != nil {
 		return "", err
 	}

@@ -38,7 +38,7 @@ func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := chi.URLParam(r, "task_id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
-		http.Error(w, "invalid task ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid task ID", http.StatusBadRequest)
 		return
 	}
 
@@ -57,7 +57,7 @@ func (h *TaskHandler) GetTasksByHomeID(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 	tasks, err := h.svc.GetTasksByHomeID(homeID)
@@ -75,7 +75,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := chi.URLParam(r, "task_id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
-		http.Error(w, "invalid task ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid task ID", http.StatusBadRequest)
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *TaskHandler) GetAssignmentsForUser(w http.ResponseWriter, r *http.Reque
 	userIDStr := chi.URLParam(r, "user_id")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		http.Error(w, "invalid user ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid user ID", http.StatusBadRequest)
 		return
 	}
 	assignments, err := h.svc.GetAssignmentsForUser(userID)
@@ -125,7 +125,7 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 	userIDStr := chi.URLParam(r, "user_id")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		http.Error(w, "invalid user ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid user ID", http.StatusBadRequest)
 		return
 	}
 
@@ -159,7 +159,7 @@ func (h *TaskHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
 	assignmentIDStr := chi.URLParam(r, "assignment_id")
 	assignmentID, err := strconv.Atoi(assignmentIDStr)
 	if err != nil {
-		http.Error(w, "invalid assignment ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid assignment ID", http.StatusBadRequest)
 		return
 	}
 

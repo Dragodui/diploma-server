@@ -81,11 +81,29 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]string{"message": "Joined successfully"})
 }
 
+func (h HomeHandler) GetUserHome(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusBadRequest)
+		return
+	}
+
+	home, err := h.svc.GetUserHome(userID)
+	if err != nil {
+		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]*models.Home{
+		"home": home,
+	})
+}
+
 func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 	home, err := h.svc.GetHomeByID(homeID)
@@ -102,7 +120,7 @@ func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 	if err := h.svc.DeleteHome(homeID); err != nil {
@@ -128,7 +146,7 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 
 	homeID, err := strconv.Atoi(req.HomeID)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 
@@ -162,13 +180,13 @@ func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 
 	homeID, err := strconv.Atoi(req.HomeID)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 
 	userID, err := strconv.Atoi(req.UserID)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 

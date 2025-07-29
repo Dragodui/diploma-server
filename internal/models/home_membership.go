@@ -7,7 +7,7 @@ type HomeMembership struct {
 	HomeID   int       `gorm:"not null" json:"home_id"`
 	UserID   int       `gorm:"not null" json:"user_id"`
 	Role     string    `gorm:"size:64;not null" json:"role"`
-	JoinedAt time.Time `json:"joined_at"`
+	JoinedAt time.Time `gorm:"autoCreateTime" json:"joined_at"`
 
 	// relations
 	User *User `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`

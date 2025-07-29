@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -30,7 +29,7 @@ func JWTAuth(secret []byte) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, claims.Subject)
+			ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -38,8 +37,7 @@ func JWTAuth(secret []byte) func(http.Handler) http.Handler {
 
 func GetUserID(r *http.Request) int {
 	val := r.Context().Value(userIDKey)
-	if str, ok := val.(string); ok {
-		id, _ := strconv.Atoi(str)
+	if id, ok := val.(int); ok {
 		return id
 	}
 	return 0

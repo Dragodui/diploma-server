@@ -37,6 +37,10 @@ func GetHomeCacheKey(homeID int) string {
 	return "home:" + strconv.Itoa(homeID)
 }
 
+func GetUserHomeKey(userID int) string {
+	return "home:user:" + strconv.Itoa(userID)
+}
+
 func GetTaskKey(taskID int) string {
 	return "task:" + strconv.Itoa(taskID)
 }

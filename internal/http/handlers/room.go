@@ -38,7 +38,7 @@ func (h *RoomHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	roomIDStr := chi.URLParam(r, "room_id")
 	roomID, err := strconv.Atoi(roomIDStr)
 	if err != nil {
-		http.Error(w, "invalid room ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid room ID", http.StatusBadRequest)
 		return
 	}
 
@@ -57,7 +57,7 @@ func (h *RoomHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
-		http.Error(w, "invalid home ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
 	rooms, err := h.svc.GetRoomsByHomeID(homeID)
@@ -75,7 +75,7 @@ func (h *RoomHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	roomIDStr := chi.URLParam(r, "room_id")
 	roomID, err := strconv.Atoi(roomIDStr)
 	if err != nil {
-		http.Error(w, "invalid room ID", http.StatusBadRequest)
+		utils.JSONError(w, "invalid room ID", http.StatusBadRequest)
 		return
 	}
 

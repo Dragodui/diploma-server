@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/Dragodui/diploma-server/internal/repository"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -27,7 +28,7 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 						next.ServeHTTP(w, r)
 						return
 					}
-					http.Error(w, "forbidden", http.StatusForbidden)
+					utils.JSONError(w, "forbidden", http.StatusForbidden)
 					return
 				}
 			}
@@ -38,7 +39,7 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 
 			var req bodyWithHomeID
 			if err := json.NewDecoder(tee).Decode(&req); err != nil || req.HomeID == 0 {
-				http.Error(w, "invalid or missing home_id", http.StatusBadRequest)
+				utils.JSONError(w, "invalid or missing home_id", http.StatusBadRequest)
 				return
 			}
 
@@ -47,7 +48,7 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 
 			ok, err := homeRepo.IsAdmin(req.HomeID, userID)
 			if err != nil || !ok {
-				http.Error(w, "forbidden", http.StatusForbidden)
+				utils.JSONError(w, "forbidden", http.StatusForbidden)
 				return
 			}
 
@@ -73,7 +74,7 @@ func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.H
 						next.ServeHTTP(w, r)
 						return
 					}
-					http.Error(w, "forbidden", http.StatusForbidden)
+					utils.JSONError(w, "forbidden", http.StatusForbidden)
 					return
 				}
 			}
@@ -84,7 +85,7 @@ func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.H
 
 			var req bodyWithHomeID
 			if err := json.NewDecoder(tee).Decode(&req); err != nil || req.HomeID == 0 {
-				http.Error(w, "invalid or missing home_id", http.StatusBadRequest)
+				utils.JSONError(w, "invalid or missing home_id", http.StatusBadRequest)
 				return
 			}
 
@@ -93,7 +94,7 @@ func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.H
 
 			ok, err := homeRepo.IsMember(req.HomeID, userID)
 			if err != nil || !ok {
-				http.Error(w, "forbidden", http.StatusForbidden)
+				utils.JSONError(w, "forbidden", http.StatusForbidden)
 				return
 			}
 
