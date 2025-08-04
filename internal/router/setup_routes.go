@@ -47,6 +47,9 @@ func SetupRoutes(
 			r.Post("/login", authHandler.Login)
 			r.Get("/{provider}", authHandler.SignInWithProvider)
 			r.Get("/{provider}/callback", authHandler.CallbackHandler)
+			r.Get("/verify", authHandler.VerifyEmail)
+			r.Post("/forgot", authHandler.ForgotPassword)
+			r.Post("/reset", authHandler.ResetPassword)
 		})
 
 		// Protected routes

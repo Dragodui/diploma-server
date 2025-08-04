@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"time"
 
 	"github.com/Dragodui/diploma-server/internal/models"
 	"gorm.io/gorm"
@@ -12,6 +13,11 @@ type UserRepository interface {
 	FindByID(id int) (*models.User, error)
 	FindByName(name string) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
+	SetVerifyToken(userID int, token string, expiresAt time.Time) error
+	VerifyEmail(token string) error
+	GetByResetToken(token string) (*models.User, error)
+	UpdatePassword(userID int, newHash string) error
+	SetResetToken(email, token string, expiresAt time.Time) error
 }
 
 type userRepo struct {
@@ -54,4 +60,56 @@ func (r *userRepo) FindByEmail(email string) (*models.User, error) {
 	}
 
 	return &u, err
+}
+
+func (r *userRepo) SetVerifyToken(userID int, token string, expiresAt time.Time) error {
+	return r.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"verify_token":      token,
+			"verify_expires_at": expiresAt,
+		}).Error
+}
+
+func (r *userRepo) VerifyEmail(token string) error {
+	res := r.db.Model(&models.User{}).Where("verify_token = ? AND verify_expires_at > ?", token, time.Now()).Updates(map[string]interface{}{
+		"email_verified":    true,
+		"verify_token":      nil,
+		"verify_expires_at": nil,
+	})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("not found")
+	}
+	return nil
+}
+
+func (r *userRepo) GetByResetToken(token string) (*models.User, error) {
+	var u models.User
+	err := r.db.Where("reset_token = ? AND reset_expires_at > ?", token, time.Now()).
+		First(&u).Error
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *userRepo) SetResetToken(email, token string, expiresAt time.Time) error {
+	return r.db.Model(&models.User{}).
+		Where("email = ?", email).
+		Updates(map[string]interface{}{
+			"reset_token":      token,
+			"reset_expires_at": expiresAt,
+		}).Error
+}
+
+func (r *userRepo) UpdatePassword(userID int, newHash string) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"password_hash":    newHash,
+			"reset_token":      nil,
+			"reset_expires_at": nil,
+		}).Error
 }

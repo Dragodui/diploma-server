@@ -7,6 +7,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/Dragodui/diploma-server/pkg/security"
 	"github.com/markbates/goth"
 	"github.com/redis/go-redis/v9"
@@ -20,6 +21,7 @@ type AuthService struct {
 	cache     *redis.Client
 	ttl       time.Duration
 	clientURL string
+	mail      utils.Mailer
 }
 
 func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string) *AuthService {
@@ -81,4 +83,39 @@ func (s *AuthService) HandleCallback(user goth.User) (string, error) {
 	redirectURL := fmt.Sprintf("%s?token=%s", clientURL, token)
 
 	return redirectURL, nil
+}
+
+func (s *AuthService) SendVerificationEmail(userID int, email string) error {
+	tok, _ := utils.GenToken(32)
+	exp := time.Now().Add(24 * time.Hour)
+	if err := s.users.SetVerifyToken(userID, tok, exp); err != nil {
+		return err
+	}
+	link := fmt.Sprintf(s.clientURL+"/verify?token=%s", tok)
+	body := fmt.Sprintf("Verify email: <a href=\"%s\">%s</a>", link, link)
+	return s.mail.Send(email, "Verify your email", body)
+}
+
+func (s *AuthService) VerifyEmail(token string) error {
+	return s.users.VerifyEmail(token)
+}
+
+func (s *AuthService) SendResetPassword(email string) error {
+	tok, _ := utils.GenToken(32)
+	exp := time.Now().Add(2 * time.Hour)
+	if err := s.users.SetResetToken(email, tok, exp); err != nil {
+		return err
+	}
+	link := fmt.Sprintf(s.clientURL+"/reset-password?token=%s", tok)
+	body := fmt.Sprintf("Reset password: <a href=\"%s\">%s</a>", link, link)
+	return s.mail.Send(email, "Reset password", body)
+}
+
+func (s *AuthService) ResetPassword(token, newPass string) error {
+	u, err := s.users.GetByResetToken(token)
+	if err != nil {
+		return err
+	}
+	hash, _ := security.HashPassword(newPass)
+	return s.users.UpdatePassword(u.ID, string(hash))
 }

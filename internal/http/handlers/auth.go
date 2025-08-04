@@ -99,3 +99,30 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
+
+func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+	err := h.svc.VerifyEmail(token)
+	if err != nil {
+		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)
+		return
+	}
+	utils.JSON(w, http.StatusOK, map[string]string{"message": "Email verified"})
+}
+
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	email := r.FormValue("email")
+	h.svc.SendResetPassword(email)
+	utils.JSON(w, http.StatusOK, map[string]string{"message": "Reset link was sended to your email"})
+}
+
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	// ?token=...&password=...
+	token := r.FormValue("token")
+	pass := r.FormValue("password")
+	if err := h.svc.ResetPassword(token, pass); err != nil {
+		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)
+		return
+	}
+	utils.JSON(w, http.StatusOK, map[string]string{"message": "Password changed successfully"})
+}
