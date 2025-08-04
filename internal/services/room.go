@@ -1,8 +1,7 @@
 package services
 
 import (
-	"log"
-
+	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -22,7 +21,7 @@ func (s *RoomService) CreateRoom(name string, homeID int) error {
 	// delete homes rooms from cache
 	roomsKey := utils.GetRoomsForHomeKey(homeID)
 	if err := utils.DeleteFromCache(roomsKey, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", roomsKey, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", roomsKey, err)
 	}
 
 	if err := s.rooms.Create(&models.Room{
@@ -49,7 +48,7 @@ func (s *RoomService) GetRoomByID(roomID int) (*models.Room, error) {
 	}
 
 	if err := utils.WriteToCache(key, room, s.cache); err != nil {
-		log.Printf("Failed to write to cache [%s]: %v", key, err)
+		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return room, nil
@@ -68,7 +67,7 @@ func (s *RoomService) GetRoomsByHomeID(homeID int) (*[]models.Room, error) {
 	}
 
 	if err := utils.WriteToCache(key, rooms, s.cache); err != nil {
-		log.Printf("Failed to write to cache [%s]: %v", key, err)
+		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return rooms, nil
@@ -84,10 +83,10 @@ func (s *RoomService) DeleteRoom(roomID int) error {
 	homeID := room.HomeID
 	roomsKey := utils.GetRoomsForHomeKey(homeID)
 	if err := utils.DeleteFromCache(roomKey, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", roomKey, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", roomKey, err)
 	}
 	if err := utils.DeleteFromCache(roomsKey, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", roomsKey, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", roomsKey, err)
 	}
 
 	if err := s.rooms.Delete(roomID); err != nil {

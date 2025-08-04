@@ -1,9 +1,9 @@
 package services
 
 import (
-	"log"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -57,7 +57,7 @@ func (s *BillService) Delete(id int) error {
 
 	key := utils.GetBillKey(id)
 	if err := utils.DeleteFromCache(key, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
 	return nil
@@ -72,7 +72,7 @@ func (s *BillService) MarkBillPayed(id int) error {
 	// remove from cache
 	key := utils.GetBillKey(id)
 	if err := utils.DeleteFromCache(key, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
 	// get new bill data
@@ -83,7 +83,7 @@ func (s *BillService) MarkBillPayed(id int) error {
 
 	// write to cache
 	if err := utils.WriteToCache(key, bill, s.cache); err != nil {
-		log.Printf("Failed to write to cache [%s]: %v", key, err)
+		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return nil

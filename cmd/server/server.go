@@ -88,7 +88,7 @@ func NewServer() *Server {
 }
 
 func (a *Server) Run() {
-	log.Println("Starting server on port:", a.port)
+	logger.Info.Print("Starting server on port:", a.port)
 	if err := http.ListenAndServe(":"+a.port, a.router); err != nil {
 		log.Fatal(err)
 	}

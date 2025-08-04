@@ -2,8 +2,8 @@ package services
 
 import (
 	"errors"
-	"log"
 
+	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -53,7 +53,7 @@ func (s *HomeService) JoinHomeByCode(code string, userID int) error {
 
 	key := utils.GetHomeCacheKey(home.ID)
 	if err := utils.DeleteFromCache(key, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
 	return s.homes.AddMember(home.ID, userID, "member")
@@ -75,7 +75,7 @@ func (s *HomeService) GetHomeByID(id int) (*models.Home, error) {
 
 	// saves to cache
 	if err := utils.WriteToCache(key, home, s.cache); err != nil {
-		log.Printf("Failed to write to cache [%s]: %v", key, err)
+		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return home, nil
@@ -89,7 +89,7 @@ func (s *HomeService) DeleteHome(id int) error {
 	// remove from cache
 	key := utils.GetHomeCacheKey(id)
 	if err := utils.DeleteFromCache(key, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func (s *HomeService) DeleteHome(id int) error {
 func (s *HomeService) LeaveHome(homeID int, userID int) error {
 	key := utils.GetHomeCacheKey(homeID)
 	if err := utils.DeleteFromCache(key, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
 	return s.homes.DeleteMember(homeID, userID)
@@ -110,7 +110,7 @@ func (s *HomeService) RemoveMember(homeID int, userID int, currentUserID int) er
 
 	key := utils.GetHomeCacheKey(homeID)
 	if err := utils.DeleteFromCache(key, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
 	return s.homes.DeleteMember(homeID, userID)
@@ -129,7 +129,7 @@ func (s *HomeService) GetUserHome(userID int) (*models.Home, error) {
 	}
 
 	if err := utils.WriteToCache(key, home, s.cache); err != nil {
-		log.Printf("Failed to delete redis cache for key %s: %v", key, err)
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
 	return home, nil
