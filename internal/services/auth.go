@@ -85,10 +85,10 @@ func (s *AuthService) HandleCallback(user goth.User) (string, error) {
 	return redirectURL, nil
 }
 
-func (s *AuthService) SendVerificationEmail(userID int, email string) error {
+func (s *AuthService) SendVerificationEmail(email string) error {
 	tok, _ := utils.GenToken(32)
 	exp := time.Now().Add(24 * time.Hour)
-	if err := s.users.SetVerifyToken(userID, tok, exp); err != nil {
+	if err := s.users.SetVerifyToken(email, tok, exp); err != nil {
 		return err
 	}
 	link := fmt.Sprintf(s.clientURL+"/verify?token=%s", tok)

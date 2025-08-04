@@ -13,7 +13,7 @@ type UserRepository interface {
 	FindByID(id int) (*models.User, error)
 	FindByName(name string) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
-	SetVerifyToken(userID int, token string, expiresAt time.Time) error
+	SetVerifyToken(email,token string, expiresAt time.Time) error
 	VerifyEmail(token string) error
 	GetByResetToken(token string) (*models.User, error)
 	UpdatePassword(userID int, newHash string) error
@@ -62,9 +62,9 @@ func (r *userRepo) FindByEmail(email string) (*models.User, error) {
 	return &u, err
 }
 
-func (r *userRepo) SetVerifyToken(userID int, token string, expiresAt time.Time) error {
+func (r *userRepo) SetVerifyToken(email, token string, expiresAt time.Time) error {
 	return r.db.Model(&models.User{}).
-		Where("id = ?", userID).
+		Where("email = ?", email).
 		Updates(map[string]interface{}{
 			"verify_token":      token,
 			"verify_expires_at": expiresAt,

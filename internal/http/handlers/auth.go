@@ -22,42 +22,44 @@ func NewAuthHandler(svc *services.AuthService) *AuthHandler {
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var input models.RegisterInput
 
-	// Take arguments from response body
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Validate the fields
 	if err := utils.Validate.Struct(input); err != nil {
 		utils.JSONValidationErrors(w, err)
 		return
 	}
-
-	if err := h.svc.Register(input.Email, input.Password, input.Name); err != nil {
+	err := h.svc.Register(input.Email, input.Password, input.Name)
+	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Registered successfully"})
+	if err := h.svc.SendVerificationEmail(input.Email); err != nil {
+		utils.JSONError(w, "Failed to send verification email", http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusCreated, map[string]string{
+		"message": "Registered successfully. Please check your email to verify your account.",
+	})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var input models.LoginInput
 
-	// Take arguments from response body
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Validate the fields
 	if err := utils.Validate.Struct(input); err != nil {
 		utils.JSONValidationErrors(w, err)
 		return
 	}
 
-	// Get token from Service
 	token, err := h.svc.Login(input.Email, input.Password)
 	if err != nil {
 		utils.JSONError(w, "Invalid credentials", http.StatusUnauthorized)

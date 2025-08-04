@@ -49,6 +49,7 @@ func Load() *Config {
 		SMTPPass:      os.Getenv("SMTP_PASSWORD"),
 		SMTPFrom:      os.Getenv("SMTP_FROM"),
 	}
+	
 	if cfg.Port == "" {
 		cfg.Port = "8000"
 	}
