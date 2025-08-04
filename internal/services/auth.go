@@ -24,8 +24,8 @@ type AuthService struct {
 	mail      utils.Mailer
 }
 
-func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string) *AuthService {
-	return &AuthService{users: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL}
+func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string, mail utils.Mailer) *AuthService {
+	return &AuthService{users: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, mail: mail}
 }
 
 func (s *AuthService) Register(email, password, name string) error {

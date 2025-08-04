@@ -12,6 +12,7 @@ import (
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/router"
 	"github.com/Dragodui/diploma-server/internal/services"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/google"
 	"gorm.io/driver/postgres"
@@ -44,6 +45,15 @@ func NewServer() *Server {
 
 	cache := cache.NewRedisClient()
 
+	// Mailer
+	mailer := &utils.SMTPMailer{
+		Host:     cfg.SMTPHost,
+		Port:     cfg.SMTPPort,
+		Username: cfg.SMTPUser,
+		Password: cfg.SMTPPass,
+		From:     cfg.SMTPFrom,
+	}
+
 	// OAuth
 	goth.UseProviders(
 		google.New(cfg.ClientID, cfg.ClientSecret, cfg.CallbackURL),
@@ -56,7 +66,7 @@ func NewServer() *Server {
 	billRepo := repository.NewBillRepository(db)
 
 	// services
-	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL)
+	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL, mailer)
 	homeSvc := services.NewHomeService(homeRepo, cache)
 	roomSvc := services.NewRoomService(roomRepo, cache)
 	taskSvc := services.NewTaskService(taskRepo, cache)
