@@ -23,7 +23,8 @@ func SetupRoutes(
 	homeRepo repository.HomeRepository,
 ) http.Handler {
 	r := chi.NewRouter()
-
+	// HTTP request logger
+	r.Use(middleware.RequestResponseLogger)
 	// CORS middleware
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{cfg.ClientURL},

@@ -8,6 +8,7 @@ import (
 	"github.com/Dragodui/diploma-server/internal/cache"
 	"github.com/Dragodui/diploma-server/internal/config"
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
+	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/router"
@@ -25,6 +26,7 @@ type Server struct {
 }
 
 func NewServer() *Server {
+	logger.Init("app.log")
 	cfg := config.Load()
 
 	db, err := gorm.Open(postgres.Open(cfg.DB_DSN), &gorm.Config{})
