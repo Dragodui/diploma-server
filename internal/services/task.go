@@ -16,6 +16,19 @@ type TaskService struct {
 	cache *redis.Client
 }
 
+type ITaskService interface {
+	CreateTask(homeID int, roomID *int, name, description, scheduleType string) error
+	GetTaskByID(taskID int) (*models.Task, error)
+	GetTasksByHomeID(homeID int) (*[]models.Task, error)
+	DeleteTask(taskID int) error
+	AssignUser(taskID, userID, homeID int, date time.Time) error
+	GetAssignmentsForUser(userID int) (*[]models.TaskAssignment, error)
+	GetClosestAssignmentForUser(userID int) (*models.TaskAssignment, error)
+	MarkAssignmentCompleted(assignmentID int) error
+	DeleteAssignment(assignmentID int) error
+	ReassignRoom(taskID, roomID int) error
+}
+
 func NewTaskService(repo repository.TaskRepository, cache *redis.Client) *TaskService {
 	return &TaskService{tasks: repo, cache: cache}
 }

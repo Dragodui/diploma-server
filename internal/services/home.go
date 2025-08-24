@@ -15,6 +15,16 @@ type HomeService struct {
 	cache *redis.Client
 }
 
+type IHomeService interface {
+	CreateHome(name string, userID int) error
+	JoinHomeByCode(code string, userID int) error
+	GetHomeByID(id int) (*models.Home, error)
+	DeleteHome(id int) error
+	LeaveHome(homeID int, userID int) error
+	RemoveMember(homeID int, userID int, currentUserID int) error
+	GetUserHome(userID int) (*models.Home, error)
+}
+
 func NewHomeService(repo repository.HomeRepository, cache *redis.Client) *HomeService {
 	return &HomeService{homes: repo, cache: cache}
 }

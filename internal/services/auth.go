@@ -24,6 +24,16 @@ type AuthService struct {
 	mail      utils.Mailer
 }
 
+type IAuthService interface {
+	Register(email, password, name string) error
+	Login(email, password string) (string, error)
+	HandleCallback(user goth.User) (string, error)
+	SendVerificationEmail(email string) error
+	VerifyEmail(token string) error
+	SendResetPassword(email string) error
+	ResetPassword(token, newPass string) error 
+}
+
 func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string, mail utils.Mailer) *AuthService {
 	return &AuthService{users: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, mail: mail}
 }

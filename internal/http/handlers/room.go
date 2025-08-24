@@ -12,10 +12,10 @@ import (
 )
 
 type RoomHandler struct {
-	svc *services.RoomService
+	svc services.IRoomService
 }
 
-func NewRoomHandler(svc *services.RoomService) *RoomHandler {
+func NewRoomHandler(svc services.IRoomService) *RoomHandler {
 	return &RoomHandler{svc: svc}
 }
 

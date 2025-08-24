@@ -14,10 +14,10 @@ import (
 )
 
 type HomeHandler struct {
-	svc *services.HomeService
+	svc services.IHomeService
 }
 
-func NewHomeHandler(svc *services.HomeService) *HomeHandler {
+func NewHomeHandler(svc services.IHomeService) *HomeHandler {
 	return &HomeHandler{svc: svc}
 }
 
@@ -84,13 +84,18 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 func (h HomeHandler) GetUserHome(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 	if userID == 0 {
-		utils.JSONError(w, "Unauthorized", http.StatusBadRequest)
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	home, err := h.svc.GetUserHome(userID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if home == nil {
+		utils.JSONError(w, "Home not found", http.StatusNotFound)
 		return
 	}
 
@@ -109,6 +114,10 @@ func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	home, err := h.svc.GetHomeByID(homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if home == nil {
+		utils.JSONError(w, "Home not found", http.StatusNotFound)
 		return
 	}
 	utils.JSON(w, http.StatusOK, map[string]*models.Home{

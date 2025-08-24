@@ -13,10 +13,10 @@ import (
 )
 
 type BillHandler struct {
-	svc *services.BillService
+	svc services.IBillService
 }
 
-func NewBillHandler(svc *services.BillService) *BillHandler {
+func NewBillHandler(svc services.IBillService) *BillHandler {
 	return &BillHandler{svc: svc}
 }
 

@@ -9,10 +9,6 @@ import (
 	"github.com/Dragodui/diploma-server/pkg/security"
 )
 
-type contextKey string
-
-const userIDKey contextKey = "userID"
-
 func JWTAuth(secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -29,14 +25,14 @@ func JWTAuth(secret []byte) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
+			ctx := context.WithValue(r.Context(), utils.UserIDKey, claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
 func GetUserID(r *http.Request) int {
-	val := r.Context().Value(userIDKey)
+	val := r.Context().Value(utils.UserIDKey)
 	if id, ok := val.(int); ok {
 		return id
 	}

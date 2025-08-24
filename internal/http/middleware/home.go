@@ -28,7 +28,7 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 						next.ServeHTTP(w, r)
 						return
 					}
-					utils.JSONError(w, "forbidden", http.StatusForbidden)
+					utils.JSONError(w, "you are not a member", http.StatusUnauthorized)
 					return
 				}
 			}
@@ -47,8 +47,13 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 			r.Body = io.NopCloser(&bodyCopy)
 
 			ok, err := homeRepo.IsAdmin(req.HomeID, userID)
-			if err != nil || !ok {
+			if err != nil {
 				utils.JSONError(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
+			if !ok {
+				utils.JSONError(w, "you are not an admin", http.StatusUnauthorized)
 				return
 			}
 
@@ -74,7 +79,7 @@ func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.H
 						next.ServeHTTP(w, r)
 						return
 					}
-					utils.JSONError(w, "forbidden", http.StatusForbidden)
+					utils.JSONError(w, "you are not a member", http.StatusUnauthorized)
 					return
 				}
 			}
@@ -93,8 +98,13 @@ func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.H
 			r.Body = io.NopCloser(&bodyCopy)
 
 			ok, err := homeRepo.IsMember(req.HomeID, userID)
-			if err != nil || !ok {
+			if err != nil {
 				utils.JSONError(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
+			if !ok {
+				utils.JSONError(w, "you are not a member", http.StatusUnauthorized)
 				return
 			}
 

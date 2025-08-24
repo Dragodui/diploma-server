@@ -12,10 +12,10 @@ import (
 )
 
 type AuthHandler struct {
-	svc *services.AuthService
+	svc services.IAuthService
 }
 
-func NewAuthHandler(svc *services.AuthService) *AuthHandler {
+func NewAuthHandler(svc services.IAuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 

@@ -13,6 +13,13 @@ type RoomService struct {
 	cache *redis.Client
 }
 
+type IRoomService interface {
+	CreateRoom(name string, homeID int) error
+	GetRoomByID(roomID int) (*models.Room, error)
+	GetRoomsByHomeID(homeID int) (*[]models.Room, error)
+	DeleteRoom(roomID int) error
+}
+
 func NewRoomService(repo repository.RoomRepository, cache *redis.Client) *RoomService {
 	return &RoomService{rooms: repo, cache: cache}
 }
