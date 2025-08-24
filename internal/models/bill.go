@@ -12,7 +12,7 @@ type Bill struct {
 	Type        string         `json:"type"`
 	Payed       bool           `json:"is_payed"`
 	PaymentDate *time.Time     `json:"payment_date"`
-	TotalAmount int            `json:"total_amount"`
+	TotalAmount float64            `json:"total_amount"`
 	Start       time.Time      `json:"period_start"`
 	End         time.Time      `json:"period_end"`
 	UploadedBy  int            `json:"uploaded_by"`
@@ -26,7 +26,7 @@ type Bill struct {
 
 type CreateBillRequest struct {
 	BillType    string         `json:"type" validate:"required,min=3"`
-	TotalAmount int            `json:"total_amount" validate:"required,gte=0"`
+	TotalAmount float64            `json:"total_amount" validate:"required,gte=0"`
 	HomeID      int            `json:"home_id" validate:"required"`
 	Start       time.Time      `json:"period_start" validate:"required"`
 	End         time.Time      `json:"period_end" validate:"required"`

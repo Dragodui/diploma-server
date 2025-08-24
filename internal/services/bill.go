@@ -17,7 +17,7 @@ type BillService struct {
 }
 
 type IBillService interface {
-	CreateBill(billType string, totalAmount int, start, end time.Time,
+	CreateBill(billType string, totalAmount float64, start, end time.Time,
 		ocrData datatypes.JSON, homeID, uploadedBy int) error
 	GetBillByID(id int) (*models.Bill, error)
 	Delete(id int) error
@@ -28,7 +28,7 @@ func NewBillService(repo repository.BillRepository, cache *redis.Client) *BillSe
 	return &BillService{bills: repo, cache: cache}
 }
 
-func (s *BillService) CreateBill(billType string, totalAmount int, start, end time.Time,
+func (s *BillService) CreateBill(billType string, totalAmount float64, start, end time.Time,
 	ocrData datatypes.JSON, homeID, uploadedBy int) error {
 
 	bill := &models.Bill{

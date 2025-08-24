@@ -180,7 +180,9 @@ func (h *TaskHandler) ReassignRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.ReassignRoom(req.TaskID, req.RoomID); err != nil {
-		utils.JSON(w, http.StatusOK, map[string]string{"message": "Updated successfully"})
+		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	utils.JSON(w, http.StatusOK, map[string]string{"message": "Updated successfully"})
 }

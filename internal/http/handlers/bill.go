@@ -21,6 +21,12 @@ func NewBillHandler(svc services.IBillService) *BillHandler {
 }
 
 func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var req models.CreateBillRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
@@ -30,12 +36,6 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// validation
 	if err := utils.Validate.Struct(req); err != nil {
 		utils.JSONValidationErrors(w, err)
-		return
-	}
-
-	userID := middleware.GetUserID(r)
-	if userID == 0 {
-		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
