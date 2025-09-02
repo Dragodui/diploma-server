@@ -9,7 +9,7 @@ import (
 )
 
 type RoomService struct {
-	rooms repository.RoomRepository
+	repo repository.RoomRepository
 	cache *redis.Client
 }
 
@@ -21,17 +21,17 @@ type IRoomService interface {
 }
 
 func NewRoomService(repo repository.RoomRepository, cache *redis.Client) *RoomService {
-	return &RoomService{rooms: repo, cache: cache}
+	return &RoomService{repo: repo, cache: cache}
 }
 
 func (s *RoomService) CreateRoom(name string, homeID int) error {
 	// delete homes rooms from cache
-	roomsKey := utils.GetRoomsForHomeKey(homeID)
-	if err := utils.DeleteFromCache(roomsKey, s.cache); err != nil {
-		logger.Info.Printf("Failed to delete redis cache for key %s: %v", roomsKey, err)
+	key := utils.GetRoomsForHomeKey(homeID)
+	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	if err := s.rooms.Create(&models.Room{
+	if err := s.repo.Create(&models.Room{
 		Name:   name,
 		HomeID: homeID,
 	}); err != nil {
@@ -42,14 +42,14 @@ func (s *RoomService) CreateRoom(name string, homeID int) error {
 
 func (s *RoomService) GetRoomByID(roomID int) (*models.Room, error) {
 	key := utils.GetRoomKey(roomID)
-	// try to get from cache
 
+	// try to get from cache
 	cached, err := utils.GetFromCache[models.Room](key, s.cache)
 	if cached != nil && err == nil {
 		return cached, nil
 	}
 
-	room, err := s.rooms.FindByID(roomID)
+	room, err := s.repo.FindByID(roomID)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (s *RoomService) GetRoomsByHomeID(homeID int) (*[]models.Room, error) {
 		return cached, nil
 	}
 
-	rooms, err := s.rooms.FindByHomeID(homeID)
+	rooms, err := s.repo.FindByHomeID(homeID)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (s *RoomService) GetRoomsByHomeID(homeID int) (*[]models.Room, error) {
 func (s *RoomService) DeleteRoom(roomID int) error {
 	// delete from cache
 	roomKey := utils.GetRoomKey(roomID)
-	room, err := s.rooms.FindByID(roomID)
+	room, err := s.repo.FindByID(roomID)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (s *RoomService) DeleteRoom(roomID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", roomsKey, err)
 	}
 
-	if err := s.rooms.Delete(roomID); err != nil {
+	if err := s.repo.Delete(roomID); err != nil {
 		return err
 	}
 

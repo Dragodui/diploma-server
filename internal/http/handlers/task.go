@@ -16,7 +16,7 @@ type TaskHandler struct {
 }
 
 func NewTaskHandler(svc services.ITaskService) *TaskHandler {
-	return &TaskHandler{svc: svc}
+	return &TaskHandler{svc}
 }
 
 func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {

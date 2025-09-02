@@ -20,7 +20,10 @@ func SetupRoutes(
 	taskHandler *handlers.TaskHandler,
 	billHandler *handlers.BillHandler,
 	roomHandler *handlers.RoomHandler,
+	ShoppingHandler *handlers.ShoppingHandler,
+	// home repo for middleware
 	homeRepo repository.HomeRepository,
+
 ) http.Handler {
 	r := chi.NewRouter()
 	// HTTP request logger
@@ -92,6 +95,12 @@ func SetupRoutes(
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{task_id}/assignments/{assignment_id}", taskHandler.DeleteAssignment)
 					})
 
+					// User assignments (not scoped to a specific home)
+					r.Route("/users/{user_id}/assignments", func(r chi.Router) {
+						r.With(middleware.RequireMember(homeRepo)).Get("/", taskHandler.GetAssignmentsForUser)
+						r.With(middleware.RequireMember(homeRepo)).Get("/closest", taskHandler.GetClosestAssignmentForUser)
+					})
+
 					// Bills under a home
 					r.Route("/bills", func(r chi.Router) {
 						r.With(middleware.RequireMember(homeRepo)).Post("/", billHandler.Create)
@@ -99,12 +108,24 @@ func SetupRoutes(
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
 						r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}", billHandler.MarkPayed)
 					})
-				})
 
-				// User assignments (not scoped to a specific home)
-				r.Route("/users/{user_id}/assignments", func(r chi.Router) {
-					r.With(middleware.RequireMember(homeRepo)).Get("/", taskHandler.GetAssignmentsForUser)
-					r.With(middleware.RequireMember(homeRepo)).Get("/closest", taskHandler.GetClosestAssignmentForUser)
+					// Shopping
+					r.Route("/shopping", func(r chi.Router) {
+						r.Route("/categories", func(r chi.Router) {
+							r.With(middleware.RequireMember(homeRepo)).Post("/", ShoppingHandler.CreateCategory)
+							r.With(middleware.RequireMember(homeRepo)).Get("/all", ShoppingHandler.GetAllCategories)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{category_id}", ShoppingHandler.GetCategoryByID)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{category_id}", ShoppingHandler.DeleteCategory)
+							r.With(middleware.RequireMember(homeRepo)).Put("/{category_id}", ShoppingHandler.EditCategory)
+						})
+						r.Route("/items", func(r chi.Router) {
+							r.With(middleware.RequireMember(homeRepo)).Post("/", ShoppingHandler.CreateItem)
+							r.With(middleware.RequireMember(homeRepo)).Get("/category/{category_id}", ShoppingHandler.GetItemsByCategoryID)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{item_id}", ShoppingHandler.GetItemByID)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{item_id}", ShoppingHandler.DeleteItem)
+							r.With(middleware.RequireMember(homeRepo)).Put("/{item_id}", ShoppingHandler.EditItem)
+						})
+					})
 				})
 			})
 		})

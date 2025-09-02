@@ -1,8 +1,8 @@
 package utils
 
 import (
+	"crypto/rand"
 	"encoding/hex"
-	"math/rand"
 )
 
 func GenToken(n int) (string, error) {

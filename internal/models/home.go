@@ -3,7 +3,7 @@ package models
 import "time"
 
 type Home struct {
-	ID         int       `gorm:"primaryKey" json:"id"`
+	ID         int       `gorm:"autoIncrement; primaryKey" json:"id"`
 	Name       string    `gorm:"size:64;not null" json:"name"`
 	InviteCode string    `gorm:"size:64;not null;unique" json:"invite_code"`
 	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`

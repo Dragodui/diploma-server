@@ -11,7 +11,7 @@ import (
 )
 
 type HomeService struct {
-	homes repository.HomeRepository
+	repo repository.HomeRepository
 	cache *redis.Client
 }
 
@@ -26,11 +26,11 @@ type IHomeService interface {
 }
 
 func NewHomeService(repo repository.HomeRepository, cache *redis.Client) *HomeService {
-	return &HomeService{homes: repo, cache: cache}
+	return &HomeService{repo: repo, cache: cache}
 }
 
 func (s *HomeService) CreateHome(name string, userID int) error {
-	inviteCode, err := s.homes.GenerateUniqueInviteCode()
+	inviteCode, err := s.repo.GenerateUniqueInviteCode()
 	if err != nil {
 		return err
 	}
@@ -40,20 +40,20 @@ func (s *HomeService) CreateHome(name string, userID int) error {
 		InviteCode: inviteCode,
 	}
 
-	if err := s.homes.Create(home); err != nil {
+	if err := s.repo.Create(home); err != nil {
 		return err
 	}
 
-	return s.homes.AddMember(home.ID, userID, "admin")
+	return s.repo.AddMember(home.ID, userID, "admin")
 }
 
 func (s *HomeService) JoinHomeByCode(code string, userID int) error {
-	home, err := s.homes.FindByInviteCode(code)
+	home, err := s.repo.FindByInviteCode(code)
 	if err != nil {
 		return errors.New("invalid invite code")
 	}
 
-	already, err := s.homes.IsMember(home.ID, userID)
+	already, err := s.repo.IsMember(home.ID, userID)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (s *HomeService) JoinHomeByCode(code string, userID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.homes.AddMember(home.ID, userID, "member")
+	return s.repo.AddMember(home.ID, userID, "member")
 }
 
 func (s *HomeService) GetHomeByID(id int) (*models.Home, error) {
@@ -78,7 +78,7 @@ func (s *HomeService) GetHomeByID(id int) (*models.Home, error) {
 	}
 
 	// if not in cache => returns from db
-	home, err := s.homes.FindByID(id)
+	home, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (s *HomeService) GetHomeByID(id int) (*models.Home, error) {
 }
 
 func (s *HomeService) DeleteHome(id int) error {
-	if err := s.homes.Delete(id); err != nil {
+	if err := s.repo.Delete(id); err != nil {
 		return err
 	}
 
@@ -110,7 +110,7 @@ func (s *HomeService) LeaveHome(homeID int, userID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.homes.DeleteMember(homeID, userID)
+	return s.repo.DeleteMember(homeID, userID)
 }
 
 func (s *HomeService) RemoveMember(homeID int, userID int, currentUserID int) error {
@@ -123,7 +123,7 @@ func (s *HomeService) RemoveMember(homeID int, userID int, currentUserID int) er
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.homes.DeleteMember(homeID, userID)
+	return s.repo.DeleteMember(homeID, userID)
 }
 
 func (s *HomeService) GetUserHome(userID int) (*models.Home, error) {
@@ -133,7 +133,7 @@ func (s *HomeService) GetUserHome(userID int) (*models.Home, error) {
 		return cached, nil
 	}
 
-	home, err := s.homes.GetUserHome(userID)
+	home, err := s.repo.GetUserHome(userID)
 	if err != nil {
 		return nil, err
 	}

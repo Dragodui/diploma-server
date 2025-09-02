@@ -16,7 +16,7 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(svc services.IAuthService) *AuthHandler {
-	return &AuthHandler{svc: svc}
+	return &AuthHandler{svc}
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {

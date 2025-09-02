@@ -3,7 +3,7 @@ package models
 import "time"
 
 type Task struct {
-	ID           int       `gorm:"primaryKey" json:"id"`
+	ID           int       `gorm:"autoIncrement; primaryKey" json:"id"`
 	HomeID       int       `json:"home_id"`
 	RoomID       *int      `json:"room_id"`
 	Name         string    `gorm:"not null;size:64" json:"name"`

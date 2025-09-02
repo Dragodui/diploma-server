@@ -18,7 +18,7 @@ type HomeHandler struct {
 }
 
 func NewHomeHandler(svc services.IHomeService) *HomeHandler {
-	return &HomeHandler{svc: svc}
+	return &HomeHandler{svc}
 }
 
 func (h *HomeHandler) Create(w http.ResponseWriter, r *http.Request) {

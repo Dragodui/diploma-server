@@ -72,3 +72,11 @@ func GetRoomKey(roomID int) string {
 func GetRoomsForHomeKey(homeID int) string {
 	return "rooms:home:" + strconv.Itoa(homeID)
 }
+
+func GetCategoryKey(categoryID int) string {
+	return "shopping_category:" + strconv.Itoa(categoryID)
+}
+
+func GetAllCategoriesForHomeKey(homeID int) string {
+	return "shopping_categories:home:" + strconv.Itoa(homeID)
+}

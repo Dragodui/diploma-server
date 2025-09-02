@@ -17,11 +17,12 @@ type BillHandler struct {
 }
 
 func NewBillHandler(svc services.IBillService) *BillHandler {
-	return &BillHandler{svc: svc}
+	return &BillHandler{svc}
 }
 
 func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
+
 	if userID == 0 {
 		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return

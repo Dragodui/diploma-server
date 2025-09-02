@@ -16,7 +16,7 @@ type RoomHandler struct {
 }
 
 func NewRoomHandler(svc services.IRoomService) *RoomHandler {
-	return &RoomHandler{svc: svc}
+	return &RoomHandler{svc}
 }
 
 func (h *RoomHandler) Create(w http.ResponseWriter, r *http.Request) {

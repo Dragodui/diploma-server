@@ -41,6 +41,8 @@ func NewServer() *Server {
 		&models.Task{},
 		&models.TaskAssignment{},
 		&models.Bill{},
+		&models.ShoppingCategory{},
+		&models.ShoppingItem{},
 	); err != nil {
 		panic(err)
 	}
@@ -66,6 +68,7 @@ func NewServer() *Server {
 	roomRepo := repository.NewRoomRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 	billRepo := repository.NewBillRepository(db)
+	shoppingRepo := repository.NewShoppingRepository(db)
 
 	// services
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL, mailer)
@@ -73,6 +76,7 @@ func NewServer() *Server {
 	roomSvc := services.NewRoomService(roomRepo, cache)
 	taskSvc := services.NewTaskService(taskRepo, cache)
 	billSvc := services.NewBillService(billRepo, cache)
+	shoppingSvc := services.NewShoppingService(shoppingRepo, cache)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -80,9 +84,10 @@ func NewServer() *Server {
 	roomHandler := handlers.NewRoomHandler(roomSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
 	billHandler := handlers.NewBillHandler(billSvc)
+	shoppingHandler := handlers.NewShoppingHandler(shoppingSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, shoppingHandler, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }

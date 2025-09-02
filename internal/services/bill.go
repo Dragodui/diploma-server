@@ -12,7 +12,7 @@ import (
 )
 
 type BillService struct {
-	bills repository.BillRepository
+	repo repository.BillRepository
 	cache *redis.Client
 }
 
@@ -25,7 +25,7 @@ type IBillService interface {
 }
 
 func NewBillService(repo repository.BillRepository, cache *redis.Client) *BillService {
-	return &BillService{bills: repo, cache: cache}
+	return &BillService{repo: repo, cache: cache}
 }
 
 func (s *BillService) CreateBill(billType string, totalAmount float64, start, end time.Time,
@@ -43,7 +43,7 @@ func (s *BillService) CreateBill(billType string, totalAmount float64, start, en
 		CreatedAt:   time.Now(),
 	}
 
-	return s.bills.Create(bill)
+	return s.repo.Create(bill)
 
 }
 
@@ -56,11 +56,11 @@ func (s *BillService) GetBillByID(id int) (*models.Bill, error) {
 		return cached, nil
 	}
 
-	return s.bills.FindByID(id)
+	return s.repo.FindByID(id)
 }
 
 func (s *BillService) Delete(id int) error {
-	if err := s.bills.Delete(id); err != nil {
+	if err := s.repo.Delete(id); err != nil {
 		return err
 	}
 
@@ -74,7 +74,7 @@ func (s *BillService) Delete(id int) error {
 
 func (s *BillService) MarkBillPayed(id int) error {
 	// change payed status
-	if err := s.bills.MarkPayed(id); err != nil {
+	if err := s.repo.MarkPayed(id); err != nil {
 		return err
 	}
 
@@ -85,7 +85,7 @@ func (s *BillService) MarkBillPayed(id int) error {
 	}
 
 	// get new bill data
-	bill, err := s.bills.FindByID(id)
+	bill, err := s.repo.FindByID(id)
 	if err != nil {
 		return err
 	}

@@ -16,7 +16,7 @@ import (
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type AuthService struct {
-	users     repository.UserRepository
+	repo      repository.UserRepository
 	jwtSecret []byte
 	cache     *redis.Client
 	ttl       time.Duration
@@ -31,15 +31,15 @@ type IAuthService interface {
 	SendVerificationEmail(email string) error
 	VerifyEmail(token string) error
 	SendResetPassword(email string) error
-	ResetPassword(token, newPass string) error 
+	ResetPassword(token, newPass string) error
 }
 
 func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string, mail utils.Mailer) *AuthService {
-	return &AuthService{users: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, mail: mail}
+	return &AuthService{repo: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, mail: mail}
 }
 
 func (s *AuthService) Register(email, password, name string) error {
-	existing, _ := s.users.FindByEmail(email)
+	existing, _ := s.repo.FindByEmail(email)
 	if existing != nil {
 		return errors.New("user already exists")
 	}
@@ -55,11 +55,11 @@ func (s *AuthService) Register(email, password, name string) error {
 		PasswordHash: hash,
 	}
 
-	return s.users.Create(u)
+	return s.repo.Create(u)
 }
 
 func (s *AuthService) Login(email, password string) (string, error) {
-	user, err := s.users.FindByEmail(email)
+	user, err := s.repo.FindByEmail(email)
 
 	if err != nil {
 		return "", err
@@ -78,7 +78,7 @@ func (s *AuthService) Login(email, password string) (string, error) {
 }
 
 func (s *AuthService) HandleCallback(user goth.User) (string, error) {
-	u, err := s.users.FindByEmail(user.Email)
+	u, err := s.repo.FindByEmail(user.Email)
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +98,7 @@ func (s *AuthService) HandleCallback(user goth.User) (string, error) {
 func (s *AuthService) SendVerificationEmail(email string) error {
 	tok, _ := utils.GenToken(32)
 	exp := time.Now().Add(24 * time.Hour)
-	if err := s.users.SetVerifyToken(email, tok, exp); err != nil {
+	if err := s.repo.SetVerifyToken(email, tok, exp); err != nil {
 		return err
 	}
 	link := fmt.Sprintf(s.clientURL+"/verify?token=%s", tok)
@@ -107,13 +107,13 @@ func (s *AuthService) SendVerificationEmail(email string) error {
 }
 
 func (s *AuthService) VerifyEmail(token string) error {
-	return s.users.VerifyEmail(token)
+	return s.repo.VerifyEmail(token)
 }
 
 func (s *AuthService) SendResetPassword(email string) error {
 	tok, _ := utils.GenToken(32)
 	exp := time.Now().Add(2 * time.Hour)
-	if err := s.users.SetResetToken(email, tok, exp); err != nil {
+	if err := s.repo.SetResetToken(email, tok, exp); err != nil {
 		return err
 	}
 	link := fmt.Sprintf(s.clientURL+"/reset-password?token=%s", tok)
@@ -122,10 +122,10 @@ func (s *AuthService) SendResetPassword(email string) error {
 }
 
 func (s *AuthService) ResetPassword(token, newPass string) error {
-	u, err := s.users.GetByResetToken(token)
+	u, err := s.repo.GetByResetToken(token)
 	if err != nil {
 		return err
 	}
 	hash, _ := security.HashPassword(newPass)
-	return s.users.UpdatePassword(u.ID, string(hash))
+	return s.repo.UpdatePassword(u.ID, string(hash))
 }
