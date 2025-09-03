@@ -85,9 +85,10 @@ func NewServer() *Server {
 	taskHandler := handlers.NewTaskHandler(taskSvc)
 	billHandler := handlers.NewBillHandler(billSvc)
 	shoppingHandler := handlers.NewShoppingHandler(shoppingSvc)
+	imageHandler := handlers.NewImageHandler()
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, shoppingHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, shoppingHandler, imageHandler, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }
