@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/logger"
@@ -9,6 +10,8 @@ import (
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/redis/go-redis/v9"
 )
+
+var errCategoryNotBelongsToHome error = errors.New("this category does not belongs to this home")
 
 type ShoppingService struct {
 	repo  repository.ShoppingRepository
@@ -19,7 +22,7 @@ type IShoppingService interface {
 	// categories
 	CreateCategory(name string, icon *string, homeID int) error
 	FindAllCategoriesForHome(homeID int) (*[]models.ShoppingCategory, error)
-	FindCategoryByID(categoryID int) (*models.ShoppingCategory, error)
+	FindCategoryByID(categoryID, homeID int) (*models.ShoppingCategory, error)
 	DeleteCategory(categoryID, homeID int) error
 	EditCategory(categoryID, homeID int, name, icon *string) error
 
@@ -73,7 +76,7 @@ func (s *ShoppingService) FindAllCategoriesForHome(homeID int) (*[]models.Shoppi
 	return categories, nil
 }
 
-func (s *ShoppingService) FindCategoryByID(categoryID int) (*models.ShoppingCategory, error) {
+func (s *ShoppingService) FindCategoryByID(categoryID, homeID int) (*models.ShoppingCategory, error) {
 	key := utils.GetCategoryKey(categoryID)
 	cached, err := utils.GetFromCache[models.ShoppingCategory](key, s.cache)
 
@@ -82,6 +85,10 @@ func (s *ShoppingService) FindCategoryByID(categoryID int) (*models.ShoppingCate
 	}
 
 	category, err := s.repo.FindCategoryByID(categoryID)
+
+	if category.HomeID != homeID {
+		return nil, errCategoryNotBelongsToHome
+	}
 
 	if err != nil {
 		return nil, err
@@ -112,6 +119,7 @@ func (s *ShoppingService) DeleteCategory(categoryID, homeID int) error {
 
 func (s *ShoppingService) EditCategory(categoryID, homeID int, name, icon *string) error {
 	category, err := s.repo.FindCategoryByID(categoryID)
+
 	if err != nil {
 		return err
 	}

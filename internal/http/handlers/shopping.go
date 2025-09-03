@@ -73,7 +73,14 @@ func (h *ShoppingHandler) GetCategoryByID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	category, err := h.svc.FindCategoryByID(categoryID)
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	category, err := h.svc.FindCategoryByID(categoryID, homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return

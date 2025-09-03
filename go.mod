@@ -4,6 +4,7 @@ go 1.24.3
 
 require (
 	github.com/go-chi/cors v1.2.2
+	github.com/google/uuid v1.6.0
 	github.com/lpernett/godotenv v0.0.0-20230527005122-0de1d4c5ef5e
 	github.com/markbates/goth v1.81.0
 	github.com/redis/go-redis/v9 v9.11.0
@@ -20,7 +21,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect

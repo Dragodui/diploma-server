@@ -20,14 +20,14 @@ func JSONError(w http.ResponseWriter, message string, code int) {
 }
 
 func JSONValidationErrors(w http.ResponseWriter, err error) {
-	// err обязательно validator.ValidationErrors
+	// validator.ValidationErrors is necessary
 	ve := err.(validator.ValidationErrors)
 
 	details := make(map[string]string, len(ve))
 	for _, e := range ve {
-		field := e.Field() 
-		kind := e.Kind()  
-		param := e.Param() 
+		field := e.Field()
+		kind := e.Kind()
+		param := e.Param()
 
 		var msg string
 		switch e.Tag() {
@@ -50,7 +50,6 @@ func JSONValidationErrors(w http.ResponseWriter, err error) {
 			} else {
 				msg = fmt.Sprintf("%s cannot be greater than %s", field, param)
 			}
-
 
 		default:
 			msg = fmt.Sprintf("%s is not valid (%s)", field, e.Tag())
