@@ -69,6 +69,7 @@ func NewServer() *Server {
 	taskRepo := repository.NewTaskRepository(db)
 	billRepo := repository.NewBillRepository(db)
 	shoppingRepo := repository.NewShoppingRepository(db)
+	pollRepo := repository.NewPollRepository(db)
 
 	// services
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL, mailer)
@@ -77,6 +78,7 @@ func NewServer() *Server {
 	taskSvc := services.NewTaskService(taskRepo, cache)
 	billSvc := services.NewBillService(billRepo, cache)
 	shoppingSvc := services.NewShoppingService(shoppingRepo, cache)
+	pollSvc := services.NewPollService(pollRepo, cache)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -86,9 +88,10 @@ func NewServer() *Server {
 	billHandler := handlers.NewBillHandler(billSvc)
 	shoppingHandler := handlers.NewShoppingHandler(shoppingSvc)
 	imageHandler := handlers.NewImageHandler()
+	pollHandler := handlers.NewPollHandler(pollSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, shoppingHandler, imageHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }

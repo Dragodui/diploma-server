@@ -80,3 +80,11 @@ func GetCategoryKey(categoryID int) string {
 func GetAllCategoriesForHomeKey(homeID int) string {
 	return "shopping_categories:home:" + strconv.Itoa(homeID)
 }
+
+func GetPollKey(pollID int) string {
+	return "poll:" + strconv.Itoa(pollID)
+}
+
+func GetAllPollsForHomeKey(homeID int) string {
+	return "poll:home:" + strconv.Itoa(homeID)
+}

@@ -22,6 +22,7 @@ func SetupRoutes(
 	roomHandler *handlers.RoomHandler,
 	shoppingHandler *handlers.ShoppingHandler,
 	imageHandler *handlers.ImageHandler,
+	pollHandler *handlers.PollHandler,
 	// home repo for middleware
 	homeRepo repository.HomeRepository,
 
@@ -130,6 +131,18 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Put("/{item_id}", shoppingHandler.EditItem)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{item_id}", shoppingHandler.MarkIsBought)
 						})
+					})
+					r.Route("/polls", func(r chi.Router) {
+
+						r.With(middleware.RequireAdmin(homeRepo)).Post("/", pollHandler.Create)
+						r.With(middleware.RequireMember(homeRepo)).Get("/", pollHandler.GetAllByHomeID)
+						r.With(middleware.RequireMember(homeRepo)).Get("/{poll_id}", pollHandler.GetByID)
+
+						r.With(middleware.RequireAdmin(homeRepo)).Patch("/{poll_id}/close", pollHandler.Close)
+
+						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{poll_id}", pollHandler.Delete)
+
+						r.With(middleware.RequireMember(homeRepo)).Post("/{poll_id}/vote", pollHandler.Vote)
 					})
 				})
 			})

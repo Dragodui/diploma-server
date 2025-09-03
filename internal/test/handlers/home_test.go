@@ -433,7 +433,7 @@ func TestHomeHandler_Delete_Error(t *testing.T) {
 	h := handlers.NewHomeHandler(svc)
 
 	mockRepo := &mockHomeRepo{
-		IsAdminFunc: func(homeID, userID int) (bool, error) { return true, nil },
+		IsAdminFunc:  func(homeID, userID int) (bool, error) { return true, nil },
 		IsMemberFunc: func(homeID, userID int) (bool, error) { return true, nil },
 	}
 
