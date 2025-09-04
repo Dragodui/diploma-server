@@ -4,4 +4,4 @@
 [![My Skills](https://skillicons.dev/icons?i=golang,docker,postgresql,gcp&theme=dark&perline=15)]()
 
 ## Database schema
-<img width="3622" height="3116" alt="drawSQL-image-export-2025-08-04" src="https://github.com/user-attachments/assets/526f9397-ad86-4629-8143-9d850feb78e8" />
+<img width="4080" height="3116" alt="drawSQL-image-export-2025-09-04" src="https://github.com/user-attachments/assets/e4ab9d13-ed0a-49c3-9aba-85b5219a90a6" />
