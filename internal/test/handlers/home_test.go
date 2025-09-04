@@ -30,6 +30,7 @@ func (m *mockHomeRepo) AddMember(id int, userID int, role string) error         
 func (m *mockHomeRepo) DeleteMember(id int, userID int) error                    { return nil }
 func (m *mockHomeRepo) GenerateUniqueInviteCode() (string, error)                { return "CODE1234", nil }
 func (m *mockHomeRepo) GetUserHome(userID int) (*models.Home, error)             { return nil, nil }
+func (m *mockHomeRepo) RegenerateCode(code string, id int) error                 { return nil }
 
 func (m *mockHomeRepo) IsMember(homeID, userID int) (bool, error) {
 	if m.IsMemberFunc != nil {
@@ -46,13 +47,14 @@ func (m *mockHomeRepo) IsAdmin(homeID, userID int) (bool, error) {
 }
 
 type mockHomeService struct {
-	CreateHomeFunc     func(name string, userID int) error
-	JoinHomeByCodeFunc func(code string, userID int) error
-	GetUserHomeFunc    func(userID int) (*models.Home, error)
-	GetHomeByIDFunc    func(userID int) (*models.Home, error)
-	DeleteHomeFunc     func(homeID int) error
-	LeaveHomeFunc      func(homeID, userID int) error
-	RemoveMemberFunc   func(homeID, userID, currentUserID int) error
+	CreateHomeFunc           func(name string, userID int) error
+	RegenerateInviteCodeFunc func(homeID int) error
+	JoinHomeByCodeFunc       func(code string, userID int) error
+	GetUserHomeFunc          func(userID int) (*models.Home, error)
+	GetHomeByIDFunc          func(userID int) (*models.Home, error)
+	DeleteHomeFunc           func(homeID int) error
+	LeaveHomeFunc            func(homeID, userID int) error
+	RemoveMemberFunc         func(homeID, userID, currentUserID int) error
 }
 
 func (m *mockHomeService) CreateHome(name string, userID int) error {
@@ -73,6 +75,10 @@ func (m *mockHomeService) GetHomeByID(homeID int) (*models.Home, error) {
 
 func (m *mockHomeService) DeleteHome(homeID int) error {
 	return m.DeleteHomeFunc(homeID)
+}
+
+func (m *mockHomeService) RegenerateInviteCode(homeID int) error {
+	return m.RegenerateInviteCodeFunc(homeID)
 }
 
 func (m *mockHomeService) LeaveHome(homeID, userID int) error { return m.LeaveHomeFunc(homeID, userID) }

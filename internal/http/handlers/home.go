@@ -48,6 +48,24 @@ func (h *HomeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
 }
 
+func (h *HomeHandler) RegenerateInviteCode(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.RegenerateInviteCode(homeID); err != nil {
+		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]string{
+		"message": "Invite code regenerated successfully",
+	})
+}
+
 func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 	var req models.JoinRequest
 

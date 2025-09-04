@@ -78,6 +78,7 @@ func SetupRoutes(
 					r.With(middleware.RequireAdmin(homeRepo)).Delete("/", homeHandler.Delete)
 					r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
 					r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
+					r.With(middleware.RequireAdmin(homeRepo)).Post("/regenerate_code", homeHandler.RegenerateInviteCode)
 
 					// Rooms under a home
 					r.Route("/rooms", func(r chi.Router) {

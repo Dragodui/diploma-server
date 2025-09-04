@@ -11,12 +11,13 @@ import (
 )
 
 type HomeService struct {
-	repo repository.HomeRepository
+	repo  repository.HomeRepository
 	cache *redis.Client
 }
 
 type IHomeService interface {
 	CreateHome(name string, userID int) error
+	RegenerateInviteCode(homeID int) error
 	JoinHomeByCode(code string, userID int) error
 	GetHomeByID(id int) (*models.Home, error)
 	DeleteHome(id int) error
@@ -45,6 +46,20 @@ func (s *HomeService) CreateHome(name string, userID int) error {
 	}
 
 	return s.repo.AddMember(home.ID, userID, "admin")
+}
+
+func (s *HomeService) RegenerateInviteCode(homeID int) error {
+	inviteCode, err := s.repo.GenerateUniqueInviteCode()
+	if err != nil {
+		return err
+	}
+
+	key := utils.GetHomeCacheKey(homeID)
+	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
+	}
+
+	return s.repo.RegenerateCode(inviteCode, homeID)
 }
 
 func (s *HomeService) JoinHomeByCode(code string, userID int) error {

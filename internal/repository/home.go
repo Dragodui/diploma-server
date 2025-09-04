@@ -11,6 +11,7 @@ import (
 type HomeRepository interface {
 	// home
 	Create(h *models.Home) error
+	RegenerateCode(code string, id int) error
 	FindByID(id int) (*models.Home, error)
 	FindByInviteCode(inviteCode string) (*models.Home, error)
 	Delete(id int) error
@@ -34,6 +35,20 @@ func NewHomeRepository(db *gorm.DB) HomeRepository {
 
 func (r *homeRepo) Create(h *models.Home) error {
 	return r.db.Create(h).Error
+}
+
+func (r *homeRepo) RegenerateCode(code string, id int) error {
+	var home models.Home
+	if err := r.db.First(&home, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+
+	home.InviteCode = code
+	return r.db.Save(&home).Error
+
 }
 
 func (r *homeRepo) FindByID(id int) (*models.Home, error) {
