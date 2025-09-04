@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,7 +66,7 @@ func setupPollRouter(h *handlers.PollHandler) *chi.Mux {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Mock user ID in context for tests
-			r = r.WithContext(setUserIDInContext(r.Context(), 123))
+			r = r.WithContext(utils.WithUserID(r.Context(), 123))
 			next.ServeHTTP(w, r)
 		})
 	})
@@ -80,11 +80,6 @@ func setupPollRouter(h *handlers.PollHandler) *chi.Mux {
 	r.Post("/homes/{home_id}/polls/{poll_id}/vote", h.Vote)
 
 	return r
-}
-
-// Helper to set user ID in context for testing
-func setUserIDInContext(ctx context.Context, userID int) context.Context {
-	return context.WithValue(ctx, "userID", userID)
 }
 
 // Mock service
