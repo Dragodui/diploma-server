@@ -8,7 +8,7 @@ import (
 )
 
 type RoomRepository interface {
-	Create(r *models.Room) error
+	Create(room *models.Room) error
 	FindByID(id int) (*models.Room, error)
 	Delete(id int) error
 	FindByHomeID(homeID int) (*[]models.Room, error)
