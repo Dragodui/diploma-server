@@ -48,7 +48,7 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
 }
 
-func (h *BillHandler) GetById(w http.ResponseWriter, r *http.Request) {
+func (h *BillHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	billIDStr := chi.URLParam(r, "bill_id")
 	billID, err := strconv.Atoi(billIDStr)
 	if err != nil {

@@ -12,7 +12,7 @@ import (
 )
 
 type BillService struct {
-	repo repository.BillRepository
+	repo  repository.BillRepository
 	cache *redis.Client
 }
 

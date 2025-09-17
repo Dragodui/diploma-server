@@ -15,6 +15,8 @@ import (
 // SetupRoutes configures all application routes
 func SetupRoutes(
 	cfg *config.Config,
+
+	// handlers
 	authHandler *handlers.AuthHandler,
 	homeHandler *handlers.HomeHandler,
 	taskHandler *handlers.TaskHandler,
@@ -23,6 +25,8 @@ func SetupRoutes(
 	shoppingHandler *handlers.ShoppingHandler,
 	imageHandler *handlers.ImageHandler,
 	pollHandler *handlers.PollHandler,
+	notificationHandler *handlers.NotificationHandler,
+
 	// home repo for middleware
 	homeRepo repository.HomeRepository,
 
@@ -72,6 +76,12 @@ func SetupRoutes(
 				r.Post("/join", homeHandler.Join)     // Join home
 				r.Get("/my", homeHandler.GetUserHome) // Get user home
 
+				// Notifications for user
+				r.Route("/notifications", func(r chi.Router) {
+					r.Get("/", notificationHandler.GetByUserID)
+					r.Delete("/{notification_id}", notificationHandler.MarkAsRead)
+				})
+
 				// Home-specific actions
 				r.Route("/{home_id}", func(r chi.Router) {
 					r.With(middleware.RequireMember(homeRepo)).Get("/", homeHandler.GetByID)
@@ -79,6 +89,12 @@ func SetupRoutes(
 					r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
 					r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
 					r.With(middleware.RequireAdmin(homeRepo)).Post("/regenerate_code", homeHandler.RegenerateInviteCode)
+
+					// Notifications for home
+					r.Route("/notifications", func(r chi.Router) {
+						r.Get("/", notificationHandler.GetByHomeID)
+						r.Delete("/{notification_id}", notificationHandler.MarkAsReadForHome)
+					})
 
 					// Rooms under a home
 					r.Route("/rooms", func(r chi.Router) {
@@ -110,7 +126,7 @@ func SetupRoutes(
 					// Bills under a home
 					r.Route("/bills", func(r chi.Router) {
 						r.With(middleware.RequireMember(homeRepo)).Post("/", billHandler.Create)
-						r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetById)
+						r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetByID)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
 						r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}", billHandler.MarkPayed)
 					})

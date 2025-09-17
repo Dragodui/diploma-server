@@ -7,7 +7,7 @@ type Notification struct {
 	From        *int      `json:"from"` // userID
 	To          int       `json:"to"`   // userID
 	Description string    `json:"description"`
-	Read        bool      `json:"read"`
+	Read        bool      `gorm:"default:false" json:"read"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
 
 	// relations
@@ -20,7 +20,7 @@ type HomeNotification struct {
 	From        *int      `json:"from"` // userID
 	HomeID      int       `json:"home_id"`
 	Description string    `json:"description"`
-	Read        bool      `json:"read"`
+	Read        bool      `gorm:"default:false" json:"read"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
 
 	// relations

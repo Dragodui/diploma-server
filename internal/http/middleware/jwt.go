@@ -2,11 +2,15 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/Dragodui/diploma-server/pkg/security"
+	"gorm.io/gorm"
 )
 
 func JWTAuth(secret []byte) func(http.Handler) http.Handler {
@@ -37,4 +41,19 @@ func GetUserID(r *http.Request) int {
 		return id
 	}
 	return 0
+}
+
+func GetUser(r *http.Request, db *gorm.DB) (*models.User, error) {
+	id := GetUserID(r)
+	if id == 0 {
+		return nil, errors.New("invalid user ID")
+	}
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

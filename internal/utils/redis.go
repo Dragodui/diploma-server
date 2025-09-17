@@ -88,3 +88,11 @@ func GetPollKey(pollID int) string {
 func GetAllPollsForHomeKey(homeID int) string {
 	return "poll:home:" + strconv.Itoa(homeID)
 }
+
+func GetUserNotificationsKey(userID int) string {
+	return "notification:user:" + strconv.Itoa(userID)
+}
+
+func GetHomeNotificationsKey(homeID int) string {
+	return "notification:home:" + strconv.Itoa(homeID)
+}

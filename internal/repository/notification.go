@@ -54,12 +54,12 @@ func (r *notificationRepo) MarkAsRead(id int) error {
 }
 
 // home notifications
-func (r *notificationRepo) CreateHomeNotification(n *models.Notification) error {
+func (r *notificationRepo) CreateHomeNotification(n *models.HomeNotification) error {
 	return r.db.Create(n).Error
 }
 
-func (r *notificationRepo) FindByHomeID(id int) ([]models.Notification, error) {
-	var notifications []models.Notification
+func (r *notificationRepo) FindByHomeID(id int) ([]models.HomeNotification, error) {
+	var notifications []models.HomeNotification
 	if err := r.db.Where("to = ?", id).Find(&notifications).Error; err != nil {
 		return nil, err
 	}
@@ -82,4 +82,3 @@ func (r *notificationRepo) MarkAsReadForHomeNotification(id int) error {
 
 	return nil
 }
-

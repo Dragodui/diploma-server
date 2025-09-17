@@ -150,7 +150,7 @@ func TestBillHandler_Create_ServiceError(t *testing.T) {
 }
 
 // GET /bills/{bill_id}
-func TestBillHandler_GetById_Success(t *testing.T) {
+func TestBillHandler_GetByID_Success(t *testing.T) {
 	svc := &mockBillService{
 		GetBillByIDFunc: func(billID int) (*models.Bill, error) {
 			assert.Equal(t, 1, billID)
@@ -161,7 +161,7 @@ func TestBillHandler_GetById_Success(t *testing.T) {
 	h := handlers.NewBillHandler(svc)
 
 	r := chi.NewRouter()
-	r.Get("/bills/{bill_id}", h.GetById)
+	r.Get("/bills/{bill_id}", h.GetByID)
 
 	req := httptest.NewRequest(http.MethodGet, "/bills/1", nil)
 	rr := httptest.NewRecorder()
@@ -172,12 +172,12 @@ func TestBillHandler_GetById_Success(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), "electricity")
 }
 
-func TestBillHandler_GetById_InvalidID(t *testing.T) {
+func TestBillHandler_GetByID_InvalidID(t *testing.T) {
 	svc := &mockBillService{}
 	h := handlers.NewBillHandler(svc)
 
 	r := chi.NewRouter()
-	r.Get("/bills/{bill_id}", h.GetById)
+	r.Get("/bills/{bill_id}", h.GetByID)
 
 	req := httptest.NewRequest(http.MethodGet, "/bills/invalid", nil)
 	rr := httptest.NewRecorder()
@@ -188,7 +188,7 @@ func TestBillHandler_GetById_InvalidID(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), "invalid bill ID")
 }
 
-func TestBillHandler_GetById_ServiceError(t *testing.T) {
+func TestBillHandler_GetByID_ServiceError(t *testing.T) {
 	svc := &mockBillService{
 		GetBillByIDFunc: func(billID int) (*models.Bill, error) {
 			return nil, errors.New("service error")
@@ -198,7 +198,7 @@ func TestBillHandler_GetById_ServiceError(t *testing.T) {
 	h := handlers.NewBillHandler(svc)
 
 	r := chi.NewRouter()
-	r.Get("/bills/{bill_id}", h.GetById)
+	r.Get("/bills/{bill_id}", h.GetByID)
 
 	req := httptest.NewRequest(http.MethodGet, "/bills/1", nil)
 	rr := httptest.NewRecorder()
