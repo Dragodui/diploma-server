@@ -1,4 +1,4 @@
-FROM golang:1.24
+FROM golang:1.25
 
 RUN go install github.com/air-verse/air@latest
 ENV PATH="$PATH:/go/bin"
