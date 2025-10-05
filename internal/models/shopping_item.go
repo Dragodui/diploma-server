@@ -6,7 +6,7 @@ type ShoppingItem struct {
 	ID         int        `gorm:"autoIncrement; primaryKey; " json:"id"`
 	CategoryID int        `json:"category_id"`
 	Name       string     `json:"name"`
-	AddedBy    int        `json:"added_by"`
+	UploadedBy int        `json:"added_by"`
 	IsBought   bool       `json:"is_bought"`
 	Image      *string    `json:"image"`
 	Link       *string    `json:"link"`

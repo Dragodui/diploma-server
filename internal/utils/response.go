@@ -16,7 +16,7 @@ func JSON(w http.ResponseWriter, code int, data interface{}) {
 }
 
 func JSONError(w http.ResponseWriter, message string, code int) {
-	JSON(w, code, map[string]string{"error": message})
+	JSON(w, code, map[string]interface{}{"status": false, "error": message})
 }
 
 func JSONValidationErrors(w http.ResponseWriter, err error) {
@@ -59,6 +59,7 @@ func JSONValidationErrors(w http.ResponseWriter, err error) {
 	}
 
 	JSON(w, http.StatusBadRequest, map[string]interface{}{
+		"status":  false,
 		"error":   "validation failed",
 		"details": details,
 	})

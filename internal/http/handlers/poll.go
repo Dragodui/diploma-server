@@ -43,7 +43,7 @@ func (h *PollHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Poll created successfully"})
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Poll created successfully"})
 }
 
 // GET /homes/{home_id}/polls
@@ -60,7 +60,7 @@ func (h *PollHandler) GetAllByHomeID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]interface{}{"polls": polls})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "polls": polls})
 }
 
 // GET /homes/{home_id}/polls/{poll_id}
@@ -81,7 +81,7 @@ func (h *PollHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]interface{}{"poll": poll})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "poll": poll})
 }
 
 // PATCH /homes/{home_id}/polls/{poll_id}/close
@@ -102,7 +102,7 @@ func (h *PollHandler) Close(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Poll closed successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Poll closed successfully"})
 }
 
 // DELETE /homes/{home_id}/polls/{poll_id}
@@ -123,7 +123,7 @@ func (h *PollHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Poll deleted successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Poll deleted successfully"})
 }
 
 // POST /homes/{home_id}/polls/{poll_id}/vote
@@ -154,5 +154,5 @@ func (h *PollHandler) Vote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Vote submitted successfully"})
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Vote submitted successfully"})
 }

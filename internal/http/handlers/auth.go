@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Dragodui/diploma-server/internal/http/middleware"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -42,8 +43,32 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{
+		"status":  true,
 		"message": "Registered successfully. Please check your email to verify your account.",
+	})
+}
+
+func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.svc.GetUserByID(userID)
+	if err != nil {
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	if user == nil {
+		utils.JSONError(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	utils.JSON(w, http.StatusAccepted, map[string]interface{}{
+		"status": true,
+		"user":   user,
 	})
 }
 
@@ -60,15 +85,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.svc.Login(input.Email, input.Password)
+	token, user, err := h.svc.Login(input.Email, input.Password)
 	if err != nil {
 		utils.JSONError(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
 	// Response to client
-	utils.JSON(w, http.StatusAccepted, map[string]string{
+	utils.JSON(w, http.StatusAccepted, map[string]interface{}{"status": true,
 		"token": token,
+		"user":  user,
 	})
 }
 
@@ -109,13 +135,13 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)
 		return
 	}
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Email verified"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Email verified"})
 }
 
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	h.svc.SendResetPassword(email)
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Reset link was sended to your email"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Reset link was sended to your email"})
 }
 
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
@@ -126,5 +152,5 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)
 		return
 	}
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Password changed successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Password changed successfully"})
 }

@@ -45,7 +45,7 @@ func (h *HomeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
 func (h *HomeHandler) RegenerateInviteCode(w http.ResponseWriter, r *http.Request) {
@@ -61,9 +61,7 @@ func (h *HomeHandler) RegenerateInviteCode(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
-		"message": "Invite code regenerated successfully",
-	})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Invite code regenerated successfully"})
 }
 
 func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +94,7 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Joined successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Joined successfully"})
 }
 
 func (h HomeHandler) GetUserHome(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +152,7 @@ func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
 func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +186,7 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Leaved successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Leaved successfully"})
 }
 
 func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
@@ -228,5 +226,5 @@ func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "User removed successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "User removed successfully"})
 }

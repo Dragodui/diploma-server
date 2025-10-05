@@ -31,7 +31,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
 func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,7 @@ func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]*models.Task{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"task": task,
 	})
 }
@@ -66,7 +66,7 @@ func (h *TaskHandler) GetTasksByHomeID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]*[]models.Task{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"tasks": tasks,
 	})
 }
@@ -85,7 +85,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
 func (h *TaskHandler) AssignUser(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +100,7 @@ func (h *TaskHandler) AssignUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
 func (h *TaskHandler) GetAssignmentsForUser(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +116,7 @@ func (h *TaskHandler) GetAssignmentsForUser(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]*[]models.TaskAssignment{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"assignments": assignments,
 	})
 }
@@ -135,7 +135,7 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]*models.TaskAssignment{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"assignment": assignment,
 	})
 }
@@ -152,7 +152,7 @@ func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Marked successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Marked successfully"})
 }
 
 func (h *TaskHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +168,7 @@ func (h *TaskHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
 func (h *TaskHandler) ReassignRoom(w http.ResponseWriter, r *http.Request) {
@@ -184,5 +184,5 @@ func (h *TaskHandler) ReassignRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Updated successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Updated successfully"})
 }

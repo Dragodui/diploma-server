@@ -33,3 +33,4 @@ go.work.sum
 tmp/main
 
 *.log
+client-code.txt

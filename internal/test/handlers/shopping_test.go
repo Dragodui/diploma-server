@@ -31,7 +31,7 @@ var (
 		Name:       "Milk",
 		Image:      stringPtr("milk.jpg"),
 		Link:       stringPtr("http://example.com"),
-		AddedBy:    123,
+		UploadedBy: 123,
 		IsBought:   false,
 	}
 

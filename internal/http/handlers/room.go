@@ -31,7 +31,7 @@ func (h *RoomHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
 func (h *RoomHandler) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,7 @@ func (h *RoomHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]*models.Room{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"room": room,
 	})
 }
@@ -66,7 +66,7 @@ func (h *RoomHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]*[]models.Room{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"rooms": rooms,
 	})
 }
@@ -85,5 +85,5 @@ func (h *RoomHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }

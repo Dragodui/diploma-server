@@ -161,7 +161,7 @@ func (s *ShoppingService) CreateItem(categoryID int, userID int, name string, im
 		Name:       name,
 		Image:      image,
 		Link:       link,
-		AddedBy:    userID,
+		UploadedBy: userID,
 	})
 }
 

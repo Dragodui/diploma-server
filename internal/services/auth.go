@@ -26,12 +26,13 @@ type AuthService struct {
 
 type IAuthService interface {
 	Register(email, password, name string) error
-	Login(email, password string) (string, error)
+	Login(email, password string) (string, *models.User, error)
 	HandleCallback(user goth.User) (string, error)
 	SendVerificationEmail(email string) error
 	VerifyEmail(token string) error
 	SendResetPassword(email string) error
 	ResetPassword(token, newPass string) error
+	GetUserByID(userID int) (*models.User, error)
 }
 
 func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string, mail utils.Mailer) *AuthService {
@@ -58,23 +59,29 @@ func (s *AuthService) Register(email, password, name string) error {
 	return s.repo.Create(u)
 }
 
-func (s *AuthService) Login(email, password string) (string, error) {
+func (s *AuthService) Login(email, password string) (string, *models.User, error) {
 	user, err := s.repo.FindByEmail(email)
 
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	if user == nil {
-		return "", ErrInvalidCredentials
+		return "", nil, ErrInvalidCredentials
 	}
 
 	isValidPassword := security.ComparePasswords(user.PasswordHash, password)
 	if !isValidPassword {
-		return "", ErrInvalidCredentials
+		return "", nil, ErrInvalidCredentials
 	}
 
-	return security.GenerateToken(user.ID, email, s.jwtSecret, s.ttl)
+	token, err := security.GenerateToken(user.ID, email, s.jwtSecret, s.ttl)
+	if err != nil {
+		return "", nil, err
+	}
+
+	user.PasswordHash = ""
+	return token, user, nil
 }
 
 func (s *AuthService) HandleCallback(user goth.User) (string, error) {
@@ -108,6 +115,10 @@ func (s *AuthService) SendVerificationEmail(email string) error {
 
 func (s *AuthService) VerifyEmail(token string) error {
 	return s.repo.VerifyEmail(token)
+}
+
+func (s *AuthService) GetUserByID(userID int) (*models.User, error) {
+	return s.repo.FindByID(userID)
 }
 
 func (s *AuthService) SendResetPassword(email string) error {

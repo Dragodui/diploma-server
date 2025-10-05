@@ -41,7 +41,7 @@ func (h *ShoppingHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
 func (h *ShoppingHandler) GetAllCategories(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +59,7 @@ func (h *ShoppingHandler) GetAllCategories(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string][]models.ShoppingCategory{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"categories": *categories,
 	})
 
@@ -86,7 +86,7 @@ func (h *ShoppingHandler) GetCategoryByID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]*models.ShoppingCategory{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"category": category,
 	})
 }
@@ -110,9 +110,7 @@ func (h *ShoppingHandler) DeleteCategory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
-		"message": "Deleted successfully",
-	})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
 func (h *ShoppingHandler) EditCategory(w http.ResponseWriter, r *http.Request) {
@@ -142,9 +140,7 @@ func (h *ShoppingHandler) EditCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
-		"message": "Deleted successfully",
-	})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
 // items
@@ -168,9 +164,7 @@ func (h *ShoppingHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
-		"message": "Created successfully",
-	})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
 func (h *ShoppingHandler) GetItemByID(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +181,7 @@ func (h *ShoppingHandler) GetItemByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]*models.ShoppingItem{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"item": item,
 	})
 }
@@ -206,7 +200,7 @@ func (h *ShoppingHandler) GetItemsByCategoryID(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string][]models.ShoppingItem{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"items": items,
 	})
 }
@@ -224,9 +218,7 @@ func (h *ShoppingHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
-		"message": "Deleted successfully",
-	})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
 func (h *ShoppingHandler) MarkIsBought(w http.ResponseWriter, r *http.Request) {
@@ -242,9 +234,7 @@ func (h *ShoppingHandler) MarkIsBought(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
-		"message": "Marked successfully",
-	})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Marked successfully"})
 }
 
 func (h *ShoppingHandler) EditItem(w http.ResponseWriter, r *http.Request) {
@@ -266,7 +256,5 @@ func (h *ShoppingHandler) EditItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
-		"message": "Edited successfully",
-	})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Edited successfully"})
 }

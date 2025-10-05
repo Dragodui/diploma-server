@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/Dragodui/diploma-server/internal/http/middleware"
-	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
@@ -28,7 +27,8 @@ func (h *NotificationHandler) GetByUserID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string][]models.Notification{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status":        true,
 		"notifications": notifications,
 	})
 }
@@ -47,7 +47,8 @@ func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status":  true,
 		"message": "Marked as read",
 	})
 }
@@ -66,7 +67,8 @@ func (h *NotificationHandler) GetByHomeID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string][]models.HomeNotification{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status":        true,
 		"notifications": notifications,
 	})
 }
@@ -85,7 +87,5 @@ func (h *NotificationHandler) MarkAsReadForHome(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{
-		"message": "Marked as read",
-	})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Marked as read"})
 }

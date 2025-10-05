@@ -48,7 +48,8 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	io.Copy(out, file)
 
 	publicPath := "/uploads/" + newName
-	utils.JSON(w, http.StatusCreated, map[string]string{
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{
+		"status":  true,
 		"message": "File uploaded successfully",
 		"url":     publicPath,
 	})

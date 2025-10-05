@@ -45,7 +45,7 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
 func (h *BillHandler) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -60,8 +60,9 @@ func (h *BillHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	utils.JSON(w, http.StatusOK, map[string]*models.Bill{
-		"bill": bill,
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status": true,
+		"bill":   bill,
 	})
 }
 
@@ -76,7 +77,7 @@ func (h *BillHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
 func (h *BillHandler) MarkPayed(w http.ResponseWriter, r *http.Request) {
@@ -92,5 +93,5 @@ func (h *BillHandler) MarkPayed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]string{"message": "Updated successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Updated successfully"})
 }

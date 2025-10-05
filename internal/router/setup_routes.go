@@ -62,6 +62,8 @@ func SetupRoutes(
 			r.Post("/reset", authHandler.ResetPassword)
 		})
 
+		r.Post("/user", authHandler.GetMe)
+
 		// Protected routes
 		r.Group(func(r chi.Router) {
 			// JWT authentication for all following routes
