@@ -13,11 +13,12 @@ type UserRepository interface {
 	FindByID(id int) (*models.User, error)
 	FindByName(name string) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
-	SetVerifyToken(email,token string, expiresAt time.Time) error
+	SetVerifyToken(email, token string, expiresAt time.Time) error
 	VerifyEmail(token string) error
 	GetByResetToken(token string) (*models.User, error)
 	UpdatePassword(userID int, newHash string) error
 	SetResetToken(email, token string, expiresAt time.Time) error
+	Update(user *models.User, updates map[string]interface{}) error
 }
 
 type userRepo struct {
@@ -112,4 +113,8 @@ func (r *userRepo) UpdatePassword(userID int, newHash string) error {
 			"reset_token":      nil,
 			"reset_expires_at": nil,
 		}).Error
+}
+
+func (r *userRepo) Update(user *models.User, updates map[string]interface{}) error {
+	return r.db.Model(user).Updates(updates).Error
 }

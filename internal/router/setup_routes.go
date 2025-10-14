@@ -26,6 +26,7 @@ func SetupRoutes(
 	imageHandler *handlers.ImageHandler,
 	pollHandler *handlers.PollHandler,
 	notificationHandler *handlers.NotificationHandler,
+	userHandler *handlers.UserHandler,
 
 	// home repo for middleware
 	homeRepo repository.HomeRepository,
@@ -58,11 +59,13 @@ func SetupRoutes(
 			r.Get("/{provider}", authHandler.SignInWithProvider)
 			r.Get("/{provider}/callback", authHandler.CallbackHandler)
 			r.Get("/verify", authHandler.VerifyEmail)
+			r.Get("/verify/regenerate", authHandler.RegenerateVerify)
 			r.Post("/forgot", authHandler.ForgotPassword)
 			r.Post("/reset", authHandler.ResetPassword)
 		})
 
-		r.Post("/user", authHandler.GetMe)
+		r.Post("/user", userHandler.GetMe)
+		r.Patch("/user", userHandler.Update)
 
 		// Protected routes
 		r.Group(func(r chi.Router) {

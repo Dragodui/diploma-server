@@ -35,3 +35,11 @@ type User struct {
 	Memberships     []HomeMembership `gorm:"foreignKey:UserID" json:"memberships,omitempty"`
 	TaskAssignments []TaskAssignment `gorm:"foreignKey:UserID" json:"task_assignments,omitempty"`
 }
+
+type UpdateUserRequest struct {
+	Name string `json:"name"`
+}
+
+type UpdateUserAvatarRequest struct {
+	Avatar string `json:"avatar"`
+}

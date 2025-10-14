@@ -81,6 +81,8 @@ func NewServer() *Server {
 	shoppingSvc := services.NewShoppingService(shoppingRepo, cache)
 	pollSvc := services.NewPollService(pollRepo, cache)
 	notificationSvc := services.NewNotificationService(notificationRepo, cache)
+	imageService := services.NewImageService()
+	userService := services.NewUserService(userRepo, cache)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -89,12 +91,13 @@ func NewServer() *Server {
 	taskHandler := handlers.NewTaskHandler(taskSvc)
 	billHandler := handlers.NewBillHandler(billSvc)
 	shoppingHandler := handlers.NewShoppingHandler(shoppingSvc)
-	imageHandler := handlers.NewImageHandler()
+	imageHandler := handlers.NewImageHandler(imageService)
 	pollHandler := handlers.NewPollHandler(pollSvc)
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc)
+	userHandler := handlers.NewUserHandler(userService, imageService)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }

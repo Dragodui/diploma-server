@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Dragodui/diploma-server/internal/http/middleware"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -18,6 +17,24 @@ type AuthHandler struct {
 
 func NewAuthHandler(svc services.IAuthService) *AuthHandler {
 	return &AuthHandler{svc}
+}
+
+func (h *AuthHandler) RegenerateVerify(w http.ResponseWriter, r *http.Request) {
+	oldToken := chi.URLParam(r, "old_token")
+	email := chi.URLParam(r, "email")
+	if oldToken != "" {
+		user, err := h.svc.GetUserByVerifyToken(oldToken)
+		if err != nil {
+			utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		email = user.Email
+
+	}
+	if err := h.svc.SendVerificationEmail(email); err != nil {
+		utils.JSONError(w, "Failed to send verification email", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -49,29 +66,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r)
-	if userID == 0 {
-		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	user, err := h.svc.GetUserByID(userID)
-	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	if user == nil {
-		utils.JSONError(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	utils.JSON(w, http.StatusAccepted, map[string]interface{}{
-		"status": true,
-		"user":   user,
-	})
-}
-
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var input models.LoginInput
 
@@ -82,6 +76,17 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err := utils.Validate.Struct(input); err != nil {
 		utils.JSONValidationErrors(w, err)
+		return
+	}
+
+	user, err := h.svc.GetUserByEmail(input.Email)
+	if err != nil {
+		utils.JSONError(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	if !user.EmailVerified {
+		utils.JSONError(w, "Email is not verified", http.StatusUnauthorized)
 		return
 	}
 

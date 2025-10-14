@@ -1,20 +1,18 @@
 package handlers
 
 import (
-	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 
+	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
-	"github.com/google/uuid"
 )
 
 type ImageHandler struct {
+	svc services.IImageService
 }
 
-func NewImageHandler() *ImageHandler {
-	return &ImageHandler{}
+func NewImageHandler(svc services.IImageService) *ImageHandler {
+	return &ImageHandler{svc: svc}
 }
 
 func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
@@ -32,22 +30,13 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	uploadDir := "./uploads"
-	os.MkdirAll(uploadDir, os.ModePerm)
+	publicPath, err := h.svc.Upload(file, header)
 
-	ext := filepath.Ext(header.Filename)
-	newName := uuid.New().String() + ext
-
-	filePath := uploadDir + newName
-	out, err := os.Create(filePath)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer out.Close()
-	io.Copy(out, file)
 
-	publicPath := "/uploads/" + newName
 	utils.JSON(w, http.StatusCreated, map[string]interface{}{
 		"status":  true,
 		"message": "File uploaded successfully",

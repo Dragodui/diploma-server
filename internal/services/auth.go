@@ -32,7 +32,8 @@ type IAuthService interface {
 	VerifyEmail(token string) error
 	SendResetPassword(email string) error
 	ResetPassword(token, newPass string) error
-	GetUserByID(userID int) (*models.User, error)
+	GetUserByVerifyToken(token string) (*models.User, error)
+	GetUserByEmail(email string) (*models.User, error)
 }
 
 func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string, mail utils.Mailer) *AuthService {
@@ -117,10 +118,6 @@ func (s *AuthService) VerifyEmail(token string) error {
 	return s.repo.VerifyEmail(token)
 }
 
-func (s *AuthService) GetUserByID(userID int) (*models.User, error) {
-	return s.repo.FindByID(userID)
-}
-
 func (s *AuthService) SendResetPassword(email string) error {
 	tok, _ := utils.GenToken(32)
 	exp := time.Now().Add(2 * time.Hour)
@@ -139,4 +136,17 @@ func (s *AuthService) ResetPassword(token, newPass string) error {
 	}
 	hash, _ := security.HashPassword(newPass)
 	return s.repo.UpdatePassword(u.ID, string(hash))
+}
+
+func (s *AuthService) GetUserByVerifyToken(token string) (*models.User, error) {
+	u, err := s.repo.GetByResetToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
+func (s *AuthService) GetUserByEmail(email string) (*models.User, error) {
+	return s.repo.FindByEmail(email)
 }
