@@ -47,7 +47,7 @@ func NewServer() *Server {
 		panic(err)
 	}
 
-	cache := cache.NewRedisClient()
+	cache := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword)
 
 	// Mailer
 	mailer := &utils.SMTPMailer{
@@ -81,8 +81,12 @@ func NewServer() *Server {
 	shoppingSvc := services.NewShoppingService(shoppingRepo, cache)
 	pollSvc := services.NewPollService(pollRepo, cache)
 	notificationSvc := services.NewNotificationService(notificationRepo, cache)
-	imageService := services.NewImageService()
 	userService := services.NewUserService(userRepo, cache)
+
+	imageService, err := services.NewImageService(cfg.AWSS3Bucket, cfg.AWSRegion)
+	if err != nil {
+		log.Fatalf("error running S3: %s", err.Error())
+	}
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)

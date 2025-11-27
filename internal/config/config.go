@@ -9,62 +9,100 @@ import (
 )
 
 type Config struct {
-	DB_DSN        string
-	JWTSecret     string
-	Port          string
-	ClientID      string
-	ClientSecret  string
-	CallbackURL   string
-	ClientURL     string
+	// DB
+	DB_DSN string
+
+	// AUTH
+	JWTSecret    string
+	Port         string
+	ClientID     string
+	ClientSecret string
+	CallbackURL  string
+	ClientURL    string
+
+	// REDIS
 	RedisADDR     string
 	RedisPassword string
-	SMTPHost      string
-	SMTPPort      int
-	SMTPUser      string
-	SMTPPass      string
-	SMTPFrom      string
+
+	// SMTP
+	SMTPHost string
+	SMTPPort int
+	SMTPUser string
+	SMTPPass string
+	SMTPFrom string
+
+	// AWS
+	AWSRegion          string
+	AWSS3Bucket        string
+	AWSAccessKeyID     string
+	AWSSecretAccessKey string
 }
 
 func Load() *Config {
-	if err := godotenv.Load(); err != nil {
+	// Load .env file explicitly from the mounted volume path
+	if err := godotenv.Load("/app/.env"); err != nil {
+		log.Println("Error loading .env file:", err.Error())
 		log.Fatal(".env file is not exist or load incorrectly")
 	}
-	SMTPPort, err := strconv.Atoi(os.Getenv("SMTP_PORT"))
+
+	mode := os.Getenv("MODE")
+
+	// Determine Redis keys based on environment mode
+	redisAddrKey := "REDIS_ADDR"
+	redisPassKey := "REDIS_PASSWORD"
+
+	if mode == "dev" {
+		redisAddrKey = "REDIS_ADDR_DEV"
+		redisPassKey = "REDIS_PASSWORD_DEV"
+	}
+
+	// Parse necessary integer fields
+	smtpPortStr := os.Getenv("SMTP_PORT")
+	smtpPort, err := strconv.Atoi(smtpPortStr)
 	if err != nil {
-		log.Fatal("Error with SMTP port")
+		log.Fatalf("Error parsing SMTP_PORT '%s': %v", smtpPortStr, err)
 	}
+
+	// Initialize configuration struct using determined keys
 	cfg := &Config{
-		DB_DSN:        os.Getenv("DB_DSN"),
-		JWTSecret:     os.Getenv("JWT_SECRET"),
-		Port:          os.Getenv("PORT"),
-		ClientID:      os.Getenv("GOOGLE_CLIENT_ID"),
-		ClientSecret:  os.Getenv("GOOGLE_CLIENT_SECRET"),
-		CallbackURL:   os.Getenv("CLIENT_CALLBACK_URL"),
-		ClientURL:     os.Getenv("CLIENT_URL"),
-		RedisADDR:     os.Getenv("REDIS_ADDR"),
-		RedisPassword: os.Getenv("REDIS_PASSWORD"),
-		SMTPHost:      os.Getenv("SMTP_HOST"),
-		SMTPPort:      SMTPPort,
-		SMTPUser:      os.Getenv("SMTP_USER"),
-		SMTPPass:      os.Getenv("SMTP_PASSWORD"),
-		SMTPFrom:      os.Getenv("SMTP_FROM"),
-	}
-	
-	if cfg.Port == "" {
-		cfg.Port = "8000"
-	}
+		DB_DSN:       getEnvRequired("DB_DSN"),
+		JWTSecret:    getEnvRequired("JWT_SECRET"),
+		Port:         getEnv("PORT", "8000"),
+		ClientID:     getEnvRequired("GOOGLE_CLIENT_ID"),
+		ClientSecret: getEnvRequired("GOOGLE_CLIENT_SECRET"),
+		CallbackURL:  getEnvRequired("CLIENT_CALLBACK_URL"),
+		ClientURL:    getEnvRequired("CLIENT_URL"),
 
-	if cfg.ClientURL == "" {
-		cfg.ClientURL = "http://localhost:5173"
-	}
+		RedisADDR:     getEnvRequired(redisAddrKey),
+		RedisPassword: getEnvRequired(redisPassKey),
 
-	if cfg.CallbackURL == "" {
-		cfg.CallbackURL = "http://localhost:" + cfg.Port + "/auth/google/callback"
-	}
+		SMTPHost: getEnvRequired("SMTP_HOST"),
+		SMTPPort: smtpPort,
+		SMTPUser: getEnvRequired("SMTP_USER"),
+		SMTPPass: getEnvRequired("SMTP_PASSWORD"),
+		SMTPFrom: getEnvRequired("SMTP_FROM"),
 
-	if cfg.DB_DSN == "" || cfg.JWTSecret == "" || cfg.ClientID == "" || cfg.ClientSecret == "" {
-		log.Fatal("All environment variables must be set")
+		AWSAccessKeyID:     getEnvRequired("AWS_ACCESS_KEY"),
+		AWSSecretAccessKey: getEnvRequired("AWS_SECRET_ACCESS_KEY"),
+		AWSS3Bucket:        getEnvRequired("AWS_S3_BUCKET"),
+		AWSRegion:          getEnvRequired("AWS_REGION"),
 	}
 
 	return cfg
+}
+
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+func getEnvRequired(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatalf("Required environment variable %s is not set", key)
+	}
+	return value
 }
