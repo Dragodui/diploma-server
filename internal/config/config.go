@@ -49,11 +49,9 @@ func Load() *Config {
 
 	// Determine Redis keys based on environment mode
 	redisAddrKey := "REDIS_ADDR"
-	redisPassKey := "REDIS_PASSWORD"
 
 	if mode == "dev" {
 		redisAddrKey = "REDIS_ADDR_DEV"
-		redisPassKey = "REDIS_PASSWORD_DEV"
 	}
 
 	// Parse necessary integer fields
@@ -74,7 +72,7 @@ func Load() *Config {
 		ClientURL:    getEnvRequired("CLIENT_URL"),
 
 		RedisADDR:     getEnvRequired(redisAddrKey),
-		RedisPassword: getEnvRequired(redisPassKey),
+		RedisPassword: getEnvRequired("REDIS_PASSWORD"),
 
 		SMTPHost: getEnvRequired("SMTP_HOST"),
 		SMTPPort: smtpPort,
