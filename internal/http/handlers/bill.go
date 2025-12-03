@@ -20,6 +20,19 @@ func NewBillHandler(svc services.IBillService) *BillHandler {
 	return &BillHandler{svc}
 }
 
+// Create godoc
+// @Summary      Create a new bill
+// @Description  Create a new bill in a home
+// @Tags         bill
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        input body models.CreateBillRequest true "Create Bill Request"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/bills [post]
 func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 
@@ -48,6 +61,19 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
+// GetByID godoc
+// @Summary      Get bill by ID
+// @Description  Get bill details by ID
+// @Tags         bill
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        bill_id path int true "Bill ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/bills/{bill_id} [get]
 func (h *BillHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	billIDStr := chi.URLParam(r, "bill_id")
 	billID, err := strconv.Atoi(billIDStr)
@@ -66,6 +92,19 @@ func (h *BillHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Delete godoc
+// @Summary      Delete bill
+// @Description  Delete a bill by ID
+// @Tags         bill
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        bill_id path int true "Bill ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/bills/{bill_id} [delete]
 func (h *BillHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	billIDStr := chi.URLParam(r, "bill_id")
 	billID, err := strconv.Atoi(billIDStr)
@@ -80,6 +119,19 @@ func (h *BillHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
+// MarkPayed godoc
+// @Summary      Mark bill as payed
+// @Description  Mark a bill as payed
+// @Tags         bill
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        bill_id path int true "Bill ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/bills/{bill_id} [patch]
 func (h *BillHandler) MarkPayed(w http.ResponseWriter, r *http.Request) {
 	billIDStr := chi.URLParam(r, "bill_id")
 	billID, err := strconv.Atoi(billIDStr)

@@ -17,6 +17,17 @@ func NewUserHandler(svc services.IUserService, imgSvc services.IImageService) *U
 	return &UserHandler{svc: svc, imageSvc: imgSvc}
 }
 
+// GetMe godoc
+// @Summary      Get current user
+// @Description  Get details of the currently logged in user
+// @Tags         user
+// @Produce      json
+// @Security     BearerAuth
+// @Success      202  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /user [post]
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 	if userID == 0 {
@@ -40,6 +51,20 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Update godoc
+// @Summary      Update user
+// @Description  Update user name or avatar
+// @Tags         user
+// @Accept       multipart/form-data
+// @Produce      json
+// @Security     BearerAuth
+// @Param        name formData string false "User Name"
+// @Param        avatar formData file false "User Avatar"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /user [patch]
 func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 	if userID == 0 {

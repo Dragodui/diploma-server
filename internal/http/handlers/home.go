@@ -21,6 +21,18 @@ func NewHomeHandler(svc services.IHomeService) *HomeHandler {
 	return &HomeHandler{svc}
 }
 
+// Create godoc
+// @Summary      Create a new home
+// @Description  Create a new home with a name
+// @Tags         home
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        input body models.CreateHomeRequest true "Create Home Request"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/create [post]
 func (h *HomeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateHomeRequest
 
@@ -48,6 +60,17 @@ func (h *HomeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
+// RegenerateInviteCode godoc
+// @Summary      Regenerate invite code
+// @Description  Regenerate invite code for a home
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/regenerate_code [post]
 func (h *HomeHandler) RegenerateInviteCode(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
@@ -64,6 +87,18 @@ func (h *HomeHandler) RegenerateInviteCode(w http.ResponseWriter, r *http.Reques
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Invite code regenerated successfully"})
 }
 
+// Join godoc
+// @Summary      Join a home
+// @Description  Join a home with an invite code
+// @Tags         home
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        input body models.JoinRequest true "Join Request"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/join [post]
 func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 	var req models.JoinRequest
 
@@ -97,6 +132,17 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Joined successfully"})
 }
 
+// GetUserHome godoc
+// @Summary      Get user's home
+// @Description  Get the home the user belongs to
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]models.Home
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /homes/my [get]
 func (h HomeHandler) GetUserHome(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 	if userID == 0 {
@@ -120,6 +166,19 @@ func (h HomeHandler) GetUserHome(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetByID godoc
+// @Summary      Get home by ID
+// @Description  Get home details by ID
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string]models.Home
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id} [get]
 func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
@@ -141,6 +200,18 @@ func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Delete godoc
+// @Summary      Delete home
+// @Description  Delete a home by ID
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id} [delete]
 func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
@@ -155,6 +226,19 @@ func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
+// Leave godoc
+// @Summary      Leave home
+// @Description  Leave the current home
+// @Tags         home
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        input body models.LeaveRequest true "Leave Request"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/leave [post]
 func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 	var req models.LeaveRequest
 
@@ -189,6 +273,20 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Leaved successfully"})
 }
 
+// RemoveMember godoc
+// @Summary      Remove member
+// @Description  Remove a member from the home
+// @Tags         home
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        user_id path int true "User ID"
+// @Param        input body models.RemoveMemberRequest true "Remove Member Request"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/members/{user_id} [delete]
 func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	var req models.RemoveMemberRequest
 

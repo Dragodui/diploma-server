@@ -21,6 +21,19 @@ func NewPollHandler(svc services.IPollService) *PollHandler {
 }
 
 // POST /homes/{home_id}/polls
+// Create godoc
+// @Summary      Create a new poll
+// @Description  Create a new poll in a home
+// @Tags         poll
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        input body models.CreatePollRequest true "Create Poll Request"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/polls [post]
 func (h *PollHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req models.CreatePollRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -47,6 +60,18 @@ func (h *PollHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /homes/{home_id}/polls
+// GetAllByHomeID godoc
+// @Summary      Get all polls by home ID
+// @Description  Get all polls in a home
+// @Tags         poll
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/polls [get]
 func (h *PollHandler) GetAllByHomeID(w http.ResponseWriter, r *http.Request) {
 	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
 	if err != nil {
@@ -64,6 +89,20 @@ func (h *PollHandler) GetAllByHomeID(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /homes/{home_id}/polls/{poll_id}
+// GetByID godoc
+// @Summary      Get poll by ID
+// @Description  Get poll details by ID
+// @Tags         poll
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        poll_id path int true "Poll ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/polls/{poll_id} [get]
 func (h *PollHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	pollID, err := strconv.Atoi(chi.URLParam(r, "poll_id"))
 	if err != nil {
@@ -85,6 +124,18 @@ func (h *PollHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // PATCH /homes/{home_id}/polls/{poll_id}/close
+// Close godoc
+// @Summary      Close poll
+// @Description  Close a poll by ID
+// @Tags         poll
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        poll_id path int true "Poll ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/polls/{poll_id}/close [patch]
 func (h *PollHandler) Close(w http.ResponseWriter, r *http.Request) {
 	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
 	if err != nil {
@@ -106,6 +157,18 @@ func (h *PollHandler) Close(w http.ResponseWriter, r *http.Request) {
 }
 
 // DELETE /homes/{home_id}/polls/{poll_id}
+// Delete godoc
+// @Summary      Delete poll
+// @Description  Delete a poll by ID
+// @Tags         poll
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        poll_id path int true "Poll ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/polls/{poll_id} [delete]
 func (h *PollHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
 	if err != nil {
@@ -127,6 +190,20 @@ func (h *PollHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /homes/{home_id}/polls/{poll_id}/vote
+// Vote godoc
+// @Summary      Vote in poll
+// @Description  Vote in a poll
+// @Tags         poll
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        poll_id path int true "Poll ID"
+// @Param        input body models.VoteRequest true "Vote Request"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/polls/{poll_id}/vote [post]
 func (h *PollHandler) Vote(w http.ResponseWriter, r *http.Request) {
 	var req models.VoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

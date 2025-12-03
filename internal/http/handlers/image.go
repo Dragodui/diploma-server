@@ -15,6 +15,18 @@ func NewImageHandler(svc services.IImageService) *ImageHandler {
 	return &ImageHandler{svc: svc}
 }
 
+// UploadImage godoc
+// @Summary      Upload an image
+// @Description  Upload an image file
+// @Tags         image
+// @Accept       multipart/form-data
+// @Produce      json
+// @Security     BearerAuth
+// @Param        image formData file true "Image File"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /upload [post]
 func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20) // 10mb file limit
 

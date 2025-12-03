@@ -19,6 +19,19 @@ func NewTaskHandler(svc services.ITaskService) *TaskHandler {
 	return &TaskHandler{svc}
 }
 
+// Create godoc
+// @Summary      Create a new task
+// @Description  Create a new task in a home
+// @Tags         task
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        input body models.CreateTaskRequest true "Create Task Request"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks [post]
 func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -34,6 +47,19 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
+// GetByID godoc
+// @Summary      Get task by ID
+// @Description  Get task details by ID
+// @Tags         task
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        task_id path int true "Task ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks/{task_id} [get]
 func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := chi.URLParam(r, "task_id")
 	taskID, err := strconv.Atoi(taskIDStr)
@@ -53,6 +79,18 @@ func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetTasksByHomeID godoc
+// @Summary      Get tasks by home ID
+// @Description  Get all tasks in a home
+// @Tags         task
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks [get]
 func (h *TaskHandler) GetTasksByHomeID(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
@@ -71,6 +109,19 @@ func (h *TaskHandler) GetTasksByHomeID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// DeleteTask godoc
+// @Summary      Delete task
+// @Description  Delete a task by ID
+// @Tags         task
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        task_id path int true "Task ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks/{task_id} [delete]
 func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := chi.URLParam(r, "task_id")
 	taskID, err := strconv.Atoi(taskIDStr)
@@ -88,6 +139,20 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
+// AssignUser godoc
+// @Summary      Assign user to task
+// @Description  Assign a user to a task
+// @Tags         task
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        task_id path int true "Task ID"
+// @Param        input body models.AssignUserRequest true "Assign User Request"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks/{task_id}/assign [post]
 func (h *TaskHandler) AssignUser(w http.ResponseWriter, r *http.Request) {
 	var assignUserRequest models.AssignUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&assignUserRequest); err != nil {
@@ -103,6 +168,19 @@ func (h *TaskHandler) AssignUser(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
 }
 
+// GetAssignmentsForUser godoc
+// @Summary      Get assignments for user
+// @Description  Get all assignments for a user in a home
+// @Tags         task
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        user_id path int true "User ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/users/{user_id}/assignments [get]
 func (h *TaskHandler) GetAssignmentsForUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := chi.URLParam(r, "user_id")
 	userID, err := strconv.Atoi(userIDStr)
@@ -121,6 +199,19 @@ func (h *TaskHandler) GetAssignmentsForUser(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// GetClosestAssignmentForUser godoc
+// @Summary      Get closest assignment for user
+// @Description  Get the closest assignment for a user in a home
+// @Tags         task
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        user_id path int true "User ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/users/{user_id}/assignments/closest [get]
 func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := chi.URLParam(r, "user_id")
 	userID, err := strconv.Atoi(userIDStr)
@@ -140,6 +231,21 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 	})
 }
 
+// MarkAssignmentCompleted godoc
+// @Summary      Mark assignment as completed
+// @Description  Mark an assignment as completed
+// @Tags         task
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        task_id path int true "Task ID"
+// @Param        input body models.AssignmentIDRequest true "Assignment ID Request"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks/{task_id}/mark-completed [patch]
 func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Request) {
 	var assignmentRequest models.AssignmentIDRequest
 	if err := json.NewDecoder(r.Body).Decode(&assignmentRequest); err != nil {
@@ -155,6 +261,20 @@ func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Req
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Marked successfully"})
 }
 
+// DeleteAssignment godoc
+// @Summary      Delete assignment
+// @Description  Delete an assignment by ID
+// @Tags         task
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        task_id path int true "Task ID"
+// @Param        assignment_id path int true "Assignment ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks/{task_id}/assignments/{assignment_id} [delete]
 func (h *TaskHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
 	assignmentIDStr := chi.URLParam(r, "assignment_id")
 	assignmentID, err := strconv.Atoi(assignmentIDStr)
@@ -171,6 +291,20 @@ func (h *TaskHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
 }
 
+// ReassignRoom godoc
+// @Summary      Reassign room for task
+// @Description  Reassign a room for a task
+// @Tags         task
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        task_id path int true "Task ID"
+// @Param        input body models.ReassignRoomRequest true "Reassign Room Request"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks/{task_id}/reassign-room [patch]
 func (h *TaskHandler) ReassignRoom(w http.ResponseWriter, r *http.Request) {
 	var req models.ReassignRoomRequest
 

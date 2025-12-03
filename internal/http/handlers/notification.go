@@ -18,6 +18,16 @@ func NewNotificationHandler(svc services.INotificationService) *NotificationHand
 	return &NotificationHandler{svc}
 }
 
+// GetByUserID godoc
+// @Summary      Get notifications by user ID
+// @Description  Get all notifications for the current user
+// @Tags         notification
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/notifications [get]
 func (h *NotificationHandler) GetByUserID(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 
@@ -33,6 +43,18 @@ func (h *NotificationHandler) GetByUserID(w http.ResponseWriter, r *http.Request
 	})
 }
 
+// MarkAsRead godoc
+// @Summary      Mark notification as read
+// @Description  Mark a notification as read
+// @Tags         notification
+// @Produce      json
+// @Security     BearerAuth
+// @Param        notification_id path int true "Notification ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/notifications/{notification_id} [delete]
 func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 	notificationIDStr := chi.URLParam(r, "notification_id")
 	userID := middleware.GetUserID(r)
@@ -53,6 +75,18 @@ func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+// GetByHomeID godoc
+// @Summary      Get notifications by home ID
+// @Description  Get all notifications for a home
+// @Tags         notification
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/notifications [get]
 func (h *NotificationHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 	homeIDStr := chi.URLParam(r, "home_id")
 	homeID, err := strconv.Atoi(homeIDStr)
@@ -73,6 +107,19 @@ func (h *NotificationHandler) GetByHomeID(w http.ResponseWriter, r *http.Request
 	})
 }
 
+// MarkAsReadForHome godoc
+// @Summary      Mark home notification as read
+// @Description  Mark a home notification as read
+// @Tags         notification
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        notification_id path int true "Notification ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/notifications/{notification_id} [delete]
 func (h *NotificationHandler) MarkAsReadForHome(w http.ResponseWriter, r *http.Request) {
 	notificationIDStr := chi.URLParam(r, "notification_id")
 	userID := middleware.GetUserID(r)
