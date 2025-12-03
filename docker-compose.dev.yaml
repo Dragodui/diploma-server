@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: go-backend-dev
+    env_file:
+      - .env.dev
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+    ports:
+      - "8000:8000"
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7
+    container_name: redis-cache-dev
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  db:
+    image: postgres:15
+    container_name: postgres-db-dev
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydb
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  pgdata-dev:

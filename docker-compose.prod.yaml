@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go-backend-prod
+    env_file:
+      - .env.prod
+    depends_on:
+      - redis
+      - db
+    ports:
+      - "8000:8000"
+    networks:
+      - app-network
+    restart: always
+
+  redis:
+    image: redis:7
+    container_name: redis-cache-prod
+    restart: always
+    networks:
+      - app-network
+
+  db:
+    image: postgres:15
+    container_name: postgres-db-prod
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydb
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  pgdata-prod:
