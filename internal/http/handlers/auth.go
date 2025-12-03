@@ -20,17 +20,17 @@ func NewAuthHandler(svc services.IAuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) RegenerateVerify(w http.ResponseWriter, r *http.Request) {
-	oldToken := chi.URLParam(r, "old_token")
-	email := chi.URLParam(r, "email")
-	if oldToken != "" {
-		user, err := h.svc.GetUserByVerifyToken(oldToken)
-		if err != nil {
-			utils.JSONError(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		email = user.Email
+	// oldToken := chi.URLParam(r, "old_token")
+	email := r.URL.Query().Get("email")
+	// if oldToken != "" {
+	// 	user, err := h.svc.GetUserByVerifyToken(oldToken)
+	// 	if err != nil {
+	// 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+	// 		return
+	// 	}
+	// 	email = user.Email
 
-	}
+	// }
 	if err := h.svc.SendVerificationEmail(email); err != nil {
 		utils.JSONError(w, "Failed to send verification email", http.StatusInternalServerError)
 		return
@@ -134,7 +134,7 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
-	token := chi.URLParam(r, "token")
+	token := r.URL.Query().Get("token")
 	err := h.svc.VerifyEmail(token)
 	if err != nil {
 		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)

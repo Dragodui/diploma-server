@@ -104,7 +104,10 @@ func (s *AuthService) HandleCallback(user goth.User) (string, error) {
 }
 
 func (s *AuthService) SendVerificationEmail(email string) error {
-	tok, _ := utils.GenToken(32)
+	tok, err := utils.GenToken(32)
+	if (err != nil) {
+		return err
+	}
 	exp := time.Now().Add(24 * time.Hour)
 	if err := s.repo.SetVerifyToken(email, tok, exp); err != nil {
 		return err

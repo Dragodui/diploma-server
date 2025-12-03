@@ -73,7 +73,7 @@ func (r *userRepo) SetVerifyToken(email, token string, expiresAt time.Time) erro
 }
 
 func (r *userRepo) VerifyEmail(token string) error {
-	res := r.db.Model(&models.User{}).Where("verify_token = ? AND verify_expires_at > ?", token, time.Now()).Updates(map[string]interface{}{
+	res := r.db.Model(&models.User{}).Where("verify_token = ? AND verify_expires_at > ?", token, time.Now()).Updates(map[string]any{
 		"email_verified":    true,
 		"verify_token":      nil,
 		"verify_expires_at": nil,
