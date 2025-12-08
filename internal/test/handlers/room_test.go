@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -12,8 +11,10 @@ import (
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// Mock service
 type mockRoomService struct {
 	CreateRoomFunc       func(name string, homeID int) error
 	GetRoomByIDFunc      func(roomID int) (*models.Room, error)
@@ -49,246 +50,246 @@ func (m *mockRoomService) DeleteRoom(roomID int) error {
 	return nil
 }
 
-// POST /rooms/create
-func TestRoomHandler_Create_Success(t *testing.T) {
-	svc := &mockRoomService{
-		CreateRoomFunc: func(name string, homeID int) error {
-			assert.Equal(t, "Kitchen", name)
-			assert.Equal(t, 1, homeID)
-			return nil
-		},
-	}
-
-	h := handlers.NewRoomHandler(svc)
-
-	reqBody, _ := json.Marshal(models.CreateRoomRequest{
-		Name:   "Kitchen",
-		HomeID: 1,
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusCreated, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Created successfully")
+// Test fixtures
+var validCreateRoomRequest = models.CreateRoomRequest{
+	Name:   "Kitchen",
+	HomeID: 1,
 }
 
-func TestRoomHandler_Create_InvalidJSON(t *testing.T) {
-	svc := &mockRoomService{}
-	h := handlers.NewRoomHandler(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewBufferString("{bad json}"))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid JSON")
+func setupRoomHandler(svc *mockRoomService) *handlers.RoomHandler {
+	return handlers.NewRoomHandler(svc)
 }
 
-func TestRoomHandler_Create_ServiceError(t *testing.T) {
-	svc := &mockRoomService{
-		CreateRoomFunc: func(name string, homeID int) error {
-			return errors.New("service error")
-		},
-	}
-
-	h := handlers.NewRoomHandler(svc)
-
-	reqBody, _ := json.Marshal(models.CreateRoomRequest{
-		Name:   "Kitchen",
-		HomeID: 1,
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid data")
-}
-
-// GET /rooms/{room_id}
-func TestRoomHandler_GetByID_Success(t *testing.T) {
-	svc := &mockRoomService{
-		GetRoomByIDFunc: func(roomID int) (*models.Room, error) {
-			assert.Equal(t, 1, roomID)
-			return &models.Room{ID: 1, Name: "Kitchen"}, nil
-		},
-	}
-
-	h := handlers.NewRoomHandler(svc)
-
+func setupRoomRouter(h *handlers.RoomHandler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/rooms/{room_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/rooms/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Kitchen")
-}
-
-func TestRoomHandler_GetByID_InvalidID(t *testing.T) {
-	svc := &mockRoomService{}
-	h := handlers.NewRoomHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/rooms/{room_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/rooms/invalid", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid room ID")
-}
-
-func TestRoomHandler_GetByID_ServiceError(t *testing.T) {
-	svc := &mockRoomService{
-		GetRoomByIDFunc: func(roomID int) (*models.Room, error) {
-			return nil, errors.New("service error")
-		},
-	}
-
-	h := handlers.NewRoomHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/rooms/{room_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/rooms/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "service error")
-}
-
-// GET /homes/{home_id}/rooms
-func TestRoomHandler_GetByHomeID_Success(t *testing.T) {
-	svc := &mockRoomService{
-		GetRoomsByHomeIDFunc: func(homeID int) (*[]models.Room, error) {
-			assert.Equal(t, 1, homeID)
-			rooms := []models.Room{{ID: 1, Name: "Kitchen"}, {ID: 2, Name: "Bedroom"}}
-			return &rooms, nil
-		},
-	}
-
-	h := handlers.NewRoomHandler(svc)
-
-	r := chi.NewRouter()
 	r.Get("/homes/{home_id}/rooms", h.GetByHomeID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/1/rooms", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Kitchen")
-	assert.Contains(t, rr.Body.String(), "Bedroom")
+	r.Delete("/rooms/{room_id}", h.Delete)
+	return r
 }
 
-func TestRoomHandler_GetByHomeID_InvalidID(t *testing.T) {
-	svc := &mockRoomService{}
-	h := handlers.NewRoomHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/homes/{home_id}/rooms", h.GetByHomeID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/invalid/rooms", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid home ID")
-}
-
-func TestRoomHandler_GetByHomeID_ServiceError(t *testing.T) {
-	svc := &mockRoomService{
-		GetRoomsByHomeIDFunc: func(homeID int) (*[]models.Room, error) {
-			return nil, errors.New("service error")
+func TestRoomHandler_Create(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		mockFunc       func(name string, homeID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "Success",
+			body: validCreateRoomRequest,
+			mockFunc: func(name string, homeID int) error {
+				assert.Equal(t, "Kitchen", name)
+				assert.Equal(t, 1, homeID)
+				return nil
+			},
+			expectedStatus: http.StatusCreated,
+			expectedBody:   "Created successfully",
+		},
+		{
+			name:           "Invalid JSON",
+			body:           "{bad json}",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid JSON",
+		},
+		{
+			name: "Service Error",
+			body: validCreateRoomRequest,
+			mockFunc: func(name string, homeID int) error {
+				return errors.New("service error")
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid data",
 		},
 	}
 
-	h := handlers.NewRoomHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockRoomService{
+				CreateRoomFunc: tt.mockFunc,
+			}
 
-	r := chi.NewRouter()
-	r.Get("/homes/{home_id}/rooms", h.GetByHomeID)
+			h := setupRoomHandler(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/homes/1/rooms", nil)
-	rr := httptest.NewRecorder()
+			var req *http.Request
+			if tt.name == "Invalid JSON" {
+				req = httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewBufferString("{bad json}"))
+			} else {
+				req = makeJSONRequest(http.MethodPost, "/rooms", tt.body)
+			}
 
-	r.ServeHTTP(rr, req)
+			rr := httptest.NewRecorder()
+			h.Create(rr, req)
 
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "service error")
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-// DELETE /rooms/{room_id}
-func TestRoomHandler_Delete_Success(t *testing.T) {
-	svc := &mockRoomService{
-		DeleteRoomFunc: func(roomID int) error {
-			assert.Equal(t, 1, roomID)
-			return nil
+func TestRoomHandler_GetByID(t *testing.T) {
+	tests := []struct {
+		name           string
+		roomID         string
+		mockFunc       func(roomID int) (*models.Room, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			roomID: "1",
+			mockFunc: func(roomID int) (*models.Room, error) {
+				require.Equal(t, 1, roomID)
+				return &models.Room{ID: 1, Name: "Kitchen"}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Kitchen",
+		},
+		{
+			name:           "Invalid ID",
+			roomID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid room ID",
+		},
+		{
+			name:   "Service Error",
+			roomID: "1",
+			mockFunc: func(roomID int) (*models.Room, error) {
+				return nil, errors.New("service error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "service error",
 		},
 	}
 
-	h := handlers.NewRoomHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockRoomService{
+				GetRoomByIDFunc: tt.mockFunc,
+			}
 
-	r := chi.NewRouter()
-	r.Delete("/rooms/{room_id}", h.Delete)
+			h := setupRoomHandler(svc)
+			r := setupRoomRouter(h)
 
-	req := httptest.NewRequest(http.MethodDelete, "/rooms/1", nil)
-	rr := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/rooms/"+tt.roomID, nil)
+			rr := httptest.NewRecorder()
 
-	r.ServeHTTP(rr, req)
+			r.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Deleted successfully")
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-func TestRoomHandler_Delete_InvalidID(t *testing.T) {
-	svc := &mockRoomService{}
-	h := handlers.NewRoomHandler(svc)
-
-	r := chi.NewRouter()
-	r.Delete("/rooms/{room_id}", h.Delete)
-
-	req := httptest.NewRequest(http.MethodDelete, "/rooms/invalid", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid room ID")
-}
-
-func TestRoomHandler_Delete_ServiceError(t *testing.T) {
-	svc := &mockRoomService{
-		DeleteRoomFunc: func(roomID int) error {
-			return errors.New("delete failed")
+func TestRoomHandler_GetByHomeID(t *testing.T) {
+	tests := []struct {
+		name           string
+		homeID         string
+		mockFunc       func(homeID int) (*[]models.Room, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			homeID: "1",
+			mockFunc: func(homeID int) (*[]models.Room, error) {
+				require.Equal(t, 1, homeID)
+				rooms := []models.Room{{ID: 1, Name: "Kitchen"}, {ID: 2, Name: "Bedroom"}}
+				return &rooms, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Kitchen",
+		},
+		{
+			name:           "Invalid ID",
+			homeID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid home ID",
+		},
+		{
+			name:   "Service Error",
+			homeID: "1",
+			mockFunc: func(homeID int) (*[]models.Room, error) {
+				return nil, errors.New("service error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "service error",
 		},
 	}
 
-	h := handlers.NewRoomHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockRoomService{
+				GetRoomsByHomeIDFunc: tt.mockFunc,
+			}
 
-	r := chi.NewRouter()
-	r.Delete("/rooms/{room_id}", h.Delete)
+			h := setupRoomHandler(svc)
+			r := setupRoomRouter(h)
 
-	req := httptest.NewRequest(http.MethodDelete, "/rooms/1", nil)
-	rr := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/homes/"+tt.homeID+"/rooms", nil)
+			rr := httptest.NewRecorder()
 
-	r.ServeHTTP(rr, req)
+			r.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "delete failed")
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestRoomHandler_Delete(t *testing.T) {
+	tests := []struct {
+		name           string
+		roomID         string
+		mockFunc       func(roomID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			roomID: "1",
+			mockFunc: func(roomID int) error {
+				require.Equal(t, 1, roomID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Deleted successfully",
+		},
+		{
+			name:           "Invalid ID",
+			roomID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid room ID",
+		},
+		{
+			name:   "Service Error",
+			roomID: "1",
+			mockFunc: func(roomID int) error {
+				return errors.New("delete failed")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "delete failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockRoomService{
+				DeleteRoomFunc: tt.mockFunc,
+			}
+
+			h := setupRoomHandler(svc)
+			r := setupRoomRouter(h)
+
+			req := httptest.NewRequest(http.MethodDelete, "/rooms/"+tt.roomID, nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }

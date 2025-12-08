@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -13,8 +12,10 @@ import (
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// Mock service
 type mockTaskService struct {
 	CreateTaskFunc                  func(homeID int, roomID *int, name, description, scheduleType string) error
 	GetTaskByIDFunc                 func(taskID int) (*models.Task, error)
@@ -98,613 +99,619 @@ func (m *mockTaskService) ReassignRoom(taskID, roomID int) error {
 	return nil
 }
 
-// POST /tasks/create
-func TestTaskHandler_Create_Success(t *testing.T) {
-	svc := &mockTaskService{
-		CreateTaskFunc: func(homeID int, roomID *int, name, description, scheduleType string) error {
-			assert.Equal(t, 1, homeID)
-			// assert.Equal(t, 2, roomID)
-			assert.Equal(t, "Clean Kitchen", name)
-			assert.Equal(t, "Daily cleaning", description)
-			assert.Equal(t, "daily", scheduleType)
-			return nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	testRoomID := 2
-	reqBody, _ := json.Marshal(models.CreateTaskRequest{
+// Test fixtures
+var (
+	testRoomID            = 2
+	validCreateTaskReq    = models.CreateTaskRequest{
 		HomeID:       1,
 		RoomID:       &testRoomID,
 		Name:         "Clean Kitchen",
 		Description:  "Daily cleaning",
 		ScheduleType: "daily",
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusCreated, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Created successfully")
-}
-
-func TestTaskHandler_Create_InvalidJSON(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewBufferString("{bad json}"))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid JSON")
-}
-
-func TestTaskHandler_Create_ServiceError(t *testing.T) {
-	svc := &mockTaskService{
-		CreateTaskFunc: func(homeID int, roomID *int, name, description, scheduleType string) error {
-			return errors.New("service error")
-		},
 	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	testRoomID := 2
-	reqBody, _ := json.Marshal(models.CreateTaskRequest{
-		HomeID:       1,
-		RoomID:       &testRoomID,
-		Name:         "Clean Kitchen",
-		Description:  "Daily cleaning",
-		ScheduleType: "daily",
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid data")
-}
-
-// GET /tasks/{task_id}
-func TestTaskHandler_GetByID_Success(t *testing.T) {
-	svc := &mockTaskService{
-		GetTaskByIDFunc: func(taskID int) (*models.Task, error) {
-			assert.Equal(t, 1, taskID)
-			return &models.Task{ID: 1, Name: "Clean Kitchen"}, nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/tasks/{task_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/tasks/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Clean Kitchen")
-}
-
-func TestTaskHandler_GetByID_InvalidID(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/tasks/{task_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/tasks/invalid", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid task ID")
-}
-
-func TestTaskHandler_GetByID_ServiceError(t *testing.T) {
-	svc := &mockTaskService{
-		GetTaskByIDFunc: func(taskID int) (*models.Task, error) {
-			return nil, errors.New("service error")
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/tasks/{task_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/tasks/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "service error")
-}
-
-// GET /homes/{home_id}/tasks
-func TestTaskHandler_GetTasksByHomeID_Success(t *testing.T) {
-	svc := &mockTaskService{
-		GetTasksByHomeIDFunc: func(homeID int) (*[]models.Task, error) {
-			assert.Equal(t, 1, homeID)
-			tasks := []models.Task{
-				{ID: 1, Name: "Clean Kitchen"},
-				{ID: 2, Name: "Vacuum Living Room"},
-			}
-			return &tasks, nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/homes/{home_id}/tasks", h.GetTasksByHomeID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/1/tasks", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Clean Kitchen")
-	assert.Contains(t, rr.Body.String(), "Vacuum Living Room")
-}
-
-func TestTaskHandler_GetTasksByHomeID_InvalidID(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/homes/{home_id}/tasks", h.GetTasksByHomeID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/invalid/tasks", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid home ID")
-}
-
-func TestTaskHandler_GetTasksByHomeID_ServiceError(t *testing.T) {
-	svc := &mockTaskService{
-		GetTasksByHomeIDFunc: func(homeID int) (*[]models.Task, error) {
-			return nil, errors.New("service error")
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/homes/{home_id}/tasks", h.GetTasksByHomeID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/1/tasks", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "service error")
-}
-
-// DELETE /tasks/{task_id}
-func TestTaskHandler_DeleteTask_Success(t *testing.T) {
-	svc := &mockTaskService{
-		DeleteTaskFunc: func(taskID int) error {
-			assert.Equal(t, 1, taskID)
-			return nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Delete("/tasks/{task_id}", h.DeleteTask)
-
-	req := httptest.NewRequest(http.MethodDelete, "/tasks/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Deleted successfully")
-}
-
-func TestTaskHandler_DeleteTask_InvalidID(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Delete("/tasks/{task_id}", h.DeleteTask)
-
-	req := httptest.NewRequest(http.MethodDelete, "/tasks/invalid", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid task ID")
-}
-
-func TestTaskHandler_DeleteTask_ServiceError(t *testing.T) {
-	svc := &mockTaskService{
-		DeleteTaskFunc: func(taskID int) error {
-			return errors.New("delete failed")
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Delete("/tasks/{task_id}", h.DeleteTask)
-
-	req := httptest.NewRequest(http.MethodDelete, "/tasks/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "delete failed")
-}
-
-// POST /tasks/assign
-func TestTaskHandler_AssignUser_Success(t *testing.T) {
-	assignDate := time.Now()
-
-	svc := &mockTaskService{
-		AssignUserFunc: func(taskID, userID, homeID int, date time.Time) error {
-			assert.Equal(t, 1, taskID)
-			assert.Equal(t, 2, userID)
-			assert.Equal(t, 3, homeID)
-			return nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	reqBody, _ := json.Marshal(models.AssignUserRequest{
+	validAssignUserReq = models.AssignUserRequest{
 		TaskID: 1,
 		UserID: 2,
 		HomeID: 3,
-		Date:   assignDate,
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/tasks/assign", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.AssignUser(rr, req)
-
-	assert.Equal(t, http.StatusCreated, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Created successfully")
-}
-
-func TestTaskHandler_AssignUser_InvalidJSON(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/tasks/assign", bytes.NewBufferString("{bad json}"))
-	rr := httptest.NewRecorder()
-
-	h.AssignUser(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid JSON")
-}
-
-func TestTaskHandler_AssignUser_ServiceError(t *testing.T) {
-	assignDate := time.Now()
-
-	svc := &mockTaskService{
-		AssignUserFunc: func(taskID, userID, homeID int, date time.Time) error {
-			return errors.New("assign failed")
-		},
+		Date:   time.Now(),
 	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	reqBody, _ := json.Marshal(models.AssignUserRequest{
-		TaskID: 1,
-		UserID: 2,
-		HomeID: 3,
-		Date:   assignDate,
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/tasks/assign", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.AssignUser(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid data")
-}
-
-// GET /users/{user_id}/assignments
-func TestTaskHandler_GetAssignmentsForUser_Success(t *testing.T) {
-	svc := &mockTaskService{
-		GetAssignmentsForUserFunc: func(userID int) (*[]models.TaskAssignment, error) {
-			assert.Equal(t, 123, userID)
-			assignments := []models.TaskAssignment{
-				{ID: 1, TaskID: 1, UserID: 123},
-				{ID: 2, TaskID: 2, UserID: 123},
-			}
-			return &assignments, nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/users/{user_id}/assignments", h.GetAssignmentsForUser)
-
-	req := httptest.NewRequest(http.MethodGet, "/users/123/assignments", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "assignments")
-}
-
-func TestTaskHandler_GetAssignmentsForUser_InvalidID(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/users/{user_id}/assignments", h.GetAssignmentsForUser)
-
-	req := httptest.NewRequest(http.MethodGet, "/users/invalid/assignments", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid user ID")
-}
-
-func TestTaskHandler_GetAssignmentsForUser_ServiceError(t *testing.T) {
-	svc := &mockTaskService{
-		GetAssignmentsForUserFunc: func(userID int) (*[]models.TaskAssignment, error) {
-			return nil, errors.New("service error")
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/users/{user_id}/assignments", h.GetAssignmentsForUser)
-
-	req := httptest.NewRequest(http.MethodGet, "/users/123/assignments", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "service error")
-}
-
-// GET /users/{user_id}/assignments/closest
-func TestTaskHandler_GetClosestAssignmentForUser_Success(t *testing.T) {
-	svc := &mockTaskService{
-		GetClosestAssignmentForUserFunc: func(userID int) (*models.TaskAssignment, error) {
-			assert.Equal(t, 123, userID)
-			return &models.TaskAssignment{ID: 1, TaskID: 1, UserID: 123}, nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/users/{user_id}/assignments/closest", h.GetClosestAssignmentForUser)
-
-	req := httptest.NewRequest(http.MethodGet, "/users/123/assignments/closest", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "assignment")
-}
-
-func TestTaskHandler_GetClosestAssignmentForUser_InvalidID(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/users/{user_id}/assignments/closest", h.GetClosestAssignmentForUser)
-
-	req := httptest.NewRequest(http.MethodGet, "/users/invalid/assignments/closest", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid user ID")
-}
-
-func TestTaskHandler_GetClosestAssignmentForUser_ServiceError(t *testing.T) {
-	svc := &mockTaskService{
-		GetClosestAssignmentForUserFunc: func(userID int) (*models.TaskAssignment, error) {
-			return nil, errors.New("service error")
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/users/{user_id}/assignments/closest", h.GetClosestAssignmentForUser)
-
-	req := httptest.NewRequest(http.MethodGet, "/users/123/assignments/closest", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "service error")
-}
-
-// PUT /assignments/mark-completed
-func TestTaskHandler_MarkAssignmentCompleted_Success(t *testing.T) {
-	svc := &mockTaskService{
-		MarkAssignmentCompletedFunc: func(assignmentID int) error {
-			assert.Equal(t, 1, assignmentID)
-			return nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	reqBody, _ := json.Marshal(models.AssignmentIDRequest{
-		AssignmentID: 1,
-	})
-
-	req := httptest.NewRequest(http.MethodPut, "/assignments/mark-completed", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.MarkAssignmentCompleted(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Marked successfully")
-}
-
-func TestTaskHandler_MarkAssignmentCompleted_InvalidJSON(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	req := httptest.NewRequest(http.MethodPut, "/assignments/mark-completed", bytes.NewBufferString("{bad json}"))
-	rr := httptest.NewRecorder()
-
-	h.MarkAssignmentCompleted(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid JSON")
-}
-
-func TestTaskHandler_MarkAssignmentCompleted_ServiceError(t *testing.T) {
-	svc := &mockTaskService{
-		MarkAssignmentCompletedFunc: func(assignmentID int) error {
-			return errors.New("mark failed")
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	reqBody, _ := json.Marshal(models.AssignmentIDRequest{
-		AssignmentID: 1,
-	})
-
-	req := httptest.NewRequest(http.MethodPut, "/assignments/mark-completed", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.MarkAssignmentCompleted(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "mark failed")
-}
-
-// DELETE /assignments/{assignment_id}
-func TestTaskHandler_DeleteAssignment_Success(t *testing.T) {
-	svc := &mockTaskService{
-		DeleteAssignmentFunc: func(assignmentID int) error {
-			assert.Equal(t, 1, assignmentID)
-			return nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Delete("/assignments/{assignment_id}", h.DeleteAssignment)
-
-	req := httptest.NewRequest(http.MethodDelete, "/assignments/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Deleted successfully")
-}
-
-func TestTaskHandler_DeleteAssignment_InvalidID(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Delete("/assignments/{assignment_id}", h.DeleteAssignment)
-
-	req := httptest.NewRequest(http.MethodDelete, "/assignments/invalid", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid assignment ID")
-}
-
-func TestTaskHandler_DeleteAssignment_ServiceError(t *testing.T) {
-	svc := &mockTaskService{
-		DeleteAssignmentFunc: func(assignmentID int) error {
-			return errors.New("delete failed")
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	r := chi.NewRouter()
-	r.Delete("/assignments/{assignment_id}", h.DeleteAssignment)
-
-	req := httptest.NewRequest(http.MethodDelete, "/assignments/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "delete failed")
-}
-
-// PUT /tasks/reassign-room
-func TestTaskHandler_ReassignRoom_Success(t *testing.T) {
-	svc := &mockTaskService{
-		ReassignRoomFunc: func(taskID, roomID int) error {
-			assert.Equal(t, 1, taskID)
-			// assert.Equal(t, 2, roomID)
-			return nil
-		},
-	}
-
-	h := handlers.NewTaskHandler(svc)
-
-	reqBody, _ := json.Marshal(models.ReassignRoomRequest{
+	validReassignRoomReq = models.ReassignRoomRequest{
 		TaskID: 1,
 		RoomID: 2,
-	})
+	}
+)
 
-	req := httptest.NewRequest(http.MethodPut, "/tasks/reassign-room", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.ReassignRoom(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Updated successfully")
+func setupTaskHandler(svc *mockTaskService) *handlers.TaskHandler {
+	return handlers.NewTaskHandler(svc)
 }
 
-func TestTaskHandler_ReassignRoom_InvalidJSON(t *testing.T) {
-	svc := &mockTaskService{}
-	h := handlers.NewTaskHandler(svc)
+func setupTaskRouter(h *handlers.TaskHandler) *chi.Mux {
+	r := chi.NewRouter()
+	r.Get("/tasks/{task_id}", h.GetByID)
+	r.Get("/homes/{home_id}/tasks", h.GetTasksByHomeID)
+	r.Delete("/tasks/{task_id}", h.DeleteTask)
+	r.Get("/users/{user_id}/assignments", h.GetAssignmentsForUser)
+	r.Get("/users/{user_id}/assignments/closest", h.GetClosestAssignmentForUser)
+	r.Delete("/assignments/{assignment_id}", h.DeleteAssignment)
+	return r
+}
 
-	req := httptest.NewRequest(http.MethodPut, "/tasks/reassign-room", bytes.NewBufferString("{bad json}"))
-	rr := httptest.NewRecorder()
+func TestTaskHandler_Create(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		mockFunc       func(homeID int, roomID *int, name, description, scheduleType string) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "Success",
+			body: validCreateTaskReq,
+			mockFunc: func(homeID int, roomID *int, name, description, scheduleType string) error {
+				assert.Equal(t, 1, homeID)
+				assert.Equal(t, "Clean Kitchen", name)
+				assert.Equal(t, "Daily cleaning", description)
+				assert.Equal(t, "daily", scheduleType)
+				return nil
+			},
+			expectedStatus: http.StatusCreated,
+			expectedBody:   "Created successfully",
+		},
+		{
+			name:           "Invalid JSON",
+			body:           "{bad json}",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid JSON",
+		},
+		{
+			name: "Service Error",
+			body: validCreateTaskReq,
+			mockFunc: func(homeID int, roomID *int, name, description, scheduleType string) error {
+				return errors.New("service error")
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid data",
+		},
+	}
 
-	h.ReassignRoom(rr, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				CreateTaskFunc: tt.mockFunc,
+			}
 
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid JSON")
+			h := setupTaskHandler(svc)
+
+			var req *http.Request
+			if tt.name == "Invalid JSON" {
+				req = httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewBufferString("{bad json}"))
+			} else {
+				req = makeJSONRequest(http.MethodPost, "/tasks", tt.body)
+			}
+
+			rr := httptest.NewRecorder()
+			h.Create(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_GetByID(t *testing.T) {
+	tests := []struct {
+		name           string
+		taskID         string
+		mockFunc       func(taskID int) (*models.Task, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			taskID: "1",
+			mockFunc: func(taskID int) (*models.Task, error) {
+				require.Equal(t, 1, taskID)
+				return &models.Task{ID: 1, Name: "Clean Kitchen"}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Clean Kitchen",
+		},
+		{
+			name:           "Invalid ID",
+			taskID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid task ID",
+		},
+		{
+			name:   "Service Error",
+			taskID: "1",
+			mockFunc: func(taskID int) (*models.Task, error) {
+				return nil, errors.New("service error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "service error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				GetTaskByIDFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+			r := setupTaskRouter(h)
+
+			req := httptest.NewRequest(http.MethodGet, "/tasks/"+tt.taskID, nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_GetTasksByHomeID(t *testing.T) {
+	tests := []struct {
+		name           string
+		homeID         string
+		mockFunc       func(homeID int) (*[]models.Task, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			homeID: "1",
+			mockFunc: func(homeID int) (*[]models.Task, error) {
+				require.Equal(t, 1, homeID)
+				tasks := []models.Task{
+					{ID: 1, Name: "Clean Kitchen"},
+					{ID: 2, Name: "Vacuum Living Room"},
+				}
+				return &tasks, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Clean Kitchen",
+		},
+		{
+			name:           "Invalid ID",
+			homeID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid home ID",
+		},
+		{
+			name:   "Service Error",
+			homeID: "1",
+			mockFunc: func(homeID int) (*[]models.Task, error) {
+				return nil, errors.New("service error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "service error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				GetTasksByHomeIDFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+			r := setupTaskRouter(h)
+
+			req := httptest.NewRequest(http.MethodGet, "/homes/"+tt.homeID+"/tasks", nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_DeleteTask(t *testing.T) {
+	tests := []struct {
+		name           string
+		taskID         string
+		mockFunc       func(taskID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			taskID: "1",
+			mockFunc: func(taskID int) error {
+				require.Equal(t, 1, taskID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Deleted successfully",
+		},
+		{
+			name:           "Invalid ID",
+			taskID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid task ID",
+		},
+		{
+			name:   "Service Error",
+			taskID: "1",
+			mockFunc: func(taskID int) error {
+				return errors.New("delete failed")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "delete failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				DeleteTaskFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+			r := setupTaskRouter(h)
+
+			req := httptest.NewRequest(http.MethodDelete, "/tasks/"+tt.taskID, nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_AssignUser(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		mockFunc       func(taskID, userID, homeID int, date time.Time) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "Success",
+			body: validAssignUserReq,
+			mockFunc: func(taskID, userID, homeID int, date time.Time) error {
+				assert.Equal(t, 1, taskID)
+				assert.Equal(t, 2, userID)
+				assert.Equal(t, 3, homeID)
+				return nil
+			},
+			expectedStatus: http.StatusCreated,
+			expectedBody:   "Created successfully",
+		},
+		{
+			name:           "Invalid JSON",
+			body:           "{bad json}",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid JSON",
+		},
+		{
+			name: "Service Error",
+			body: validAssignUserReq,
+			mockFunc: func(taskID, userID, homeID int, date time.Time) error {
+				return errors.New("assign failed")
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid data",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				AssignUserFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+
+			var req *http.Request
+			if tt.name == "Invalid JSON" {
+				req = httptest.NewRequest(http.MethodPost, "/tasks/assign", bytes.NewBufferString("{bad json}"))
+			} else {
+				req = makeJSONRequest(http.MethodPost, "/tasks/assign", tt.body)
+			}
+
+			rr := httptest.NewRecorder()
+			h.AssignUser(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_GetAssignmentsForUser(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         string
+		mockFunc       func(userID int) (*[]models.TaskAssignment, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			userID: "123",
+			mockFunc: func(userID int) (*[]models.TaskAssignment, error) {
+				require.Equal(t, 123, userID)
+				assignments := []models.TaskAssignment{
+					{ID: 1, TaskID: 1, UserID: 123},
+					{ID: 2, TaskID: 2, UserID: 123},
+				}
+				return &assignments, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "assignments",
+		},
+		{
+			name:           "Invalid ID",
+			userID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid user ID",
+		},
+		{
+			name:   "Service Error",
+			userID: "123",
+			mockFunc: func(userID int) (*[]models.TaskAssignment, error) {
+				return nil, errors.New("service error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "service error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				GetAssignmentsForUserFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+			r := setupTaskRouter(h)
+
+			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.userID+"/assignments", nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_GetClosestAssignmentForUser(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         string
+		mockFunc       func(userID int) (*models.TaskAssignment, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			userID: "123",
+			mockFunc: func(userID int) (*models.TaskAssignment, error) {
+				require.Equal(t, 123, userID)
+				return &models.TaskAssignment{ID: 1, TaskID: 1, UserID: 123}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "assignment",
+		},
+		{
+			name:           "Invalid ID",
+			userID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid user ID",
+		},
+		{
+			name:   "Service Error",
+			userID: "123",
+			mockFunc: func(userID int) (*models.TaskAssignment, error) {
+				return nil, errors.New("service error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "service error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				GetClosestAssignmentForUserFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+			r := setupTaskRouter(h)
+
+			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.userID+"/assignments/closest", nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_MarkAssignmentCompleted(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		mockFunc       func(assignmentID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "Success",
+			body: models.AssignmentIDRequest{AssignmentID: 1},
+			mockFunc: func(assignmentID int) error {
+				require.Equal(t, 1, assignmentID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Marked successfully",
+		},
+		{
+			name:           "Invalid JSON",
+			body:           "{bad json}",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid JSON",
+		},
+		{
+			name: "Service Error",
+			body: models.AssignmentIDRequest{AssignmentID: 1},
+			mockFunc: func(assignmentID int) error {
+				return errors.New("mark failed")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "mark failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				MarkAssignmentCompletedFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+
+			var req *http.Request
+			if tt.name == "Invalid JSON" {
+				req = httptest.NewRequest(http.MethodPut, "/assignments/mark-completed", bytes.NewBufferString("{bad json}"))
+			} else {
+				req = makeJSONRequest(http.MethodPut, "/assignments/mark-completed", tt.body)
+			}
+
+			rr := httptest.NewRecorder()
+			h.MarkAssignmentCompleted(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_DeleteAssignment(t *testing.T) {
+	tests := []struct {
+		name           string
+		assignmentID   string
+		mockFunc       func(assignmentID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:         "Success",
+			assignmentID: "1",
+			mockFunc: func(assignmentID int) error {
+				require.Equal(t, 1, assignmentID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Deleted successfully",
+		},
+		{
+			name:           "Invalid ID",
+			assignmentID:   "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid assignment ID",
+		},
+		{
+			name:         "Service Error",
+			assignmentID: "1",
+			mockFunc: func(assignmentID int) error {
+				return errors.New("delete failed")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "delete failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				DeleteAssignmentFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+			r := setupTaskRouter(h)
+
+			req := httptest.NewRequest(http.MethodDelete, "/assignments/"+tt.assignmentID, nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestTaskHandler_ReassignRoom(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		mockFunc       func(taskID, roomID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "Success",
+			body: validReassignRoomReq,
+			mockFunc: func(taskID, roomID int) error {
+				assert.Equal(t, 1, taskID)
+				assert.Equal(t, 2, roomID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Updated successfully",
+		},
+		{
+			name:           "Invalid JSON",
+			body:           "{bad json}",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid JSON",
+		},
+		{
+			name: "Service Error",
+			body: validReassignRoomReq,
+			mockFunc: func(taskID, roomID int) error {
+				return errors.New("reassign failed")
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "reassign failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockTaskService{
+				ReassignRoomFunc: tt.mockFunc,
+			}
+
+			h := setupTaskHandler(svc)
+
+			var req *http.Request
+			if tt.name == "Invalid JSON" {
+				req = httptest.NewRequest(http.MethodPut, "/tasks/reassign-room", bytes.NewBufferString("{bad json}"))
+			} else {
+				req = makeJSONRequest(http.MethodPut, "/tasks/reassign-room", tt.body)
+			}
+
+			rr := httptest.NewRecorder()
+			h.ReassignRoom(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }

@@ -25,6 +25,7 @@ func NewRedisClient(addr, password string) *redis.Client {
 		}
 		log.Println("Redis TLS enabled (AWS ElastiCache detected)")
 	}
+	
 	client := redis.NewClient(&redis.Options{
 		Addr:      addr,
 		Password:  password,

@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -14,14 +13,15 @@ import (
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// Mock repository
 type mockHomeRepo struct {
 	IsMemberFunc func(homeID, userID int) (bool, error)
 	IsAdminFunc  func(homeID, userID int) (bool, error)
 }
 
-// unused function to implement HomeRepository
 func (m *mockHomeRepo) Create(h *models.Home) error                              { return nil }
 func (m *mockHomeRepo) FindByID(id int) (*models.Home, error)                    { return nil, nil }
 func (m *mockHomeRepo) FindByInviteCode(inviteCode string) (*models.Home, error) { return nil, nil }
@@ -46,6 +46,7 @@ func (m *mockHomeRepo) IsAdmin(homeID, userID int) (bool, error) {
 	return false, nil
 }
 
+// Mock service
 type mockHomeService struct {
 	CreateHomeFunc           func(name string, userID int) error
 	RegenerateInviteCodeFunc func(homeID int) error
@@ -81,520 +82,504 @@ func (m *mockHomeService) RegenerateInviteCode(homeID int) error {
 	return m.RegenerateInviteCodeFunc(homeID)
 }
 
-func (m *mockHomeService) LeaveHome(homeID, userID int) error { return m.LeaveHomeFunc(homeID, userID) }
+func (m *mockHomeService) LeaveHome(homeID, userID int) error {
+	return m.LeaveHomeFunc(homeID, userID)
+}
+
 func (m *mockHomeService) RemoveMember(homeID, userID, currentUserID int) error {
 	return m.RemoveMemberFunc(homeID, userID, currentUserID)
 }
 
-// POST /homes/create
-func TestHomeHandler_Create_Success(t *testing.T) {
-	svc := &mockHomeService{
-		CreateHomeFunc: func(name string, userID int) error {
-			assert.Equal(t, "Test Home", name)
-			assert.Equal(t, 123, userID)
-			return nil
-		},
-	}
-	h := handlers.NewHomeHandler(svc)
-	reqBody, _ := json.Marshal(models.CreateHomeRequest{Name: "Test Home"})
-	req := httptest.NewRequest(http.MethodPost, "/homes", bytes.NewReader(reqBody))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
+// Test fixtures
+var (
+	validCreateHomeRequest = models.CreateHomeRequest{Name: "Test Home"}
+	validJoinRequest       = models.JoinRequest{Code: "TESTCODE"}
+	validLeaveRequest      = models.LeaveRequest{HomeID: "1"}
+	validRemoveMemberReq   = models.RemoveMemberRequest{HomeID: "1", UserID: "2"}
+)
 
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusCreated, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Created successfully")
+func setupHomeHandler(svc *mockHomeService) *handlers.HomeHandler {
+	return handlers.NewHomeHandler(svc)
 }
 
-func TestHomeHandler_Create_InvalidJSON(t *testing.T) {
-	svc := &mockHomeService{
-		CreateHomeFunc: func(name string, userID int) error {
-			return nil
+func TestHomeHandler_Create(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		userID         int
+		mockFunc       func(name string, userID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			body:   validCreateHomeRequest,
+			userID: 123,
+			mockFunc: func(name string, userID int) error {
+				assert.Equal(t, "Test Home", name)
+				assert.Equal(t, 123, userID)
+				return nil
+			},
+			expectedStatus: http.StatusCreated,
+			expectedBody:   "Created successfully",
+		},
+		{
+			name:           "Invalid JSON",
+			body:           "{bad json}",
+			userID:         123,
+			mockFunc:       func(name string, userID int) error { return nil },
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid JSON",
+		},
+		{
+			name:           "Unauthorized",
+			body:           validCreateHomeRequest,
+			userID:         0,
+			mockFunc:       nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "Unauthorized",
 		},
 	}
 
-	h := handlers.NewHomeHandler(svc)
-	req := httptest.NewRequest(http.MethodPost, "/homes", bytes.NewBufferString("{bad json}"))
-	rr := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				CreateHomeFunc: tt.mockFunc,
+			}
 
-	h.Create(rr, req)
+			h := setupHomeHandler(svc)
 
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid JSON")
+			var req *http.Request
+			if tt.name == "Invalid JSON" {
+				req = httptest.NewRequest(http.MethodPost, "/homes", bytes.NewBufferString("{bad json}"))
+			} else {
+				req = makeJSONRequest(http.MethodPost, "/homes", tt.body)
+			}
+
+			if tt.userID != 0 {
+				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			}
+
+			rr := httptest.NewRecorder()
+			h.Create(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-func TestHomeHandler_Create_Unauthorized(t *testing.T) {
-	svc := &mockHomeService{}
-	h := handlers.NewHomeHandler(svc)
+func TestHomeHandler_Join(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		userID         int
+		mockFunc       func(code string, userID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			body:   validJoinRequest,
+			userID: 123,
+			mockFunc: func(code string, userID int) error {
+				assert.Equal(t, "TESTCODE", code)
+				assert.Equal(t, 123, userID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Joined successfully",
+		},
+		{
+			name:           "Invalid JSON",
+			body:           "{bad Json}",
+			userID:         123,
+			mockFunc:       func(code string, userID int) error { return nil },
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid JSON",
+		},
+		{
+			name:           "Unauthorized",
+			body:           validJoinRequest,
+			userID:         0,
+			mockFunc:       nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "Unauthorized",
+		},
+	}
 
-	reqBody, _ := json.Marshal(models.CreateHomeRequest{Name: "Test Home"})
-	req := httptest.NewRequest(http.MethodPost, "/homes", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				JoinHomeByCodeFunc: tt.mockFunc,
+			}
 
-	h.Create(rr, req)
+			h := setupHomeHandler(svc)
 
-	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Unauthorized")
+			var req *http.Request
+			if tt.name == "Invalid JSON" {
+				req = httptest.NewRequest(http.MethodPost, "/join", bytes.NewBufferString("{bad Json}"))
+			} else {
+				req = makeJSONRequest(http.MethodPost, "/join", tt.body)
+			}
 
+			if tt.userID != 0 {
+				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			}
+
+			rr := httptest.NewRecorder()
+			h.Join(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-// POST /homes/join
-func TestHomeHandler_Join_Success(t *testing.T) {
-	svc := &mockHomeService{
-		JoinHomeByCodeFunc: func(code string, userID int) error {
-			assert.Equal(t, "TESTCODE", code)
-			assert.Equal(t, 123, userID)
-			return nil
+func TestHomeHandler_GetUserHome(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         int
+		mockFunc       func(userID int) (*models.Home, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			userID: 123,
+			mockFunc: func(userID int) (*models.Home, error) {
+				require.Equal(t, 123, userID)
+				return &models.Home{ID: 1, Name: "TestHome"}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "TestHome",
+		},
+		{
+			name:   "Error",
+			userID: 123,
+			mockFunc: func(userID int) (*models.Home, error) {
+				return nil, errors.New("test error")
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "",
+		},
+		{
+			name:   "Not Found",
+			userID: 123,
+			mockFunc: func(userID int) (*models.Home, error) {
+				return nil, nil
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   "Home not found",
+		},
+		{
+			name:           "Unauthorized",
+			userID:         0,
+			mockFunc:       nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "Unauthorized",
 		},
 	}
 
-	h := handlers.NewHomeHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				GetUserHomeFunc: tt.mockFunc,
+			}
 
-	reqBody, _ := json.Marshal(models.JoinRequest{
-		Code: "TESTCODE",
-	})
+			h := setupHomeHandler(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/join", bytes.NewBuffer(reqBody))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-	h.Join(rr, req)
+			req := httptest.NewRequest(http.MethodGet, "/my", nil)
+			if tt.userID != 0 {
+				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			}
 
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Joined successfully")
+			rr := httptest.NewRecorder()
+			h.GetUserHome(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-func TestHomeHandler_Join_InvalidJSON(t *testing.T) {
-	svc := &mockHomeService{
-		JoinHomeByCodeFunc: func(code string, userID int) error { return nil },
+func TestHomeHandler_GetByID(t *testing.T) {
+	tests := []struct {
+		name           string
+		homeID         string
+		userID         int
+		isMember       bool
+		mockFunc       func(homeID int) (*models.Home, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:     "Success",
+			homeID:   "1",
+			userID:   123,
+			isMember: true,
+			mockFunc: func(homeID int) (*models.Home, error) {
+				require.Equal(t, 1, homeID)
+				return &models.Home{ID: 1, Name: "TestHome"}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "TestHome",
+		},
+		{
+			name:     "Error",
+			homeID:   "1",
+			userID:   123,
+			isMember: true,
+			mockFunc: func(homeID int) (*models.Home, error) {
+				return nil, errors.New("test error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "",
+		},
+		{
+			name:     "Not Found",
+			homeID:   "1",
+			userID:   123,
+			isMember: true,
+			mockFunc: func(homeID int) (*models.Home, error) {
+				return nil, nil
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   "Home not found",
+		},
+		{
+			name:     "Unauthorized - Not Member",
+			homeID:   "1",
+			userID:   123,
+			isMember: false,
+			mockFunc: func(homeID int) (*models.Home, error) {
+				return &models.Home{ID: 1, Name: "TestHome"}, nil
+			},
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "you are not a member",
+		},
 	}
 
-	h := handlers.NewHomeHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				GetHomeByIDFunc: tt.mockFunc,
+			}
 
-	req := httptest.NewRequest(http.MethodPost, "/join", bytes.NewBufferString("{bad Json}"))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
+			h := setupHomeHandler(svc)
 
-	h.Join(rr, req)
+			mockRepo := &mockHomeRepo{
+				IsMemberFunc: func(homeID, userID int) (bool, error) {
+					return tt.isMember, nil
+				},
+			}
 
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid JSON")
+			r := chi.NewRouter()
+			r.With(middleware.RequireMember(mockRepo)).Get("/homes/{home_id}", h.GetByID)
+
+			req := httptest.NewRequest(http.MethodGet, "/homes/"+tt.homeID, nil)
+			req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-func TestHomeHandler_Join_Unauthorized(t *testing.T) {
-	svc := &mockHomeService{}
-	h := handlers.NewHomeHandler(svc)
+func TestHomeHandler_Delete(t *testing.T) {
+	tests := []struct {
+		name           string
+		homeID         string
+		userID         int
+		isAdmin        bool
+		isMember       bool
+		mockFunc       func(homeID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:     "Success",
+			homeID:   "1",
+			userID:   123,
+			isAdmin:  true,
+			isMember: true,
+			mockFunc: func(homeID int) error {
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Deleted successfully",
+		},
+		{
+			name:     "Error",
+			homeID:   "1",
+			userID:   123,
+			isAdmin:  true,
+			isMember: true,
+			mockFunc: func(homeID int) error {
+				return errors.New("delete failed")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "delete failed",
+		},
+		{
+			name:     "Unauthorized - Not Admin",
+			homeID:   "1",
+			userID:   123,
+			isAdmin:  false,
+			isMember: false,
+			mockFunc: func(homeID int) error { return nil },
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "you are not a",
+		},
+	}
 
-	reqBody, _ := json.Marshal(models.JoinRequest{
-		Code: "TESTCODE",
-	})
-	req := httptest.NewRequest(http.MethodPost, "/join", bytes.NewBuffer(reqBody))
-	rr := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				DeleteHomeFunc: tt.mockFunc,
+			}
 
-	h.Join(rr, req)
+			h := setupHomeHandler(svc)
 
-	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Unauthorized")
+			mockRepo := &mockHomeRepo{
+				IsAdminFunc:  func(homeID, userID int) (bool, error) { return tt.isAdmin, nil },
+				IsMemberFunc: func(homeID, userID int) (bool, error) { return tt.isMember, nil },
+			}
+
+			r := chi.NewRouter()
+			r.With(middleware.RequireAdmin(mockRepo)).Delete("/homes/{home_id}", h.Delete)
+
+			req := httptest.NewRequest(http.MethodDelete, "/homes/"+tt.homeID, nil)
+			req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-// GET /homes/my
-func TestHomeHandler_My_Success(t *testing.T) {
-	svc := &mockHomeService{
-		GetUserHomeFunc: func(userID int) (*models.Home, error) {
-			assert.Equal(t, 123, userID)
-			return &models.Home{ID: 1, Name: "TestHome"}, nil
+func TestHomeHandler_Leave(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		userID         int
+		mockFunc       func(homeID, userID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			body:   validLeaveRequest,
+			userID: 123,
+			mockFunc: func(homeID, userID int) error {
+				assert.Equal(t, 1, homeID)
+				assert.Equal(t, 123, userID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Leaved successfully",
+		},
+		{
+			name:   "Error",
+			body:   validLeaveRequest,
+			userID: 123,
+			mockFunc: func(homeID, userID int) error {
+				return errors.New("leave failed")
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "leave failed",
+		},
+		{
+			name:           "Unauthorized",
+			body:           validLeaveRequest,
+			userID:         0,
+			mockFunc:       nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "Unauthorized",
 		},
 	}
 
-	h := handlers.NewHomeHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				LeaveHomeFunc: tt.mockFunc,
+			}
 
-	req := httptest.NewRequest(http.MethodGet, "/my", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
+			h := setupHomeHandler(svc)
 
-	h.GetUserHome(rr, req)
+			req := makeJSONRequest(http.MethodPost, "/homes/leave", tt.body)
+			if tt.userID != 0 {
+				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			}
 
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "TestHome")
+			rr := httptest.NewRecorder()
+			h.Leave(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-func TestHomeHandler_My_Error(t *testing.T) {
-	svc := &mockHomeService{
-		GetUserHomeFunc: func(userID int) (*models.Home, error) {
-			return nil, errors.New("test error")
+func TestHomeHandler_RemoveMember(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		userID         int
+		mockFunc       func(homeID, userID, currentUserID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			body:   validRemoveMemberReq,
+			userID: 123,
+			mockFunc: func(homeID, userID, currentUserID int) error {
+				assert.Equal(t, 1, homeID)
+				assert.Equal(t, 2, userID)
+				assert.Equal(t, 123, currentUserID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "User removed successfully",
+		},
+		{
+			name:   "Error",
+			body:   validRemoveMemberReq,
+			userID: 123,
+			mockFunc: func(homeID, userID, currentUserID int) error {
+				return errors.New("remove failed")
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "remove failed",
+		},
+		{
+			name:           "Unauthorized",
+			body:           validRemoveMemberReq,
+			userID:         0,
+			mockFunc:       nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "Unauthorized",
 		},
 	}
 
-	h := handlers.NewHomeHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				RemoveMemberFunc: tt.mockFunc,
+			}
 
-	req := httptest.NewRequest(http.MethodGet, "/my", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
+			h := setupHomeHandler(svc)
 
-	h.GetUserHome(rr, req)
+			req := makeJSONRequest(http.MethodPost, "/homes/remove-member", tt.body)
+			if tt.userID != 0 {
+				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			}
 
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-}
+			rr := httptest.NewRecorder()
+			h.RemoveMember(rr, req)
 
-func TestHomeHandler_My_NotFound(t *testing.T) {
-	svc := &mockHomeService{
-		GetUserHomeFunc: func(userID int) (*models.Home, error) {
-			return nil, nil
-		},
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
 	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	req := httptest.NewRequest(http.MethodGet, "/my", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	h.GetUserHome(rr, req)
-
-	assert.Equal(t, http.StatusNotFound, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Home not found")
-}
-
-func TestHomeHandler_My_Unauthorized(t *testing.T) {
-	svc := &mockHomeService{}
-
-	h := handlers.NewHomeHandler(svc)
-
-	req := httptest.NewRequest(http.MethodGet, "/my", nil)
-
-	rr := httptest.NewRecorder()
-
-	h.GetUserHome(rr, req)
-
-	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Unauthorized")
-}
-
-// GET /homes/{id}
-func TestHomeHandler_Get_Success(t *testing.T) {
-	svc := &mockHomeService{
-		GetHomeByIDFunc: func(homeID int) (*models.Home, error) {
-			assert.Equal(t, 1, homeID)
-			return &models.Home{ID: 1, Name: "TestHome"}, nil
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	mockRepo := &mockHomeRepo{
-		IsMemberFunc: func(homeID, userID int) (bool, error) {
-			assert.Equal(t, 1, homeID)
-			assert.Equal(t, 123, userID)
-			return true, nil
-		},
-	}
-
-	r := chi.NewRouter()
-	r.With(middleware.RequireMember(mockRepo)).Get("/homes/{home_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/1", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "TestHome")
-}
-
-func TestHomeHandler_Get_Error(t *testing.T) {
-	svc := &mockHomeService{
-		GetHomeByIDFunc: func(homeID int) (*models.Home, error) {
-			assert.Equal(t, 1, homeID)
-			return nil, errors.New("test error")
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	mockRepo := &mockHomeRepo{
-		IsMemberFunc: func(homeID, userID int) (bool, error) {
-			assert.Equal(t, 1, homeID)
-			assert.Equal(t, 123, userID)
-			return true, nil
-		},
-	}
-
-	r := chi.NewRouter()
-	r.With(middleware.RequireMember(mockRepo)).Get("/homes/{home_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/1", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-
-}
-
-func TestHomeHandler_Get_NotFound(t *testing.T) {
-	svc := &mockHomeService{
-		GetHomeByIDFunc: func(homeID int) (*models.Home, error) {
-			assert.Equal(t, 1, homeID)
-			return nil, nil
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	mockRepo := &mockHomeRepo{
-		IsMemberFunc: func(homeID, userID int) (bool, error) {
-			assert.Equal(t, 1, homeID)
-			assert.Equal(t, 123, userID)
-			return true, nil
-		},
-	}
-
-	r := chi.NewRouter()
-	r.With(middleware.RequireMember(mockRepo)).Get("/homes/{home_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/1", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusNotFound, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Home not found")
-}
-
-func TestHomeHandler_Get_Unauthorized(t *testing.T) {
-	svc := &mockHomeService{
-		GetHomeByIDFunc: func(homeID int) (*models.Home, error) {
-			return &models.Home{ID: homeID, Name: "TestHome"}, nil
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	mockRepo := &mockHomeRepo{
-		IsMemberFunc: func(homeID, userID int) (bool, error) {
-			return false, nil
-		},
-	}
-
-	r := chi.NewRouter()
-	r.With(middleware.RequireMember(mockRepo)).Get("/homes/{home_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/homes/1", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Contains(t, rr.Body.String(), "you are not a member")
-}
-
-// DELETE /homes/{home_id}
-func TestHomeHandler_Delete_Success(t *testing.T) {
-	svc := &mockHomeService{
-		DeleteHomeFunc: func(homeID int) error {
-			return nil
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	mockRepo := &mockHomeRepo{
-		IsAdminFunc: func(homeID, userID int) (bool, error) {
-			assert.Equal(t, 1, homeID)
-			assert.Equal(t, 123, userID)
-			return true, nil
-		},
-		IsMemberFunc: func(homeID, userID int) (bool, error) {
-			assert.Equal(t, 1, homeID)
-			assert.Equal(t, 123, userID)
-			return true, nil
-		},
-	}
-
-	r := chi.NewRouter()
-	r.With(middleware.RequireAdmin(mockRepo)).Delete("/homes/{home_id}", h.Delete)
-
-	req := httptest.NewRequest(http.MethodDelete, "/homes/1", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Deleted successfully")
-
-}
-
-func TestHomeHandler_Delete_Error(t *testing.T) {
-	svc := &mockHomeService{
-		DeleteHomeFunc: func(homeID int) error {
-			return errors.New("delete failed")
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	mockRepo := &mockHomeRepo{
-		IsAdminFunc:  func(homeID, userID int) (bool, error) { return true, nil },
-		IsMemberFunc: func(homeID, userID int) (bool, error) { return true, nil },
-	}
-
-	r := chi.NewRouter()
-	r.With(middleware.RequireAdmin(mockRepo)).Delete("/homes/{home_id}", h.Delete)
-
-	req := httptest.NewRequest(http.MethodDelete, "/homes/1", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "delete failed")
-}
-
-func TestHomeHandler_Delete_Unauthorized(t *testing.T) {
-	svc := &mockHomeService{
-		DeleteHomeFunc: func(homeID int) error { return nil },
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	mockRepo := &mockHomeRepo{
-		IsAdminFunc: func(homeID, userID int) (bool, error) {
-			return false, nil
-		},
-	}
-
-	r := chi.NewRouter()
-	r.With(middleware.RequireAdmin(mockRepo)).Delete("/homes/{home_id}", h.Delete)
-
-	req := httptest.NewRequest(http.MethodDelete, "/homes/1", nil)
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Contains(t, rr.Body.String(), "you are not a")
-}
-
-// POST /homes/leave
-func TestHomeHandler_Leave_Success(t *testing.T) {
-	svc := &mockHomeService{
-		LeaveHomeFunc: func(homeID, userID int) error {
-			assert.Equal(t, 1, homeID)
-			assert.Equal(t, 123, userID)
-			return nil
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	reqBody, _ := json.Marshal(models.LeaveRequest{HomeID: "1"})
-	req := httptest.NewRequest(http.MethodPost, "/homes/leave", bytes.NewBuffer(reqBody))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	h.Leave(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Leaved successfully")
-}
-
-func TestHomeHandler_Leave_Error(t *testing.T) {
-	svc := &mockHomeService{
-		LeaveHomeFunc: func(homeID, userID int) error {
-			return errors.New("leave failed")
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	reqBody, _ := json.Marshal(models.LeaveRequest{HomeID: "1"})
-	req := httptest.NewRequest(http.MethodPost, "/homes/leave", bytes.NewBuffer(reqBody))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	h.Leave(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "leave failed")
-}
-
-func TestHomeHandler_Leave_Unauthorized(t *testing.T) {
-	svc := &mockHomeService{}
-
-	h := handlers.NewHomeHandler(svc)
-
-	reqBody, _ := json.Marshal(models.LeaveRequest{HomeID: "1"})
-	req := httptest.NewRequest(http.MethodPost, "/homes/leave", bytes.NewBuffer(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.Leave(rr, req)
-
-	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Unauthorized")
-}
-
-// POST /homes/remove-member
-func TestHomeHandler_RemoveMember_Success(t *testing.T) {
-	svc := &mockHomeService{
-		RemoveMemberFunc: func(homeID, userID, currentUserID int) error {
-			assert.Equal(t, 1, homeID)
-			assert.Equal(t, 2, userID)
-			assert.Equal(t, 123, currentUserID)
-			return nil
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	reqBody, _ := json.Marshal(models.RemoveMemberRequest{HomeID: "1", UserID: "2"})
-	req := httptest.NewRequest(http.MethodPost, "/homes/remove-member", bytes.NewBuffer(reqBody))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	h.RemoveMember(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "User removed successfully")
-}
-
-func TestHomeHandler_RemoveMember_Error(t *testing.T) {
-	svc := &mockHomeService{
-		RemoveMemberFunc: func(homeID, userID, currentUserID int) error {
-			return errors.New("remove failed")
-		},
-	}
-
-	h := handlers.NewHomeHandler(svc)
-
-	reqBody, _ := json.Marshal(models.RemoveMemberRequest{HomeID: "1", UserID: "2"})
-	req := httptest.NewRequest(http.MethodPost, "/homes/remove-member", bytes.NewBuffer(reqBody))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	h.RemoveMember(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "remove failed")
-}
-
-func TestHomeHandler_RemoveMember_Unauthorized(t *testing.T) {
-	svc := &mockHomeService{}
-
-	h := handlers.NewHomeHandler(svc)
-
-	reqBody, _ := json.Marshal(models.RemoveMemberRequest{HomeID: "1", UserID: "2"})
-	req := httptest.NewRequest(http.MethodPost, "/homes/remove-member", bytes.NewBuffer(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.RemoveMember(rr, req)
-
-	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Unauthorized")
 }

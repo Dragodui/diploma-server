@@ -14,9 +14,11 @@ import (
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/datatypes"
 )
 
+// Mock service
 type mockBillService struct {
 	CreateBillFunc    func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
 	GetBillByIDFunc   func(billID int) (*models.Bill, error)
@@ -52,279 +54,272 @@ func (m *mockBillService) MarkBillPayed(billID int) error {
 	return nil
 }
 
-// POST /bills/create
-func TestBillHandler_Create_Success(t *testing.T) {
-	startTime := time.Now()
-	endTime := startTime.Add(24 * time.Hour)
-
-	svc := &mockBillService{
-		CreateBillFunc: func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
-			assert.Equal(t, "electricity", billType)
-			assert.Equal(t, 100.50, totalAmount)
-			assert.Equal(t, 1, homeID)
-			assert.Equal(t, 123, userID)
-			return nil
-		},
-	}
-
-	h := handlers.NewBillHandler(svc)
-
-	testJson, _ := json.Marshal([]byte("{" + "test ocr data" + "}"))
-	reqBody, _ := json.Marshal(models.CreateBillRequest{
+// Test fixtures
+var (
+	testStartTime       = time.Now()
+	testEndTime         = testStartTime.Add(24 * time.Hour)
+	testOCRData, _      = json.Marshal([]byte("{" + "test ocr data" + "}"))
+	validBillRequest    = models.CreateBillRequest{
 		BillType:    "electricity",
 		TotalAmount: 100.50,
-		Start:       startTime,
-		End:         endTime,
-		OCRData:     testJson,
+		Start:       testStartTime,
+		End:         testEndTime,
+		OCRData:     testOCRData,
 		HomeID:      1,
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/bills", bytes.NewReader(reqBody))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusCreated, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Created successfully")
-}
-
-func TestBillHandler_Create_InvalidJSON(t *testing.T) {
-	svc := &mockBillService{}
-	h := handlers.NewBillHandler(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/bills", bytes.NewBufferString("{bad json}"))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid JSON")
-}
-
-func TestBillHandler_Create_Unauthorized(t *testing.T) {
-	svc := &mockBillService{}
-	h := handlers.NewBillHandler(svc)
-
-	reqBody, _ := json.Marshal(models.CreateBillRequest{
-		BillType:    "electricity",
-		TotalAmount: 100.50,
-		HomeID:      1,
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/bills", bytes.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Unauthorized")
-}
-
-func TestBillHandler_Create_ServiceError(t *testing.T) {
-	svc := &mockBillService{
-		CreateBillFunc: func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
-			return errors.New("service error")
-		},
 	}
+)
 
-	h := handlers.NewBillHandler(svc)
-
-	reqBody, _ := json.Marshal(models.CreateBillRequest{
-		BillType:    "electricity",
-		TotalAmount: 100.50,
-		Start:       time.Now(),
-		End:         time.Now().Add(24 * time.Hour),
-		HomeID:      1,
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/bills", bytes.NewReader(reqBody))
-	req = req.WithContext(utils.WithUserID(req.Context(), 123))
-	rr := httptest.NewRecorder()
-
-	h.Create(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Invalid data")
+func setupBillHandler(svc *mockBillService) *handlers.BillHandler {
+	return handlers.NewBillHandler(svc)
 }
 
-// GET /bills/{bill_id}
-func TestBillHandler_GetByID_Success(t *testing.T) {
-	svc := &mockBillService{
-		GetBillByIDFunc: func(billID int) (*models.Bill, error) {
-			assert.Equal(t, 1, billID)
-			return &models.Bill{ID: 1, Type: "electricity", TotalAmount: 100.50}, nil
-		},
-	}
-
-	h := handlers.NewBillHandler(svc)
-
+func setupBillRouter(h *handlers.BillHandler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/bills/{bill_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/bills/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "electricity")
-}
-
-func TestBillHandler_GetByID_InvalidID(t *testing.T) {
-	svc := &mockBillService{}
-	h := handlers.NewBillHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/bills/{bill_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/bills/invalid", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid bill ID")
-}
-
-func TestBillHandler_GetByID_ServiceError(t *testing.T) {
-	svc := &mockBillService{
-		GetBillByIDFunc: func(billID int) (*models.Bill, error) {
-			return nil, errors.New("service error")
-		},
-	}
-
-	h := handlers.NewBillHandler(svc)
-
-	r := chi.NewRouter()
-	r.Get("/bills/{bill_id}", h.GetByID)
-
-	req := httptest.NewRequest(http.MethodGet, "/bills/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "service error")
-}
-
-// DELETE /bills/{bill_id}
-func TestBillHandler_Delete_Success(t *testing.T) {
-	svc := &mockBillService{
-		DeleteFunc: func(billID int) error {
-			assert.Equal(t, 1, billID)
-			return nil
-		},
-	}
-
-	h := handlers.NewBillHandler(svc)
-
-	r := chi.NewRouter()
 	r.Delete("/bills/{bill_id}", h.Delete)
-
-	req := httptest.NewRequest(http.MethodDelete, "/bills/1", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Deleted successfully")
+	r.Put("/bills/{bill_id}/mark-payed", h.MarkPayed)
+	return r
 }
 
-func TestBillHandler_Delete_InvalidID(t *testing.T) {
-	svc := &mockBillService{}
-	h := handlers.NewBillHandler(svc)
-
-	r := chi.NewRouter()
-	r.Delete("/bills/{bill_id}", h.Delete)
-
-	req := httptest.NewRequest(http.MethodDelete, "/bills/invalid", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid bill ID")
-}
-
-func TestBillHandler_Delete_ServiceError(t *testing.T) {
-	svc := &mockBillService{
-		DeleteFunc: func(billID int) error {
-			return errors.New("delete failed")
+func TestBillHandler_Create(t *testing.T) {
+	tests := []struct {
+		name           string
+		body           interface{}
+		userID         int
+		mockFunc       func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			body:   validBillRequest,
+			userID: 123,
+			mockFunc: func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+				assert.Equal(t, "electricity", billType)
+				assert.Equal(t, 100.50, totalAmount)
+				assert.Equal(t, 1, homeID)
+				assert.Equal(t, 123, userID)
+				return nil
+			},
+			expectedStatus: http.StatusCreated,
+			expectedBody:   "Created successfully",
+		},
+		{
+			name:           "Invalid JSON",
+			body:           "{bad json}",
+			userID:         123,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid JSON",
+		},
+		{
+			name:           "Unauthorized",
+			body:           validBillRequest,
+			userID:         0,
+			mockFunc:       nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "Unauthorized",
+		},
+		{
+			name:   "Service Error",
+			body:   validBillRequest,
+			userID: 123,
+			mockFunc: func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+				return errors.New("service error")
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid data",
 		},
 	}
 
-	h := handlers.NewBillHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockBillService{
+				CreateBillFunc: tt.mockFunc,
+			}
 
-	r := chi.NewRouter()
-	r.Delete("/bills/{bill_id}", h.Delete)
+			h := setupBillHandler(svc)
 
-	req := httptest.NewRequest(http.MethodDelete, "/bills/1", nil)
-	rr := httptest.NewRecorder()
+			var req *http.Request
+			if tt.name == "Invalid JSON" {
+				req = httptest.NewRequest(http.MethodPost, "/bills", bytes.NewBufferString("{bad json}"))
+			} else {
+				req = makeJSONRequest(http.MethodPost, "/bills", tt.body)
+			}
 
-	r.ServeHTTP(rr, req)
+			if tt.userID != 0 {
+				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			}
 
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "delete failed")
+			rr := httptest.NewRecorder()
+			h.Create(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-// PUT /bills/{bill_id}/mark-payed
-func TestBillHandler_MarkPayed_Success(t *testing.T) {
-	svc := &mockBillService{
-		MarkBillPayedFunc: func(billID int) error {
-			assert.Equal(t, 1, billID)
-			return nil
+func TestBillHandler_GetByID(t *testing.T) {
+	tests := []struct {
+		name           string
+		billID         string
+		mockFunc       func(billID int) (*models.Bill, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			billID: "1",
+			mockFunc: func(billID int) (*models.Bill, error) {
+				require.Equal(t, 1, billID)
+				return &models.Bill{ID: 1, Type: "electricity", TotalAmount: 100.50}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "electricity",
+		},
+		{
+			name:           "Invalid ID",
+			billID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid bill ID",
+		},
+		{
+			name:   "Service Error",
+			billID: "1",
+			mockFunc: func(billID int) (*models.Bill, error) {
+				return nil, errors.New("service error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "service error",
 		},
 	}
 
-	h := handlers.NewBillHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockBillService{
+				GetBillByIDFunc: tt.mockFunc,
+			}
 
-	r := chi.NewRouter()
-	r.Put("/bills/{bill_id}/mark-payed", h.MarkPayed)
+			h := setupBillHandler(svc)
+			r := setupBillRouter(h)
 
-	req := httptest.NewRequest(http.MethodPut, "/bills/1/mark-payed", nil)
-	rr := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/bills/"+tt.billID, nil)
+			rr := httptest.NewRecorder()
 
-	r.ServeHTTP(rr, req)
+			r.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Updated successfully")
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
 
-func TestBillHandler_MarkPayed_InvalidID(t *testing.T) {
-	svc := &mockBillService{}
-	h := handlers.NewBillHandler(svc)
-
-	r := chi.NewRouter()
-	r.Put("/bills/{bill_id}/mark-payed", h.MarkPayed)
-
-	req := httptest.NewRequest(http.MethodPut, "/bills/invalid/mark-payed", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	assert.Contains(t, rr.Body.String(), "invalid bill ID")
-}
-
-func TestBillHandler_MarkPayed_ServiceError(t *testing.T) {
-	svc := &mockBillService{
-		MarkBillPayedFunc: func(billID int) error {
-			return errors.New("update failed")
+func TestBillHandler_Delete(t *testing.T) {
+	tests := []struct {
+		name           string
+		billID         string
+		mockFunc       func(billID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			billID: "1",
+			mockFunc: func(billID int) error {
+				require.Equal(t, 1, billID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Deleted successfully",
+		},
+		{
+			name:           "Invalid ID",
+			billID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid bill ID",
+		},
+		{
+			name:   "Service Error",
+			billID: "1",
+			mockFunc: func(billID int) error {
+				return errors.New("delete failed")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "delete failed",
 		},
 	}
 
-	h := handlers.NewBillHandler(svc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockBillService{
+				DeleteFunc: tt.mockFunc,
+			}
 
-	r := chi.NewRouter()
-	r.Put("/bills/{bill_id}/mark-payed", h.MarkPayed)
+			h := setupBillHandler(svc)
+			r := setupBillRouter(h)
 
-	req := httptest.NewRequest(http.MethodPut, "/bills/1/mark-payed", nil)
-	rr := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodDelete, "/bills/"+tt.billID, nil)
+			rr := httptest.NewRecorder()
 
-	r.ServeHTTP(rr, req)
+			r.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "update failed")
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestBillHandler_MarkPayed(t *testing.T) {
+	tests := []struct {
+		name           string
+		billID         string
+		mockFunc       func(billID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			billID: "1",
+			mockFunc: func(billID int) error {
+				require.Equal(t, 1, billID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Updated successfully",
+		},
+		{
+			name:           "Invalid ID",
+			billID:         "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid bill ID",
+		},
+		{
+			name:   "Service Error",
+			billID: "1",
+			mockFunc: func(billID int) error {
+				return errors.New("update failed")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "update failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockBillService{
+				MarkBillPayedFunc: tt.mockFunc,
+			}
+
+			h := setupBillHandler(svc)
+			r := setupBillRouter(h)
+
+			req := httptest.NewRequest(http.MethodPut, "/bills/"+tt.billID+"/mark-payed", nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
 }
