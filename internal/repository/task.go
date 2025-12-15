@@ -49,7 +49,7 @@ func (r *taskRepo) FindByID(id int) (*models.Task, error) {
 
 func (r *taskRepo) FindByHomeID(homeID int) (*[]models.Task, error) {
 	var tasks []models.Task
-	if err := r.db.Preload("Room").Where("home_id=?", homeID).Find(&tasks).Error; err != nil {
+	if err := r.db.Preload("Room").Preload("Assignments").Preload("Assignments.User").Where("home_id=?", homeID).Find(&tasks).Error; err != nil {
 		return nil, err
 	}
 
@@ -137,7 +137,7 @@ func (r *taskRepo) MarkCompleted(assignmentID int) error {
 	}
 
 	now := time.Now()
-	assignment.Status = "Completed"
+	assignment.Status = "completed"
 	assignment.CompleteDate = &now
 
 	if err := r.db.Save(&assignment).Error; err != nil {
