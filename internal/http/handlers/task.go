@@ -261,6 +261,48 @@ func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Req
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Marked successfully"})
 }
 
+// MarkTaskCompleted godoc
+// @Summary      Mark task as completed for current user
+// @Description  Mark a task as completed for the current user (auto-assigns if not assigned)
+// @Tags         task
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        task_id path int true "Task ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks/{task_id}/complete [patch]
+func (h *TaskHandler) MarkTaskCompleted(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	taskIDStr := chi.URLParam(r, "task_id")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.MarkTaskCompletedForUser(taskID, userID, homeID); err != nil {
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Task completed successfully"})
+}
+
 // DeleteAssignment godoc
 // @Summary      Delete assignment
 // @Description  Delete an assignment by ID

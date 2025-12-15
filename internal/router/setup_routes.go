@@ -69,13 +69,14 @@ func SetupRoutes(
 			r.Post("/reset", authHandler.ResetPassword)
 		})
 
-		r.Post("/user", userHandler.GetMe)
-		r.Patch("/user", userHandler.Update)
-
 		// Protected routes
 		r.Group(func(r chi.Router) {
 			// JWT authentication for all following routes
 			r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
+
+			// User routes
+			r.Post("/user", userHandler.GetMe)
+			r.Patch("/user", userHandler.Update)
 
 			// upload images
 			r.Post("/upload", imageHandler.UploadImage)
@@ -124,6 +125,7 @@ func SetupRoutes(
 						r.With(middleware.RequireMember(homeRepo)).Post("/{task_id}/assign", taskHandler.AssignUser)
 						r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/reassign-room", taskHandler.ReassignRoom)
 						r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-completed", taskHandler.MarkAssignmentCompleted)
+						r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/complete", taskHandler.MarkTaskCompleted)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{task_id}/assignments/{assignment_id}", taskHandler.DeleteAssignment)
 					})
 

@@ -19,6 +19,7 @@ type TaskRepository interface {
 	AssignUser(taskID, userID int, date time.Time) error
 	FindAssignmentsForUser(userID int) (*[]models.TaskAssignment, error)
 	FindClosestAssignmentForUser(userID int) (*models.TaskAssignment, error)
+	FindAssignmentByTaskAndUser(taskID, userID int) (*models.TaskAssignment, error)
 	MarkCompleted(assignmentID int) error
 	FindUserByAssignmentID(assignmentID int) (*models.User, error)
 	DeleteAssignment(assignmentID int) error
@@ -94,6 +95,19 @@ func (r *taskRepo) FindClosestAssignmentForUser(userID int) (*models.TaskAssignm
 	var assignment models.TaskAssignment
 
 	if err := r.db.Where("user_id=?", userID).Order("assigned_date desc").First(&assignment).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &assignment, nil
+}
+
+func (r *taskRepo) FindAssignmentByTaskAndUser(taskID, userID int) (*models.TaskAssignment, error) {
+	var assignment models.TaskAssignment
+
+	if err := r.db.Where("task_id = ? AND user_id = ?", taskID, userID).First(&assignment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
