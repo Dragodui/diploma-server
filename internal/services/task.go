@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -203,6 +204,8 @@ func (s *TaskService) GetClosestAssignmentForUser(userID int) (*models.TaskAssig
 		return cached, nil
 	}
 	assignment, err := s.repo.FindClosestAssignmentForUser(userID)
+	ass_str, _ := json.Marshal(assignment)
+	logger.Info.Printf(string(ass_str))
 	if err != nil {
 		return nil, err
 	}

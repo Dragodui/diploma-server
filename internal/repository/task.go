@@ -94,7 +94,7 @@ func (r *taskRepo) FindAssignmentsForUser(userID int) (*[]models.TaskAssignment,
 func (r *taskRepo) FindClosestAssignmentForUser(userID int) (*models.TaskAssignment, error) {
 	var assignment models.TaskAssignment
 
-	if err := r.db.Where("user_id=?", userID).Order("assigned_date desc").First(&assignment).Error; err != nil {
+	if err := r.db.Preload("Task").Where("user_id=?", userID).Order("assigned_date desc").First(&assignment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
