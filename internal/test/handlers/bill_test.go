@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -20,16 +21,16 @@ import (
 
 // Mock service
 type mockBillService struct {
-	CreateBillFunc       func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
+	CreateBillFunc       func(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
 	GetBillByIDFunc      func(billID int) (*models.Bill, error)
 	GetBillsByHomeIDFunc func(homeID int) ([]models.Bill, error)
 	DeleteFunc           func(billID int) error
 	MarkBillPayedFunc    func(billID int) error
 }
 
-func (m *mockBillService) CreateBill(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+func (m *mockBillService) CreateBill(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
 	if m.CreateBillFunc != nil {
-		return m.CreateBillFunc(billType, totalAmount, start, end, ocrData, homeID, userID)
+		return m.CreateBillFunc(billType, billCategoryID, totalAmount, start, end, ocrData, homeID, userID)
 	}
 	return nil
 }
@@ -73,7 +74,6 @@ var (
 		Start:       testStartTime,
 		End:         testEndTime,
 		OCRData:     testOCRData,
-		HomeID:      1,
 	}
 )
 
@@ -94,7 +94,7 @@ func TestBillHandler_Create(t *testing.T) {
 		name           string
 		body           interface{}
 		userID         int
-		mockFunc       func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
+		mockFunc       func(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -102,10 +102,11 @@ func TestBillHandler_Create(t *testing.T) {
 			name:   "Success",
 			body:   validBillRequest,
 			userID: 123,
-			mockFunc: func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+			mockFunc: func(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
 				assert.Equal(t, "electricity", billType)
+				assert.Nil(t, billCategoryID)
 				assert.Equal(t, 100.50, totalAmount)
-				assert.Equal(t, 1, homeID)
+				assert.Equal(t, 1, homeID) // HomeID is now passed from URL param in real handler, but here we test service call
 				assert.Equal(t, 123, userID)
 				return nil
 			},
@@ -132,7 +133,7 @@ func TestBillHandler_Create(t *testing.T) {
 			name:   "Service Error",
 			body:   validBillRequest,
 			userID: 123,
-			mockFunc: func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+			mockFunc: func(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -158,6 +159,10 @@ func TestBillHandler_Create(t *testing.T) {
 			if tt.userID != 0 {
 				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
 			}
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("home_id", "1")
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 			rr := httptest.NewRecorder()
 			h.Create(rr, req)

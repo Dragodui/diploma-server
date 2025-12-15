@@ -19,9 +19,9 @@ import (
 
 // Mock user service
 type mockUserService struct {
-	GetUserByIDFunc       func(userID int) (*models.User, error)
-	UpdateUserFunc        func(userID int, name string) error
-	UpdateUserAvatarFunc  func(userID int, imagePath string) error
+	GetUserByIDFunc      func(userID int) (*models.User, error)
+	UpdateUserFunc       func(userID int, name string) error
+	UpdateUserAvatarFunc func(userID int, imagePath string) error
 }
 
 func (m *mockUserService) GetUserByID(userID int) (*models.User, error) {
@@ -192,10 +192,10 @@ func TestUserHandler_Update(t *testing.T) {
 			expectedBody:   "User updated successfully",
 		},
 		{
-			name:   "Success - Update Avatar Only",
-			userID: 123,
+			name:       "Success - Update Avatar Only",
+			userID:     123,
 			formFields: map[string]string{},
-			hasAvatar: true,
+			hasAvatar:  true,
 			uploadFunc: func(file multipart.File, header *multipart.FileHeader) (string, error) {
 				return "https://s3.amazonaws.com/bucket/avatar.jpg", nil
 			},
@@ -263,7 +263,7 @@ func TestUserHandler_Update(t *testing.T) {
 			var err error
 
 			if tt.hasAvatar {
-				req, err = createMultipartFormRequest("avatar", "avatar.jpg", "fake image content", tt.formFields)
+				req, err = createMultipartFormRequest("avatar_file", "avatar.jpg", "fake image content", tt.formFields)
 				require.NoError(t, err)
 			} else {
 				req, err = createMultipartFormRequest("", "", "", tt.formFields)

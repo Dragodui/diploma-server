@@ -17,8 +17,8 @@ import (
 
 // Mock service
 type mockTaskService struct {
-	CreateTaskFunc                  func(homeID int, roomID *int, name, description, scheduleType string) error
-	CreateTaskWithAssignmentFunc    func(homeID int, roomID *int, name, description, scheduleType string, userID int) error
+	CreateTaskFunc                  func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
+	CreateTaskWithAssignmentFunc    func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error
 	GetTaskByIDFunc                 func(taskID int) (*models.Task, error)
 	GetTasksByHomeIDFunc            func(homeID int) (*[]models.Task, error)
 	DeleteTaskFunc                  func(taskID int) error
@@ -26,21 +26,22 @@ type mockTaskService struct {
 	GetAssignmentsForUserFunc       func(userID int) (*[]models.TaskAssignment, error)
 	GetClosestAssignmentForUserFunc func(userID int) (*models.TaskAssignment, error)
 	MarkAssignmentCompletedFunc     func(assignmentID int) error
+	MarkAssignmentUncompletedFunc   func(assignmentID int) error
 	MarkTaskCompletedForUserFunc    func(taskID, userID, homeID int) error
 	DeleteAssignmentFunc            func(assignmentID int) error
 	ReassignRoomFunc                func(taskID, roomID int) error
 }
 
-func (m *mockTaskService) CreateTaskWithAssignment(homeID int, roomID *int, name, description, scheduleType string, userID int) error {
+func (m *mockTaskService) CreateTaskWithAssignment(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error {
 	if m.CreateTaskFunc != nil {
-		return m.CreateTaskWithAssignmentFunc(homeID, roomID, name, description, scheduleType, userID)
+		return m.CreateTaskWithAssignmentFunc(homeID, roomID, name, description, scheduleType, dueDate, userID)
 	}
 	return nil
 }
 
-func (m *mockTaskService) CreateTask(homeID int, roomID *int, name, description, scheduleType string) error {
+func (m *mockTaskService) CreateTask(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
 	if m.CreateTaskFunc != nil {
-		return m.CreateTaskFunc(homeID, roomID, name, description, scheduleType)
+		return m.CreateTaskFunc(homeID, roomID, name, description, scheduleType, dueDate)
 	}
 	return nil
 }
@@ -90,6 +91,13 @@ func (m *mockTaskService) GetClosestAssignmentForUser(userID int) (*models.TaskA
 func (m *mockTaskService) MarkAssignmentCompleted(assignmentID int) error {
 	if m.MarkAssignmentCompletedFunc != nil {
 		return m.MarkAssignmentCompletedFunc(assignmentID)
+	}
+	return nil
+}
+
+func (m *mockTaskService) MarkAssignmentUncompleted(assignmentID int) error {
+	if m.MarkAssignmentUncompletedFunc != nil {
+		return m.MarkAssignmentUncompletedFunc(assignmentID)
 	}
 	return nil
 }
@@ -156,18 +164,19 @@ func TestTaskHandler_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(homeID int, roomID *int, name, description, scheduleType string) error
+		mockFunc       func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validCreateTaskReq,
-			mockFunc: func(homeID int, roomID *int, name, description, scheduleType string) error {
+			mockFunc: func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, "Clean Kitchen", name)
 				assert.Equal(t, "Daily cleaning", description)
 				assert.Equal(t, "daily", scheduleType)
+				assert.Nil(t, dueDate)
 				return nil
 			},
 			expectedStatus: http.StatusCreated,
@@ -183,7 +192,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		{
 			name: "Service Error",
 			body: validCreateTaskReq,
-			mockFunc: func(homeID int, roomID *int, name, description, scheduleType string) error {
+			mockFunc: func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
