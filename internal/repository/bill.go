@@ -11,6 +11,7 @@ import (
 type BillRepository interface {
 	Create(b *models.Bill) error
 	FindByID(id int) (*models.Bill, error)
+	FindByHomeID(homeID int) ([]models.Bill, error)
 	Delete(id int) error
 	MarkPayed(id int) error
 }
@@ -38,7 +39,16 @@ func (r *billRepo) FindByID(id int) (*models.Bill, error) {
 	}
 
 	return &bill, nil
+}
 
+func (r *billRepo) FindByHomeID(homeID int) ([]models.Bill, error) {
+	var bills []models.Bill
+
+	if err := r.db.Where("home_id = ?", homeID).Order("created_at DESC").Find(&bills).Error; err != nil {
+		return nil, err
+	}
+
+	return bills, nil
 }
 
 func (r *billRepo) Delete(id int) error {

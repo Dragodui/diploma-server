@@ -135,6 +135,7 @@ func SetupRoutes(
 
 					// Bills under a home
 					r.Route("/bills", func(r chi.Router) {
+						r.With(middleware.RequireMember(homeRepo)).Get("/", billHandler.GetByHomeID)
 						r.With(middleware.RequireMember(homeRepo)).Post("/", billHandler.Create)
 						r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetByID)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{bill_id}", billHandler.Delete)

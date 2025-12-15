@@ -20,6 +20,7 @@ type IBillService interface {
 	CreateBill(billType string, totalAmount float64, start, end time.Time,
 		ocrData datatypes.JSON, homeID, uploadedBy int) error
 	GetBillByID(id int) (*models.Bill, error)
+	GetBillsByHomeID(homeID int) ([]models.Bill, error)
 	Delete(id int) error
 	MarkBillPayed(id int) error
 }
@@ -57,6 +58,10 @@ func (s *BillService) GetBillByID(id int) (*models.Bill, error) {
 	}
 
 	return s.repo.FindByID(id)
+}
+
+func (s *BillService) GetBillsByHomeID(homeID int) ([]models.Bill, error) {
+	return s.repo.FindByHomeID(homeID)
 }
 
 func (s *BillService) Delete(id int) error {

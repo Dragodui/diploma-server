@@ -78,11 +78,12 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := r.FormValue("name")
+	avatarURL := r.FormValue("avatar") // URL аватара (если уже загружен)
 
-	file, fileHeader, err := r.FormFile("avatar")
-	hasAvatar := err == nil
+	file, fileHeader, err := r.FormFile("avatar_file")
+	hasAvatarFile := err == nil
 
-	if name == "" && !hasAvatar {
+	if name == "" && !hasAvatarFile && avatarURL == "" {
 		utils.JSONError(w, "No fields to update", http.StatusBadRequest)
 		return
 	}
@@ -94,7 +95,16 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if hasAvatar {
+	// Если передан URL аватара (уже загруженный через /upload)
+	if avatarURL != "" {
+		if err := h.svc.UpdateUserAvatar(userID, avatarURL); err != nil {
+			utils.JSONError(w, "Failed to update avatar: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Если передан файл аватара
+	if hasAvatarFile {
 		defer file.Close()
 
 		imagePath, err := h.imageSvc.Upload(file, fileHeader)

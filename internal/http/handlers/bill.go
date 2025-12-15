@@ -20,6 +20,38 @@ func NewBillHandler(svc services.IBillService) *BillHandler {
 	return &BillHandler{svc}
 }
 
+// GetByHomeID godoc
+// @Summary      Get bills by home ID
+// @Description  Get all bills in a home
+// @Tags         bill
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/bills [get]
+func (h *BillHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	bills, err := h.svc.GetBillsByHomeID(homeID)
+	if err != nil {
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status": true,
+		"bills":  bills,
+	})
+}
+
 // Create godoc
 // @Summary      Create a new bill
 // @Description  Create a new bill in a home
