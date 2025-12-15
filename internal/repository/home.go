@@ -55,7 +55,7 @@ func (r *homeRepo) FindByID(id int) (*models.Home, error) {
 	var home models.Home
 
 	// taking memberships also
-	if err := r.db.Preload("Memberships").First(&home, id).Error; err != nil {
+	if err := r.db.Preload("Memberships").Preload("Memberships.User").First(&home, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -69,7 +69,7 @@ func (r *homeRepo) FindByInviteCode(inviteCode string) (*models.Home, error) {
 	var home models.Home
 
 	// taking memberships also
-	if err := r.db.Preload("Memberships").Where("invite_code = ?", inviteCode).First(&home).Error; err != nil {
+	if err := r.db.Preload("Memberships").Preload("Memberships.User").Where("invite_code = ?", inviteCode).First(&home).Error; err != nil {
 		return nil, err
 	}
 
