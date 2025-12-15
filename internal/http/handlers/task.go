@@ -40,7 +40,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateTask(req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType); err != nil {
+	if err := h.svc.CreateTask(req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -260,6 +260,36 @@ func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Req
 	}
 
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Marked successfully"})
+}
+
+// MarkAssignmentUncompleted godoc
+// @Summary      Mark assignment as uncompleted
+// @Description  Mark an assignment as uncompleted
+// @Tags         task
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        task_id path int true "Task ID"
+// @Param        input body models.AssignmentIDRequest true "Assignment ID Request"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/tasks/{task_id}/mark-uncompleted [patch]
+func (h *TaskHandler) MarkAssignmentUncompleted(w http.ResponseWriter, r *http.Request) {
+	var assignmentRequest models.AssignmentIDRequest
+	if err := json.NewDecoder(r.Body).Decode(&assignmentRequest); err != nil {
+		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.MarkAssignmentUncompleted(assignmentRequest.AssignmentID); err != nil {
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Marked as uncompleted successfully"})
 }
 
 // MarkTaskCompleted godoc

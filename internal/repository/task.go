@@ -20,7 +20,9 @@ type TaskRepository interface {
 	FindAssignmentsForUser(userID int) (*[]models.TaskAssignment, error)
 	FindClosestAssignmentForUser(userID int) (*models.TaskAssignment, error)
 	FindAssignmentByTaskAndUser(taskID, userID int) (*models.TaskAssignment, error)
+	FindAssignmentByID(assignmentID int) (*models.TaskAssignment, error)
 	MarkCompleted(assignmentID int) error
+	MarkUncompleted(assignmentID int) error
 	FindUserByAssignmentID(assignmentID int) (*models.User, error)
 	DeleteAssignment(assignmentID int) error
 }
@@ -57,6 +59,11 @@ func (r *taskRepo) FindByHomeID(homeID int) (*[]models.Task, error) {
 }
 
 func (r *taskRepo) Delete(id int) error {
+	// Delete associated task assignments first
+	if err := r.db.Where("task_id = ?", id).Delete(&models.TaskAssignment{}).Error; err != nil {
+		return err
+	}
+
 	if err := r.db.Delete(&models.Task{}, id).Error; err != nil {
 		return err
 	}
@@ -94,7 +101,7 @@ func (r *taskRepo) FindAssignmentsForUser(userID int) (*[]models.TaskAssignment,
 func (r *taskRepo) FindClosestAssignmentForUser(userID int) (*models.TaskAssignment, error) {
 	var assignment models.TaskAssignment
 
-	if err := r.db.Preload("Task").Where("user_id=?", userID).Order("assigned_date desc").First(&assignment).Error; err != nil {
+	if err := r.db.Preload("Task").Where("user_id=? AND status != 'completed'", userID).Order("assigned_date asc").First(&assignment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -102,6 +109,22 @@ func (r *taskRepo) FindClosestAssignmentForUser(userID int) (*models.TaskAssignm
 	}
 
 	return &assignment, nil
+}
+
+func (r *taskRepo) MarkUncompleted(assignmentID int) error {
+	var assignment models.TaskAssignment
+	if err := r.db.First(&assignment, assignmentID).Error; err != nil {
+		return err
+	}
+
+	assignment.Status = "assigned"
+	assignment.CompleteDate = nil
+
+	if err := r.db.Save(&assignment).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *taskRepo) FindAssignmentByTaskAndUser(taskID, userID int) (*models.TaskAssignment, error) {
@@ -114,6 +137,14 @@ func (r *taskRepo) FindAssignmentByTaskAndUser(taskID, userID int) (*models.Task
 		return nil, err
 	}
 
+	return &assignment, nil
+}
+
+func (r *taskRepo) FindAssignmentByID(assignmentID int) (*models.TaskAssignment, error) {
+	var assignment models.TaskAssignment
+	if err := r.db.Preload("Task").First(&assignment, assignmentID).Error; err != nil {
+		return nil, err
+	}
 	return &assignment, nil
 }
 

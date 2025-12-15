@@ -104,6 +104,24 @@ func (r *pollRepo) ClosePoll(id int) error {
 }
 
 func (r *pollRepo) Delete(id int) error {
+	// Delete votes associated with options of this poll
+	// We need to find options first to delete votes
+	var options []models.Option
+	if err := r.db.Where("poll_id = ?", id).Find(&options).Error; err != nil {
+		return err
+	}
+
+	for _, option := range options {
+		if err := r.db.Where("option_id = ?", option.ID).Delete(&models.Vote{}).Error; err != nil {
+			return err
+		}
+	}
+
+	// Delete options
+	if err := r.db.Where("poll_id = ?", id).Delete(&models.Option{}).Error; err != nil {
+		return err
+	}
+
 	return r.db.Delete(&models.Poll{}, id).Error
 }
 

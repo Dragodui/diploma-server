@@ -77,6 +77,78 @@ func (r *homeRepo) FindByInviteCode(inviteCode string) (*models.Home, error) {
 }
 
 func (r *homeRepo) Delete(id int) error {
+	// 1. Delete HomeMemberships
+	if err := r.db.Where("home_id = ?", id).Delete(&models.HomeMembership{}).Error; err != nil {
+		return err
+	}
+
+	// 2. Delete HomeNotifications
+	if err := r.db.Where("home_id = ?", id).Delete(&models.HomeNotification{}).Error; err != nil {
+		return err
+	}
+
+	// 3. Delete Bills
+	if err := r.db.Where("home_id = ?", id).Delete(&models.Bill{}).Error; err != nil {
+		return err
+	}
+
+	// 4. Delete Tasks (and assignments)
+	var tasks []models.Task
+	if err := r.db.Where("home_id = ?", id).Find(&tasks).Error; err != nil {
+		return err
+	}
+	for _, task := range tasks {
+		if err := r.db.Where("task_id = ?", task.ID).Delete(&models.TaskAssignment{}).Error; err != nil {
+			return err
+		}
+	}
+	if err := r.db.Where("home_id = ?", id).Delete(&models.Task{}).Error; err != nil {
+		return err
+	}
+
+	// 5. Delete ShoppingCategories (and items)
+	var categories []models.ShoppingCategory
+	if err := r.db.Where("home_id = ?", id).Find(&categories).Error; err != nil {
+		return err
+	}
+	for _, cat := range categories {
+		if err := r.db.Where("category_id = ?", cat.ID).Delete(&models.ShoppingItem{}).Error; err != nil {
+			return err
+		}
+	}
+	if err := r.db.Where("home_id = ?", id).Delete(&models.ShoppingCategory{}).Error; err != nil {
+		return err
+	}
+
+	// 6. Delete Polls (and options/votes)
+	var polls []models.Poll
+	if err := r.db.Where("home_id = ?", id).Find(&polls).Error; err != nil {
+		return err
+	}
+	for _, poll := range polls {
+		var options []models.Option
+		if err := r.db.Where("poll_id = ?", poll.ID).Find(&options).Error; err != nil {
+			return err
+		}
+		for _, opt := range options {
+			if err := r.db.Where("option_id = ?", opt.ID).Delete(&models.Vote{}).Error; err != nil {
+				return err
+			}
+		}
+		if err := r.db.Where("poll_id = ?", poll.ID).Delete(&models.Option{}).Error; err != nil {
+			return err
+		}
+	}
+	if err := r.db.Where("home_id = ?", id).Delete(&models.Poll{}).Error; err != nil {
+		return err
+	}
+
+	// 7. Delete Rooms
+	if err := r.db.Where("home_id = ?", id).Delete(&models.Room{}).Error; err != nil {
+		return err
+	}
+
+	// 8. Delete Home
 	return r.db.Delete(&models.Home{}, id).Error
 }
 

@@ -18,8 +18,8 @@ type TaskService struct {
 }
 
 type ITaskService interface {
-	CreateTask(homeID int, roomID *int, name, description, scheduleType string) error
-	CreateTaskWithAssignment(homeID int, roomID *int, name, description, scheduleType string, userID int) error
+	CreateTask(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
+	CreateTaskWithAssignment(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error
 	GetTaskByID(taskID int) (*models.Task, error)
 	GetTasksByHomeID(homeID int) (*[]models.Task, error)
 	DeleteTask(taskID int) error
@@ -27,6 +27,7 @@ type ITaskService interface {
 	GetAssignmentsForUser(userID int) (*[]models.TaskAssignment, error)
 	GetClosestAssignmentForUser(userID int) (*models.TaskAssignment, error)
 	MarkAssignmentCompleted(assignmentID int) error
+	MarkAssignmentUncompleted(assignmentID int) error
 	MarkTaskCompletedForUser(taskID, userID, homeID int) error
 	DeleteAssignment(assignmentID int) error
 	ReassignRoom(taskID, roomID int) error
@@ -36,7 +37,7 @@ func NewTaskService(repo repository.TaskRepository, cache *redis.Client) *TaskSe
 	return &TaskService{repo: repo, cache: cache}
 }
 
-func (s *TaskService) CreateTask(homeID int, roomID *int, name, description, scheduleType string) error {
+func (s *TaskService) CreateTask(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
 	tasksKey := utils.GetTasksForHomeKey(homeID)
 	if err := utils.DeleteFromCache(tasksKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
@@ -48,6 +49,7 @@ func (s *TaskService) CreateTask(homeID int, roomID *int, name, description, sch
 		HomeID:       homeID,
 		RoomID:       roomID,
 		ScheduleType: scheduleType,
+		DueDate:      dueDate,
 	}); err != nil {
 		return err
 	}
@@ -55,7 +57,7 @@ func (s *TaskService) CreateTask(homeID int, roomID *int, name, description, sch
 	return nil
 }
 
-func (s *TaskService) CreateTaskWithAssignment(homeID int, roomID *int, name, description, scheduleType string, userID int) error {
+func (s *TaskService) CreateTaskWithAssignment(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error {
 	tasksKey := utils.GetTasksForHomeKey(homeID)
 	if err := utils.DeleteFromCache(tasksKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
@@ -67,6 +69,7 @@ func (s *TaskService) CreateTaskWithAssignment(homeID int, roomID *int, name, de
 		HomeID:       homeID,
 		RoomID:       roomID,
 		ScheduleType: scheduleType,
+		DueDate:      dueDate,
 	}
 
 	if err := s.repo.Create(task); err != nil {
@@ -225,23 +228,67 @@ func (s *TaskService) MarkAssignmentCompleted(assignmentID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	user, err := s.repo.FindUserByAssignmentID(assignmentID)
+	assignment, err := s.repo.FindAssignmentByID(assignmentID)
 	if err != nil {
 		return err
 	}
 
 	// delete user assignments from cache
-	userAssignmentsKey := utils.GetAssignmentsForUserKey(user.ID)
+	userAssignmentsKey := utils.GetAssignmentsForUserKey(assignment.UserID)
 	if err := utils.DeleteFromCache(userAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 	}
 
 	// delete closest user assignment from cache
-	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(user.ID)
+	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID)
 	if err := utils.DeleteFromCache(userClosestAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}
+
+	// delete home tasks cache
+	homeTasksKey := utils.GetTasksForHomeKey(assignment.Task.HomeID)
+	if err := utils.DeleteFromCache(homeTasksKey, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for home %d: %v", assignment.Task.HomeID, err)
+	}
+
 	if err := s.repo.MarkCompleted(assignmentID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *TaskService) MarkAssignmentUncompleted(assignmentID int) error {
+	// delete assignment from cache
+	key := utils.GetAssignmentKey(assignmentID)
+	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
+	}
+
+	assignment, err := s.repo.FindAssignmentByID(assignmentID)
+	if err != nil {
+		return err
+	}
+
+	// delete user assignments from cache
+	userAssignmentsKey := utils.GetAssignmentsForUserKey(assignment.UserID)
+	if err := utils.DeleteFromCache(userAssignmentsKey, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
+	}
+
+	// delete closest user assignment from cache
+	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID)
+	if err := utils.DeleteFromCache(userClosestAssignmentsKey, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
+	}
+
+	// delete home tasks cache
+	homeTasksKey := utils.GetTasksForHomeKey(assignment.Task.HomeID)
+	if err := utils.DeleteFromCache(homeTasksKey, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for home %d: %v", assignment.Task.HomeID, err)
+	}
+
+	if err := s.repo.MarkUncompleted(assignmentID); err != nil {
 		return err
 	}
 

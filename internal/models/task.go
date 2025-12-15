@@ -3,13 +3,14 @@ package models
 import "time"
 
 type Task struct {
-	ID           int       `gorm:"autoIncrement; primaryKey" json:"id"`
-	HomeID       int       `json:"home_id"`
-	RoomID       *int      `json:"room_id"`
-	Name         string    `gorm:"not null;size:64" json:"name"`
-	Description  string    `gorm:"not null" json:"description"`
-	ScheduleType string    `gorm:"not null;size:64" json:"schedule_type"`
-	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
+	ID           int        `gorm:"autoIncrement; primaryKey" json:"id"`
+	HomeID       int        `json:"home_id"`
+	RoomID       *int       `json:"room_id"`
+	Name         string     `gorm:"not null;size:64" json:"name"`
+	Description  string     `gorm:"not null" json:"description"`
+	ScheduleType string     `gorm:"not null;size:64" json:"schedule_type"`
+	DueDate      *time.Time `json:"due_date"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime" json:"created_at"`
 
 	// relations
 	Home            *Home            `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
@@ -18,11 +19,12 @@ type Task struct {
 }
 
 type CreateTaskRequest struct {
-	Name         string `json:"name"`
-	Description  string `json:"description"`
-	ScheduleType string `json:"schedule_type"`
-	HomeID       int    `json:"home_id"`
-	RoomID       *int   `json:"room_id,omitempty"`
+	Name         string     `json:"name"`
+	Description  string     `json:"description"`
+	ScheduleType string     `json:"schedule_type"`
+	DueDate      *time.Time `json:"due_date"`
+	HomeID       int        `json:"home_id"`
+	RoomID       *int       `json:"room_id,omitempty"`
 }
 
 type ReassignRoomRequest struct {

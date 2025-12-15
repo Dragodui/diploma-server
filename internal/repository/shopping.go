@@ -65,6 +65,10 @@ func (r *shoppingRepo) EditCategory(category *models.ShoppingCategory, updates m
 }
 
 func (r *shoppingRepo) DeleteCategory(id int) error {
+	// Delete items first
+	if err := r.db.Where("category_id = ?", id).Delete(&models.ShoppingItem{}).Error; err != nil {
+		return err
+	}
 	return r.db.Delete(&models.ShoppingCategory{}, id).Error
 }
 
