@@ -23,6 +23,7 @@ func SetupRoutes(
 	homeHandler *handlers.HomeHandler,
 	taskHandler *handlers.TaskHandler,
 	billHandler *handlers.BillHandler,
+	billCategoryHandler *handlers.BillCategoryHandler,
 	roomHandler *handlers.RoomHandler,
 	shoppingHandler *handlers.ShoppingHandler,
 	imageHandler *handlers.ImageHandler,
@@ -143,6 +144,13 @@ func SetupRoutes(
 						r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetByID)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
 						r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}", billHandler.MarkPayed)
+					})
+
+					// Bill Categories
+					r.Route("/bill-categories", func(r chi.Router) {
+						r.With(middleware.RequireMember(homeRepo)).Get("/", billCategoryHandler.GetAll)
+						r.With(middleware.RequireMember(homeRepo)).Post("/", billCategoryHandler.Create)
+						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{category_id}", billCategoryHandler.Delete)
 					})
 
 					// Shopping

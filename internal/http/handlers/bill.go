@@ -67,7 +67,11 @@ func (h *BillHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 // @Router       /homes/{home_id}/bills [post]
 func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "Invalid home id", http.StatusBadRequest)
+	}
 	if userID == 0 {
 		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -85,7 +89,7 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateBill(req.BillType, req.TotalAmount, req.Start, req.End, req.OCRData, req.HomeID, userID); err != nil {
+	if err := h.svc.CreateBill(req.BillType, req.BillCategoryID, req.TotalAmount, req.Start, req.End, req.OCRData, homeID, userID); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}

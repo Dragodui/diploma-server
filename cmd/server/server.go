@@ -68,6 +68,7 @@ func NewServer() *Server {
 	roomRepo := repository.NewRoomRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 	billRepo := repository.NewBillRepository(db)
+	billCategoryRepo := repository.NewBillCategoryRepository(db)
 	shoppingRepo := repository.NewShoppingRepository(db)
 	pollRepo := repository.NewPollRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
@@ -78,6 +79,7 @@ func NewServer() *Server {
 	roomSvc := services.NewRoomService(roomRepo, cache)
 	taskSvc := services.NewTaskService(taskRepo, cache)
 	billSvc := services.NewBillService(billRepo, cache)
+	billCategorySvc := services.NewBillCategoryService(billCategoryRepo)
 	shoppingSvc := services.NewShoppingService(shoppingRepo, cache)
 	pollSvc := services.NewPollService(pollRepo, cache)
 	notificationSvc := services.NewNotificationService(notificationRepo, cache)
@@ -94,6 +96,7 @@ func NewServer() *Server {
 	roomHandler := handlers.NewRoomHandler(roomSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
 	billHandler := handlers.NewBillHandler(billSvc)
+	billCategoryHandler := handlers.NewBillCategoryHandler(billCategorySvc)
 	shoppingHandler := handlers.NewShoppingHandler(shoppingSvc)
 	imageHandler := handlers.NewImageHandler(imageService)
 	pollHandler := handlers.NewPollHandler(pollSvc)
@@ -101,7 +104,7 @@ func NewServer() *Server {
 	userHandler := handlers.NewUserHandler(userService, imageService)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }
