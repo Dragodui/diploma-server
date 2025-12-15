@@ -18,6 +18,7 @@ import (
 // Mock service
 type mockTaskService struct {
 	CreateTaskFunc                  func(homeID int, roomID *int, name, description, scheduleType string) error
+	CreateTaskWithAssignmentFunc    func(homeID int, roomID *int, name, description, scheduleType string, userID int) error
 	GetTaskByIDFunc                 func(taskID int) (*models.Task, error)
 	GetTasksByHomeIDFunc            func(homeID int) (*[]models.Task, error)
 	DeleteTaskFunc                  func(taskID int) error
@@ -25,8 +26,16 @@ type mockTaskService struct {
 	GetAssignmentsForUserFunc       func(userID int) (*[]models.TaskAssignment, error)
 	GetClosestAssignmentForUserFunc func(userID int) (*models.TaskAssignment, error)
 	MarkAssignmentCompletedFunc     func(assignmentID int) error
+	MarkTaskCompletedForUserFunc    func(taskID, userID, homeID int) error
 	DeleteAssignmentFunc            func(assignmentID int) error
 	ReassignRoomFunc                func(taskID, roomID int) error
+}
+
+func (m *mockTaskService) CreateTaskWithAssignment(homeID int, roomID *int, name, description, scheduleType string, userID int) error {
+	if m.CreateTaskFunc != nil {
+		return m.CreateTaskWithAssignmentFunc(homeID, roomID, name, description, scheduleType, userID)
+	}
+	return nil
 }
 
 func (m *mockTaskService) CreateTask(homeID int, roomID *int, name, description, scheduleType string) error {
@@ -85,6 +94,13 @@ func (m *mockTaskService) MarkAssignmentCompleted(assignmentID int) error {
 	return nil
 }
 
+func (m *mockTaskService) MarkTaskCompletedForUser(taskID, userID, homeID int) error {
+	if m.MarkTaskCompletedForUserFunc != nil {
+		return m.MarkTaskCompletedForUserFunc(taskID, userID, homeID)
+	}
+	return nil
+}
+
 func (m *mockTaskService) DeleteAssignment(assignmentID int) error {
 	if m.DeleteAssignmentFunc != nil {
 		return m.DeleteAssignmentFunc(assignmentID)
@@ -101,8 +117,8 @@ func (m *mockTaskService) ReassignRoom(taskID, roomID int) error {
 
 // Test fixtures
 var (
-	testRoomID            = 2
-	validCreateTaskReq    = models.CreateTaskRequest{
+	testRoomID         = 2
+	validCreateTaskReq = models.CreateTaskRequest{
 		HomeID:       1,
 		RoomID:       &testRoomID,
 		Name:         "Clean Kitchen",

@@ -20,10 +20,11 @@ import (
 
 // Mock service
 type mockBillService struct {
-	CreateBillFunc    func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
-	GetBillByIDFunc   func(billID int) (*models.Bill, error)
-	DeleteFunc        func(billID int) error
-	MarkBillPayedFunc func(billID int) error
+	CreateBillFunc       func(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
+	GetBillByIDFunc      func(billID int) (*models.Bill, error)
+	GetBillsByHomeIDFunc func(homeID int) ([]models.Bill, error)
+	DeleteFunc           func(billID int) error
+	MarkBillPayedFunc    func(billID int) error
 }
 
 func (m *mockBillService) CreateBill(billType string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
@@ -36,6 +37,13 @@ func (m *mockBillService) CreateBill(billType string, totalAmount float64, start
 func (m *mockBillService) GetBillByID(billID int) (*models.Bill, error) {
 	if m.GetBillByIDFunc != nil {
 		return m.GetBillByIDFunc(billID)
+	}
+	return nil, nil
+}
+
+func (m *mockBillService) GetBillsByHomeID(homeId int) ([]models.Bill, error) {
+	if m.GetBillsByHomeIDFunc != nil {
+		return m.GetBillsByHomeIDFunc(homeId)
 	}
 	return nil, nil
 }
@@ -56,10 +64,10 @@ func (m *mockBillService) MarkBillPayed(billID int) error {
 
 // Test fixtures
 var (
-	testStartTime       = time.Now()
-	testEndTime         = testStartTime.Add(24 * time.Hour)
-	testOCRData, _      = json.Marshal([]byte("{" + "test ocr data" + "}"))
-	validBillRequest    = models.CreateBillRequest{
+	testStartTime    = time.Now()
+	testEndTime      = testStartTime.Add(24 * time.Hour)
+	testOCRData, _   = json.Marshal([]byte("{" + "test ocr data" + "}"))
+	validBillRequest = models.CreateBillRequest{
 		BillType:    "electricity",
 		TotalAmount: 100.50,
 		Start:       testStartTime,
