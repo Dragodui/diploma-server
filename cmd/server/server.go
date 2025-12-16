@@ -41,8 +41,15 @@ func NewServer() *Server {
 		&models.Task{},
 		&models.TaskAssignment{},
 		&models.Bill{},
+		&models.BillCategory{},
 		&models.ShoppingCategory{},
 		&models.ShoppingItem{},
+		&models.Poll{},
+		&models.Option{},
+		&models.Vote{},
+		&models.Notification{},
+		&models.HomeNotification{},
+		&models.Room{},
 	); err != nil {
 		panic(err)
 	}
