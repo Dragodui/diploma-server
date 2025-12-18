@@ -29,6 +29,11 @@ type mockAuthService struct {
 	GetUserByEmailFunc        func(email string) (*models.User, error)
 }
 
+// GoogleSignIn implements services.IAuthService.
+func (m *mockAuthService) GoogleSignIn(email string, name string, avatar string) (string, *models.User, error) {
+	panic("unimplemented")
+}
+
 func (m *mockAuthService) Register(email, password, name string) error {
 	if m.RegisterFunc != nil {
 		return m.RegisterFunc(email, password, name)
