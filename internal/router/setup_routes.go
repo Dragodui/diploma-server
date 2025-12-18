@@ -68,6 +68,7 @@ func SetupRoutes(
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
+			r.Post("/google/mobile", authHandler.GoogleSignIn) // Google Sign-In for mobile apps
 			r.Get("/{provider}", authHandler.SignInWithProvider)
 			r.Get("/{provider}/callback", authHandler.CallbackHandler)
 			r.Get("/verify", authHandler.VerifyEmail)

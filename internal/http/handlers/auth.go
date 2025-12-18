@@ -233,3 +233,40 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Password changed successfully"})
 }
+
+// GoogleSignIn godoc
+// @Summary      Sign in with Google (mobile)
+// @Description  Sign in or register with Google credentials from mobile app
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body models.GoogleSignInInput true "Google Sign-In Input"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /auth/google/mobile [post]
+func (h *AuthHandler) GoogleSignIn(w http.ResponseWriter, r *http.Request) {
+	var input models.GoogleSignInInput
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := utils.Validate.Struct(input); err != nil {
+		utils.JSONValidationErrors(w, err)
+		return
+	}
+
+	token, user, err := h.svc.GoogleSignIn(input.Email, input.Name, input.Avatar)
+	if err != nil {
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status": true,
+		"token":  token,
+		"user":   user,
+	})
+}

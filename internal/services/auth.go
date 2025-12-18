@@ -28,6 +28,7 @@ type IAuthService interface {
 	Register(email, password, name string) error
 	Login(email, password string) (string, *models.User, error)
 	HandleCallback(user goth.User) (string, error)
+	GoogleSignIn(email, name, avatar string) (string, *models.User, error)
 	SendVerificationEmail(email string) error
 	VerifyEmail(token string) error
 	SendResetPassword(email string) error
@@ -87,8 +88,23 @@ func (s *AuthService) Login(email, password string) (string, *models.User, error
 
 func (s *AuthService) HandleCallback(user goth.User) (string, error) {
 	u, err := s.repo.FindByEmail(user.Email)
-	if err != nil {
-		return "", err
+	if err != nil || u == nil {
+		// User does not exist, create a new one
+		u = &models.User{
+			Email:         user.Email,
+			Name:          user.Name,
+			PasswordHash:  "", // No password for OAuth users
+			EmailVerified: true, // OAuth users are already verified
+			Avatar:        user.AvatarURL,
+		}
+		if err := s.repo.Create(u); err != nil {
+			return "", err
+		}
+		// Fetch the created user to get the ID
+		u, err = s.repo.FindByEmail(user.Email)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	token, err := security.GenerateToken(u.ID, user.Email, s.jwtSecret, s.ttl)
@@ -101,6 +117,37 @@ func (s *AuthService) HandleCallback(user goth.User) (string, error) {
 	redirectURL := fmt.Sprintf("%s?token=%s", clientURL, token)
 
 	return redirectURL, nil
+}
+
+// GoogleSignIn handles Google Sign-In from mobile apps using user info from Google
+func (s *AuthService) GoogleSignIn(email, name, avatar string) (string, *models.User, error) {
+	u, err := s.repo.FindByEmail(email)
+	if err != nil || u == nil {
+		// User does not exist, create a new one
+		u = &models.User{
+			Email:         email,
+			Name:          name,
+			PasswordHash:  "", // No password for OAuth users
+			EmailVerified: true, // OAuth users are already verified
+			Avatar:        avatar,
+		}
+		if err := s.repo.Create(u); err != nil {
+			return "", nil, err
+		}
+		// Fetch the created user to get the ID
+		u, err = s.repo.FindByEmail(email)
+		if err != nil {
+			return "", nil, err
+		}
+	}
+
+	token, err := security.GenerateToken(u.ID, email, s.jwtSecret, s.ttl)
+	if err != nil {
+		return "", nil, err
+	}
+
+	u.PasswordHash = ""
+	return token, u, nil
 }
 
 func (s *AuthService) SendVerificationEmail(email string) error {
