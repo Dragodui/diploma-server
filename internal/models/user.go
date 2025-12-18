@@ -43,3 +43,9 @@ type UpdateUserRequest struct {
 type UpdateUserAvatarRequest struct {
 	Avatar string `json:"avatar"`
 }
+
+type GoogleSignInInput struct {
+	Email  string `json:"email" validate:"required,email"`
+	Name   string `json:"name" validate:"required"`
+	Avatar string `json:"avatar"`
+}
