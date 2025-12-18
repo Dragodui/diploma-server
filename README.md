@@ -1,9 +1,11 @@
-# Household manager app server
+# Household Manager App Server
 
-## Tech stack
-[![Stach](https://skillicons.dev/icons?i=golang,docker,postgresql,redis,gcp,aws&theme=dark&perline=15)]()
+## Tech Stack
 
-## Database schema
+[![Stack](https://skillicons.dev/icons?i=golang,docker,postgresql,redis,gcp,aws,prometheus,grafana&theme=dark&perline=15)]()
+
+## Database Schema
+
 <img width="4080" height="3116" alt="drawSQL-image-export-2025-09-04" src="https://github.com/user-attachments/assets/2fbb9b0f-5b10-4f71-83d2-ca1fd19453a3" />
 
 ## API Documentation
@@ -12,6 +14,43 @@ This project uses Swagger for API documentation.
 
 - **Swagger UI**: Access the interactive API documentation at `http://localhost:8000/swagger/index.html` when the server is running.
 - **Spec Files**: The raw Swagger specification files are located in the `docs/` directory (`swagger.json`, `swagger.yaml`).
+
+## Monitoring & Observability
+
+The application includes comprehensive monitoring with Prometheus and Grafana.
+
+### Available Metrics
+
+| Category | Metrics |
+|----------|---------|
+| **HTTP** | Request count, duration, in-flight requests, response size |
+| **Database** | Query count, duration, connections, errors |
+| **Redis** | Operations, cache hits/misses, operation duration |
+| **Authentication** | Login attempts, token generation, validation |
+| **S3** | Upload count, duration, file size |
+| **Business** | Homes, tasks, bills, shopping items, polls |
+| **Email** | Sent emails by type and status |
+| **OCR** | Request count and processing duration |
+
+### Accessing Monitoring
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Prometheus | `http://localhost:9090` | - |
+| Grafana | `http://localhost:3000` | admin / admin |
+| Metrics Endpoint | `http://localhost:8000/metrics` | - |
+
+### Grafana Dashboard
+
+A pre-configured dashboard "Household Manager API" is automatically provisioned with panels for:
+
+- **Overview**: Uptime, request rate, error rate, P95 latency, active users
+- **HTTP Metrics**: Request rate by status, latency percentiles, top endpoints
+- **Database Metrics**: Queries by operation, query latency, connections
+- **Redis Metrics**: Operations by type, cache hit/miss rate
+- **Authentication**: Login attempts, token validation
+- **Business Metrics**: Homes, tasks, bills, shopping items, polls
+- **External Services**: S3 uploads, email sends, OCR requests
 
 ## Configuration
 
@@ -44,26 +83,46 @@ cp .env.example .env.dev
 | `AWS_REGION` | AWS Region | `us-east-1` |
 | `AWS_S3_BUCKET` | AWS S3 Bucket name | `your-s3-bucket` |
 
+### Production Grafana Variables (Optional)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GRAFANA_ADMIN_USER` | Grafana admin username | `admin` |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana admin password | `admin` |
+| `GRAFANA_ROOT_URL` | Grafana public URL | `http://localhost:3000` |
+
 ## Running the Application
 
 This project uses Docker Compose for easy deployment.
 
 ### Development
 
-To run the application in development mode with hot-reloading (if configured) and exposed ports:
+To run the application in development mode with hot-reloading and monitoring:
 
 ```bash
 docker compose -f docker-compose.dev.yaml up --build
 ```
 
-The server will be available at `http://localhost:8000`.
+Available services:
+- **API Server**: `http://localhost:8000`
+- **Swagger UI**: `http://localhost:8000/swagger/index.html`
+- **Prometheus**: `http://localhost:9090`
+- **Grafana**: `http://localhost:3000`
+- **PostgreSQL**: `localhost:5432`
+- **Redis**: `localhost:6379`
 
 ### Production
 
 To run the application in production mode:
 
 1. Create a `.env.prod` file with your production values.
-2. Run the production compose file:
+2. (Optional) Set Grafana credentials in `.env.prod`:
+   ```
+   GRAFANA_ADMIN_USER=your-admin-user
+   GRAFANA_ADMIN_PASSWORD=your-secure-password
+   GRAFANA_ROOT_URL=https://grafana.yourdomain.com
+   ```
+3. Run the production compose file:
 
 ```bash
 docker compose -f docker-compose.prod.yaml up --build -d
@@ -79,4 +138,34 @@ If you prefer to run the Go server locally without Docker (requires a running Po
 
 ```bash
 go run cmd/server/main.go
+```
+
+## Project Structure
+
+```
+diploma-server/
+├── cmd/server/           # Application entry point
+├── internal/
+│   ├── cache/            # Redis client
+│   ├── config/           # Configuration management
+│   ├── http/
+│   │   ├── handlers/     # API endpoint handlers
+│   │   └── middleware/   # HTTP middleware (metrics, logging, auth)
+│   ├── logger/           # Logging utilities
+│   ├── metrics/          # Prometheus metrics definitions
+│   ├── models/           # Data models
+│   ├── repository/       # Data access layer
+│   ├── router/           # Route setup
+│   ├── services/         # Business logic
+│   └── utils/            # Utility functions
+├── monitoring/
+│   ├── prometheus/       # Prometheus configuration
+│   └── grafana/
+│       ├── dashboards/   # Grafana dashboard JSON files
+│       └── provisioning/ # Grafana auto-provisioning configs
+├── docs/                 # Swagger documentation
+├── docker-compose.dev.yaml
+├── docker-compose.prod.yaml
+├── Dockerfile
+└── Dockerfile.dev
 ```
