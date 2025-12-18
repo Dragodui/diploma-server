@@ -111,12 +111,12 @@ func setupAuthHandler(svc *mockAuthService) *handlers.AuthHandler {
 
 func TestAuthHandler_Register(t *testing.T) {
 	tests := []struct {
-		name                  string
-		body                  interface{}
-		registerFunc          func(email, password, name string) error
-		sendVerificationFunc  func(email string) error
-		expectedStatus        int
-		expectedBody          string
+		name                 string
+		body                 interface{}
+		registerFunc         func(email, password, name string) error
+		sendVerificationFunc func(email string) error
+		expectedStatus       int
+		expectedBody         string
 	}{
 		{
 			name: "Success",
@@ -199,12 +199,12 @@ func TestAuthHandler_Register(t *testing.T) {
 
 func TestAuthHandler_Login(t *testing.T) {
 	tests := []struct {
-		name             string
-		body             interface{}
-		getUserByEmail   func(email string) (*models.User, error)
-		loginFunc        func(email, password string) (string, *models.User, error)
-		expectedStatus   int
-		expectedBody     string
+		name           string
+		body           interface{}
+		getUserByEmail func(email string) (*models.User, error)
+		loginFunc      func(email, password string) (string, *models.User, error)
+		expectedStatus int
+		expectedBody   string
 	}{
 		{
 			name: "Success",

@@ -11,6 +11,7 @@ import (
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -36,6 +37,8 @@ func SetupRoutes(
 
 ) http.Handler {
 	r := chi.NewRouter()
+
+	r.Use(middleware.MetricsMiddleware)
 	// HTTP request logger
 	r.Use(middleware.RequestResponseLogger)
 	// CORS middleware
@@ -52,6 +55,9 @@ func SetupRoutes(
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode("OK")
 	})
+
+	// Prometheus
+	r.Handle("/metrics", promhttp.Handler())
 
 	// Swagger UI
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
