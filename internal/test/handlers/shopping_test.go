@@ -117,11 +117,11 @@ func assertJSONEqual(t *testing.T, rr *httptest.ResponseRecorder, expected inter
 // Mock service
 type mockShoppingService struct {
 	// Categories
-	CreateCategoryFunc           func(name string, icon *string, homeID int) error
+	CreateCategoryFunc           func(name string, icon *string, color string, homeID int) error
 	FindAllCategoriesForHomeFunc func(homeID int) (*[]models.ShoppingCategory, error)
 	FindCategoryByIDFunc         func(categoryID, homeID int) (*models.ShoppingCategory, error)
 	DeleteCategoryFunc           func(categoryID, homeID int) error
-	EditCategoryFunc             func(categoryID, homeID int, name, icon *string) error
+	EditCategoryFunc             func(categoryID, homeID int, name, icon, color *string) error
 
 	// Items
 	CreateItemFunc            func(categoryID, userID int, name string, image, link *string) error
@@ -133,9 +133,9 @@ type mockShoppingService struct {
 }
 
 // Category methods
-func (m *mockShoppingService) CreateCategory(name string, icon *string, homeID int) error {
+func (m *mockShoppingService) CreateCategory(name string, icon *string, color string, homeID int) error {
 	if m.CreateCategoryFunc != nil {
-		return m.CreateCategoryFunc(name, icon, homeID)
+		return m.CreateCategoryFunc(name, icon, color, homeID)
 	}
 	return nil
 }
@@ -161,9 +161,9 @@ func (m *mockShoppingService) DeleteCategory(categoryID, homeID int) error {
 	return nil
 }
 
-func (m *mockShoppingService) EditCategory(categoryID, homeID int, name, icon *string) error {
+func (m *mockShoppingService) EditCategory(categoryID, homeID int, name, icon, color *string) error {
 	if m.EditCategoryFunc != nil {
-		return m.EditCategoryFunc(categoryID, homeID, name, icon)
+		return m.EditCategoryFunc(categoryID, homeID, name, icon, color)
 	}
 	return nil
 }
@@ -218,7 +218,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			name           string
 			homeID         string
 			body           interface{}
-			mockFunc       func(name string, icon *string, homeID int) error
+			mockFunc       func(name string, icon *string, color string, homeID int) error
 			expectedStatus int
 			expectedBody   string
 		}{
@@ -226,9 +226,10 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:   "Success",
 				homeID: "1",
 				body:   validCreateCategoryRequest,
-				mockFunc: func(name string, icon *string, homeID int) error {
+				mockFunc: func(name string, icon *string, color string, homeID int) error {
 					assert.Equal(t, "Groceries", name)
 					assert.Equal(t, "🛒", *icon)
+					assert.Equal(t, "#ffffff", color)
 					assert.Equal(t, 1, homeID)
 					return nil
 				},
@@ -255,7 +256,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:   "Service Error",
 				homeID: "1",
 				body:   validCreateCategoryRequest,
-				mockFunc: func(name string, icon *string, homeID int) error {
+				mockFunc: func(name string, icon *string, color string, homeID int) error {
 					return errors.New("service error")
 				},
 				expectedStatus: http.StatusBadRequest,
@@ -418,7 +419,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			categoryID     string
 			homeID         string
 			body           interface{}
-			mockFunc       func(categoryID, homeID int, name, icon *string) error
+			mockFunc       func(categoryID, homeID int, name, icon, color *string) error
 			expectedStatus int
 			expectedBody   string
 		}{
@@ -427,10 +428,11 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				categoryID: "1",
 				homeID:     "1",
 				body:       validUpdateCategoryRequest,
-				mockFunc: func(categoryID, homeID int, name, icon *string) error {
+				mockFunc: func(categoryID, homeID int, name, icon, color *string) error {
 					assert.Equal(t, 1, categoryID)
 					assert.Equal(t, 1, homeID)
 					assert.Equal(t, "Updated Category", *name)
+					assert.Equal(t, "#ffffff", *color)
 					assert.Equal(t, "🆕", *icon)
 					return nil
 				},
@@ -469,7 +471,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				categoryID: "1",
 				homeID:     "1",
 				body:       validUpdateCategoryRequest,
-				mockFunc: func(categoryID, homeID int, name, icon *string) error {
+				mockFunc: func(categoryID, homeID int, name, icon, color *string) error {
 					return errors.New("edit failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
