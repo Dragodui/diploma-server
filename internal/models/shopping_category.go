@@ -7,6 +7,7 @@ type ShoppingCategory struct {
 	HomeID    int       `json:"home_id"`
 	Name      string    `json:"name"`
 	Icon      *string   `json:"icon"`
+	Color     string    `gorm:"size:32;default:'#D8D4FC'" json:"color"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 
 	// relations
@@ -15,11 +16,13 @@ type ShoppingCategory struct {
 }
 
 type CreateCategoryRequest struct {
-	Name   string  `json:"name"`
-	Icon   *string `json:"icon"`
+	Name  string  `json:"name" validate:"required,min=1,max=64"`
+	Icon  *string `json:"icon"`
+	Color string  `json:"color" validate:"omitempty,hexcolor"`
 }
 
 type UpdateShoppingCategoryRequest struct {
-	Name       *string `json:"name"`
-	Icon       *string `json:"icon"`
+	Name  *string `json:"name"`
+	Icon  *string `json:"icon"`
+	Color *string `json:"color" validate:"omitempty,hexcolor"`
 }

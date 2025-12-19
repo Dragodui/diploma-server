@@ -49,7 +49,7 @@ func (h *ShoppingHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.svc.CreateCategory(req.Name, req.Icon, homeID); err != nil {
+	if err := h.svc.CreateCategory(req.Name, req.Icon, req.Color, homeID); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -201,12 +201,12 @@ func (h *ShoppingHandler) EditCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.EditCategory(categoryID, homeID, req.Name, req.Icon); err != nil {
+	if err := h.svc.EditCategory(categoryID, homeID, req.Name, req.Icon, req.Color); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Updated successfully"})
 }
 
 // items

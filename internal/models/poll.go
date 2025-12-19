@@ -42,8 +42,8 @@ type OptionRequest struct {
 
 type CreatePollRequest struct {
 	Question string          `json:"question" validate:"required"`
-	Type     string          `json:"type" validate:"required,oneof=single multiple"`
-	Options  []OptionRequest `json:"options" validate:"min=1,dive"`
+	Type     string          `json:"type" validate:"required,oneof=public anonymous"`
+	Options  []OptionRequest `json:"options" validate:"min=2,dive"`
 }
 
 type VoteRequest struct {
