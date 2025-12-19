@@ -51,7 +51,7 @@ func (h *PollHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Create(homeID, req.Question, req.Type, req.Options); err != nil {
+	if err := h.svc.Create(homeID, req.Question, req.Type, req.Options, req.AllowRevote, req.EndsAt); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -232,4 +232,46 @@ func (h *PollHandler) Vote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Vote submitted successfully"})
+}
+
+// DELETE /homes/{home_id}/polls/{poll_id}/vote
+// Unvote godoc
+// @Summary      Remove vote from poll
+// @Description  Remove user's vote from a poll
+// @Tags         poll
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        poll_id path int true "Poll ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/polls/{poll_id}/vote [delete]
+func (h *PollHandler) Unvote(w http.ResponseWriter, r *http.Request) {
+	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
+	if err != nil {
+		utils.JSONError(w, "Invalid home ID", http.StatusBadRequest)
+		return
+	}
+	pollID, err := strconv.Atoi(chi.URLParam(r, "poll_id"))
+	if err != nil {
+		utils.JSONError(w, "Invalid poll ID", http.StatusBadRequest)
+		return
+	}
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.svc.Unvote(userID, pollID, homeID); err != nil {
+		if err == services.ErrRevoteNotAllowed {
+			utils.JSONError(w, "Revoting is not allowed for this poll", http.StatusForbidden)
+			return
+		}
+		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Vote removed successfully"})
 }

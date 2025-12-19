@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -21,7 +22,7 @@ var (
 		ID:       1,
 		HomeID:   1,
 		Question: "What's for dinner?",
-		Type:     "single",
+		Type:     "public",
 		Status:   "open",
 		Options: []models.Option{
 			{
@@ -43,7 +44,7 @@ var (
 
 	validCreatePollRequest = models.CreatePollRequest{
 		Question: "What's for dinner?",
-		Type:     "single",
+		Type:     "public",
 		Options: []models.OptionRequest{
 			{Title: "Pizza"},
 			{Title: "Pasta"},
@@ -85,20 +86,21 @@ func setupPollRouter(h *handlers.PollHandler) *chi.Mux {
 // Mock service
 type mockPollService struct {
 	// Polls
-	CreateFunc              func(homeID int, question, pollType string, options []models.OptionRequest) error
+	CreateFunc              func(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
 	GetPollByIDFunc         func(pollID int) (*models.Poll, error)
 	GetAllPollsByHomeIDFunc func(homeID int) (*[]models.Poll, error)
 	ClosePollFunc           func(pollID, homeID int) error
 	DeleteFunc              func(pollID, homeID int) error
 
 	// Votes
-	VoteFunc func(userID, optionID, homeID int) error
+	VoteFunc   func(userID, optionID, homeID int) error
+	UnvoteFunc func(userID, pollID, homeID int) error
 }
 
 // Poll methods
-func (m *mockPollService) Create(homeID int, question, pollType string, options []models.OptionRequest) error {
+func (m *mockPollService) Create(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
 	if m.CreateFunc != nil {
-		return m.CreateFunc(homeID, question, pollType, options)
+		return m.CreateFunc(homeID, question, pollType, options, allowRevote, endsAt)
 	}
 	return nil
 }
@@ -138,13 +140,20 @@ func (m *mockPollService) Vote(userID, optionID, homeID int) error {
 	return nil
 }
 
+func (m *mockPollService) Unvote(userID, pollID, homeID int) error {
+	if m.UnvoteFunc != nil {
+		return m.UnvoteFunc(userID, pollID, homeID)
+	}
+	return nil
+}
+
 // POLL TESTS
 func TestPollHandler_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		homeID         string
 		body           interface{}
-		mockFunc       func(homeID int, question, pollType string, options []models.OptionRequest) error
+		mockFunc       func(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -152,10 +161,10 @@ func TestPollHandler_Create(t *testing.T) {
 			name:   "Success",
 			homeID: "1",
 			body:   validCreatePollRequest,
-			mockFunc: func(homeID int, question, pollType string, options []models.OptionRequest) error {
+			mockFunc: func(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, "What's for dinner?", question)
-				assert.Equal(t, "single", pollType)
+				assert.Equal(t, "public", pollType)
 				assert.Len(t, options, 2)
 				assert.Equal(t, "Pizza", options[0].Title)
 				assert.Equal(t, "Pasta", options[1].Title)
@@ -185,7 +194,7 @@ func TestPollHandler_Create(t *testing.T) {
 			homeID: "1",
 			body: models.CreatePollRequest{
 				Question: "", // Empty question should fail validation
-				Type:     "single",
+				Type:     "public",
 				Options:  []models.OptionRequest{{Title: "Option1"}},
 			},
 			mockFunc:       nil,
@@ -196,7 +205,7 @@ func TestPollHandler_Create(t *testing.T) {
 			name:   "Service Error",
 			homeID: "1",
 			body:   validCreatePollRequest,
-			mockFunc: func(homeID int, question, pollType string, options []models.OptionRequest) error {
+			mockFunc: func(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,

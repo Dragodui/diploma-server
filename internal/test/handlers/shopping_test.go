@@ -22,6 +22,7 @@ var (
 		ID:     1,
 		Name:   "Groceries",
 		Icon:   stringPtr("🛒"),
+		Color:  "#ffffff",
 		HomeID: 1,
 	}
 
@@ -36,8 +37,9 @@ var (
 	}
 
 	validCreateCategoryRequest = models.CreateCategoryRequest{
-		Name: "Groceries",
-		Icon: stringPtr("🛒"),
+		Name:  "Groceries",
+		Icon:  stringPtr("🛒"),
+		Color: "#ffffff",
 	}
 
 	validCreateItemRequest = models.CreateShoppingItemRequest{
@@ -48,8 +50,9 @@ var (
 	}
 
 	validUpdateCategoryRequest = models.UpdateShoppingCategoryRequest{
-		Name: stringPtr("Updated Category"),
-		Icon: stringPtr("🆕"),
+		Name:  stringPtr("Updated Category"),
+		Icon:  stringPtr("🆕"),
+		Color: stringPtr("#000000"),
 	}
 
 	validUpdateItemRequest = models.UpdateShoppingItemRequest{
@@ -432,12 +435,12 @@ func TestShoppingHandler_Categories(t *testing.T) {
 					assert.Equal(t, 1, categoryID)
 					assert.Equal(t, 1, homeID)
 					assert.Equal(t, "Updated Category", *name)
-					assert.Equal(t, "#ffffff", *color)
+					assert.Equal(t, "#000000", *color)
 					assert.Equal(t, "🆕", *icon)
 					return nil
 				},
 				expectedStatus: http.StatusOK,
-				expectedBody:   "Deleted successfully", // Note: Your handler has a bug here - should be "Edited successfully"
+				expectedBody:   "Updated successfully",
 			},
 			{
 				name:           "Invalid Category ID",

@@ -189,6 +189,7 @@ func SetupRoutes(
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{poll_id}", pollHandler.Delete)
 
 						r.With(middleware.RequireMember(homeRepo)).Post("/{poll_id}/vote", pollHandler.Vote)
+						r.With(middleware.RequireMember(homeRepo)).Delete("/{poll_id}/vote", pollHandler.Unvote)
 					})
 				})
 			})

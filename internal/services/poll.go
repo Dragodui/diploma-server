@@ -1,12 +1,17 @@
 package services
 
 import (
+	"errors"
+	"time"
+
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/redis/go-redis/v9"
 )
+
+var ErrRevoteNotAllowed = errors.New("revoting is not allowed for this poll")
 
 type PollService struct {
 	repo  repository.PollRepository
@@ -15,7 +20,7 @@ type PollService struct {
 
 type IPollService interface {
 	// polls
-	Create(homeID int, question, pollType string, options []models.OptionRequest) error
+	Create(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
 	GetPollByID(pollID int) (*models.Poll, error)
 	GetAllPollsByHomeID(homeID int) (*[]models.Poll, error)
 	ClosePoll(pollID, homeID int) error
@@ -23,6 +28,7 @@ type IPollService interface {
 
 	// votes
 	Vote(userID, optionID, homeID int) error
+	Unvote(userID, pollID, homeID int) error
 }
 
 func NewPollService(repo repository.PollRepository, cache *redis.Client) *PollService {
@@ -32,7 +38,7 @@ func NewPollService(repo repository.PollRepository, cache *redis.Client) *PollSe
 }
 
 // polls
-func (s *PollService) Create(homeID int, question, pollType string, options []models.OptionRequest) error {
+func (s *PollService) Create(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
 	var optionModels []models.Option
 	for _, option := range options {
 		optionModels = append(optionModels, models.Option{
@@ -46,9 +52,11 @@ func (s *PollService) Create(homeID int, question, pollType string, options []mo
 	}
 
 	err := s.repo.Create(&models.Poll{
-		HomeID:   homeID,
-		Question: question,
-		Type:     pollType,
+		HomeID:      homeID,
+		Question:    question,
+		Type:        pollType,
+		AllowRevote: allowRevote,
+		EndsAt:      endsAt,
 	}, optionModels)
 
 	return err
@@ -132,4 +140,29 @@ func (s *PollService) Vote(userID, optionID, homeID int) error {
 		UserID:   userID,
 		OptionID: optionID,
 	})
+}
+
+func (s *PollService) Unvote(userID, pollID, homeID int) error {
+	poll, err := s.repo.FindPollByID(pollID)
+	if err != nil {
+		return err
+	}
+
+	if !poll.AllowRevote {
+		return ErrRevoteNotAllowed
+	}
+
+	// delete from cache
+	pollsKey := utils.GetPollKey(poll.ID)
+	pollsForHomeKey := utils.GetAllPollsForHomeKey(homeID)
+
+	if err := utils.DeleteFromCache(pollsKey, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsKey, err)
+	}
+
+	if err := utils.DeleteFromCache(pollsForHomeKey, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsForHomeKey, err)
+	}
+
+	return s.repo.Unvote(userID, pollID)
 }

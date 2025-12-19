@@ -23,11 +23,13 @@ type Vote struct {
 }
 
 type Poll struct {
-	ID       int    `gorm:"autoIncrement; primaryKey" json:"id"`
-	HomeID   int    `json:"home_id"`
-	Question string `json:"question"`
-	Type     string `gorm:"default:public" json:"type"`                  // public/anonymous
-	Status   string `gorm:"not null;size:64;default:open" json:"status"` // open/closed
+	ID          int        `gorm:"autoIncrement; primaryKey" json:"id"`
+	HomeID      int        `json:"home_id"`
+	Question    string     `json:"question"`
+	Type        string     `gorm:"default:public" json:"type"`                  // public/anonymous
+	Status      string     `gorm:"not null;size:64;default:open" json:"status"` // open/closed
+	AllowRevote bool       `gorm:"default:false" json:"allow_revote"`
+	EndsAt      *time.Time `json:"ends_at"`
 
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 
@@ -41,9 +43,11 @@ type OptionRequest struct {
 }
 
 type CreatePollRequest struct {
-	Question string          `json:"question" validate:"required"`
-	Type     string          `json:"type" validate:"required,oneof=public anonymous"`
-	Options  []OptionRequest `json:"options" validate:"min=2,dive"`
+	Question    string          `json:"question" validate:"required"`
+	Type        string          `json:"type" validate:"required,oneof=public anonymous"`
+	Options     []OptionRequest `json:"options" validate:"min=2,dive"`
+	AllowRevote bool            `json:"allow_revote"`
+	EndsAt      *time.Time      `json:"ends_at"`
 }
 
 type VoteRequest struct {

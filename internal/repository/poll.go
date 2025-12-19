@@ -22,6 +22,7 @@ type PollRepository interface {
 
 	// votes
 	Vote(vote *models.Vote) error
+	Unvote(userID, pollID int) error
 }
 
 func NewPollRepository(db *gorm.DB) PollRepository {
@@ -141,4 +142,20 @@ func (r *pollRepo) Vote(vote *models.Vote) error {
 	}
 
 	return r.db.Create(vote).Error
+}
+
+func (r *pollRepo) Unvote(userID, pollID int) error {
+	// Find all options for this poll
+	var options []models.Option
+	if err := r.db.Where("poll_id = ?", pollID).Find(&options).Error; err != nil {
+		return err
+	}
+
+	// Delete user's votes from all options of this poll
+	optionIDs := make([]int, len(options))
+	for i, opt := range options {
+		optionIDs[i] = opt.ID
+	}
+
+	return r.db.Where("user_id = ? AND option_id IN ?", userID, optionIDs).Delete(&models.Vote{}).Error
 }
