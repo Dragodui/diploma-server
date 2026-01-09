@@ -31,6 +31,7 @@ func SetupRoutes(
 	pollHandler *handlers.PollHandler,
 	notificationHandler *handlers.NotificationHandler,
 	userHandler *handlers.UserHandler,
+	ocrHandler *handlers.OCRHandler,
 
 	// home repo for middleware
 	homeRepo repository.HomeRepository,
@@ -88,6 +89,9 @@ func SetupRoutes(
 
 			// upload images
 			r.Post("/upload", imageHandler.UploadImage)
+
+			// OCR processing
+			r.Post("/ocr/process", ocrHandler.ProcessImage)
 
 			// Homes and nested resources
 			r.Route("/homes", func(r chi.Router) {

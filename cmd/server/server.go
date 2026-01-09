@@ -97,6 +97,8 @@ func NewServer() *Server {
 		log.Fatalf("error running S3: %s", err.Error())
 	}
 
+	ocrSvc := services.NewOCRService()
+
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
 	homeHandler := handlers.NewHomeHandler(homeSvc)
@@ -109,9 +111,10 @@ func NewServer() *Server {
 	pollHandler := handlers.NewPollHandler(pollSvc)
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc)
 	userHandler := handlers.NewUserHandler(userService, imageService)
+	ocrHandler := handlers.NewOCRHandler(ocrSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }
