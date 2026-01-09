@@ -50,6 +50,8 @@ func NewServer() *Server {
 		&models.Notification{},
 		&models.HomeNotification{},
 		&models.Room{},
+		&models.HomeAssistantConfig{},
+		&models.SmartDevice{},
 	); err != nil {
 		panic(err)
 	}
@@ -79,6 +81,7 @@ func NewServer() *Server {
 	shoppingRepo := repository.NewShoppingRepository(db)
 	pollRepo := repository.NewPollRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
+	smartHomeRepo := repository.NewSmartHomeRepository(db)
 
 	// services
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL, mailer)
@@ -98,6 +101,7 @@ func NewServer() *Server {
 	}
 
 	ocrSvc := services.NewOCRService()
+	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cache)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -112,9 +116,10 @@ func NewServer() *Server {
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc)
 	userHandler := handlers.NewUserHandler(userService, imageService)
 	ocrHandler := handlers.NewOCRHandler(ocrSvc)
+	smartHomeHandler := handlers.NewSmartHomeHandler(smartHomeSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }
