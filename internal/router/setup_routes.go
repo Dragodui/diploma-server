@@ -125,6 +125,7 @@ func SetupRoutes(
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/", roomHandler.Create)
 						r.With(middleware.RequireMember(homeRepo)).Get("/", roomHandler.GetByHomeID)
 						r.With(middleware.RequireMember(homeRepo)).Get("/{room_id}", roomHandler.GetByID)
+                                                r.With(middleware.RequireMember(homeRepo)).Get("/{room_id}/devices", smartHomeHandler.GetDevicesByRoom)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{room_id}", roomHandler.Delete)
 					})
 
