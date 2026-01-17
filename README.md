@@ -8,6 +8,10 @@
 
 <img width="4080" height="3116" alt="drawSQL-image-export-2025-09-04" src="https://github.com/user-attachments/assets/2fbb9b0f-5b10-4f71-83d2-ca1fd19453a3" />
 
+## App Architecture Scheme
+
+<img width="2816" height="1536" alt="Gemini_Generated_Image_b2s172b2s172b2s1" src="https://github.com/user-attachments/assets/e5c760cd-fcb9-462b-a995-a76a2435e73c" />
+
 ## API Documentation
 
 This project uses Swagger for API documentation.
