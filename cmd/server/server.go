@@ -114,7 +114,7 @@ func NewServer() *Server {
 	ocrHandler := handlers.NewOCRHandler(ocrSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, cache, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }
