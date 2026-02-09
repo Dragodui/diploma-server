@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 // @title           Diploma Server API
 // @version         1.0
 // @description     This is the API server for the Diploma project.
@@ -18,6 +20,12 @@ package main
 // @in header
 // @name Authorization
 func main() {
-	app := NewServer()
-	app.Run()
+	app, err := NewServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := app.Run(); err != nil {
+		log.Fatal(err)
+	}
 }

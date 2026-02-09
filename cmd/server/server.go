@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/cache"
@@ -22,17 +27,20 @@ import (
 )
 
 type Server struct {
-	router http.Handler
-	port   string
+	router     http.Handler
+	port       string
+	httpServer *http.Server
+	sqlCloser  interface{ Close() error }
+	redis      interface{ Close() error }
 }
 
-func NewServer() *Server {
+func NewServer() (*Server, error) {
 	logger.Init("app.log")
 	cfg := config.Load()
 
 	db, err := gorm.Open(postgres.Open(cfg.DB_DSN), &gorm.Config{})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if err = db.AutoMigrate(
@@ -54,7 +62,7 @@ func NewServer() *Server {
 		&models.HomeAssistantConfig{},
 		&models.SmartDevice{},
 	); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// Seed database with test data
@@ -62,7 +70,12 @@ func NewServer() *Server {
 		log.Printf("Warning: Failed to seed database: %v", err)
 	}
 
-	cache := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword)
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	cacheClient := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword)
 
 	// Mailer
 	mailer := &utils.SMTPMailer{
@@ -90,16 +103,16 @@ func NewServer() *Server {
 	smartHomeRepo := repository.NewSmartHomeRepository(db)
 
 	// services
-	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL, mailer)
-	homeSvc := services.NewHomeService(homeRepo, cache)
-	roomSvc := services.NewRoomService(roomRepo, cache)
-	taskSvc := services.NewTaskService(taskRepo, cache)
-	billSvc := services.NewBillService(billRepo, cache)
-	billCategorySvc := services.NewBillCategoryService(billCategoryRepo, cache)
-	shoppingSvc := services.NewShoppingService(shoppingRepo, cache)
-	pollSvc := services.NewPollService(pollRepo, cache)
-	notificationSvc := services.NewNotificationService(notificationRepo, cache)
-	userService := services.NewUserService(userRepo, cache)
+	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cacheClient, 24*time.Hour, cfg.ClientURL, mailer)
+	homeSvc := services.NewHomeService(homeRepo, cacheClient)
+	roomSvc := services.NewRoomService(roomRepo, cacheClient)
+	taskSvc := services.NewTaskService(taskRepo, cacheClient)
+	billSvc := services.NewBillService(billRepo, cacheClient)
+	billCategorySvc := services.NewBillCategoryService(billCategoryRepo, cacheClient)
+	shoppingSvc := services.NewShoppingService(shoppingRepo, cacheClient)
+	pollSvc := services.NewPollService(pollRepo, cacheClient)
+	notificationSvc := services.NewNotificationService(notificationRepo, cacheClient)
+	userService := services.NewUserService(userRepo, cacheClient)
 
 	imageService, err := services.NewImageService(cfg.AWSS3Bucket, cfg.AWSRegion)
 	if err != nil {
@@ -107,7 +120,7 @@ func NewServer() *Server {
 	}
 
 	ocrSvc := services.NewOCRService()
-	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cache)
+	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -125,14 +138,61 @@ func NewServer() *Server {
 	smartHomeHandler := handlers.NewSmartHomeHandler(smartHomeSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, cache, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, cacheClient, homeRepo)
 
-	return &Server{router: router, port: cfg.Port}
+	httpServer := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	return &Server{
+		router:     router,
+		port:       cfg.Port,
+		httpServer: httpServer,
+		sqlCloser:  sqlDB,
+		redis:      cacheClient,
+	}, nil
 }
 
-func (a *Server) Run() {
+func (a *Server) Run() error {
 	logger.Info.Print("Starting server on port:", a.port)
-	if err := http.ListenAndServe(":"+a.port, a.router); err != nil {
-		log.Fatal(err)
+	serveErr := make(chan error, 1)
+
+	go func() {
+		if err := a.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serveErr <- err
+		}
+	}()
+
+	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case <-sigCtx.Done():
+		logger.Info.Print("Shutdown signal received")
+	case err := <-serveErr:
+		return err
 	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := a.httpServer.Shutdown(shutdownCtx); err != nil {
+		return err
+	}
+
+	var closeErrs []error
+	if a.redis != nil {
+		if err := a.redis.Close(); err != nil {
+			closeErrs = append(closeErrs, err)
+		}
+	}
+	if a.sqlCloser != nil {
+		if err := a.sqlCloser.Close(); err != nil {
+			closeErrs = append(closeErrs, err)
+		}
+	}
+
+	return errors.Join(closeErrs...)
 }
