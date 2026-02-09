@@ -7,6 +7,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/cache"
 	"github.com/Dragodui/diploma-server/internal/config"
+	"github.com/Dragodui/diploma-server/internal/database"
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -50,8 +51,15 @@ func NewServer() *Server {
 		&models.Notification{},
 		&models.HomeNotification{},
 		&models.Room{},
+		&models.HomeAssistantConfig{},
+		&models.SmartDevice{},
 	); err != nil {
 		panic(err)
+	}
+
+	// Seed database with test data
+	if err = database.SeedDatabase(db); err != nil {
+		log.Printf("Warning: Failed to seed database: %v", err)
 	}
 
 	cache := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword)
@@ -79,6 +87,7 @@ func NewServer() *Server {
 	shoppingRepo := repository.NewShoppingRepository(db)
 	pollRepo := repository.NewPollRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
+	smartHomeRepo := repository.NewSmartHomeRepository(db)
 
 	// services
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cache, 24*time.Hour, cfg.ClientURL, mailer)
@@ -98,6 +107,7 @@ func NewServer() *Server {
 	}
 
 	ocrSvc := services.NewOCRService()
+	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cache)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -112,9 +122,10 @@ func NewServer() *Server {
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc)
 	userHandler := handlers.NewUserHandler(userService, imageService)
 	ocrHandler := handlers.NewOCRHandler(ocrSvc)
+	smartHomeHandler := handlers.NewSmartHomeHandler(smartHomeSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, cache, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, cache, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }
