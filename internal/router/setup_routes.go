@@ -192,6 +192,7 @@ func SetupRoutes(
 						r.With(middleware.RequireMember(homeRepo)).Get("/", billCategoryHandler.GetAll)
 						r.With(middleware.RequireMember(homeRepo)).Post("/", billCategoryHandler.Create)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{category_id}", billCategoryHandler.Delete)
+						r.With(middleware.RequireAdmin(homeRepo)).Patch("/{category_id}", billCategoryHandler.Update)
 					})
 
 					// Shopping

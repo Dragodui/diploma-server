@@ -96,3 +96,11 @@ func GetUserNotificationsKey(userID int) string {
 func GetHomeNotificationsKey(homeID int) string {
 	return "notification:home:" + strconv.Itoa(homeID)
 }
+
+func GetBillCategoryKey(categoryID int) string {
+	return "bill_category:" + strconv.Itoa(categoryID)
+}
+
+func GetBillCategoriesKey(homeID int) string {
+	return "bill_categories:home:" + strconv.Itoa(homeID)
+}
