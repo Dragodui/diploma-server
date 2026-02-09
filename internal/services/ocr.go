@@ -16,8 +16,8 @@ import (
 type OCRService struct{}
 
 type IOCRService interface {
-	ProcessImage(imageURL string) (*models.OCRResult, error)
-	ProcessFile(filePath string) (*models.OCRResult, error)
+	ProcessImage(imageURL, language string) (*models.OCRResult, error)
+	ProcessFile(filePath, language string) (*models.OCRResult, error)
 }
 
 func NewOCRService() *OCRService {
@@ -25,19 +25,19 @@ func NewOCRService() *OCRService {
 }
 
 // ProcessImage downloads image from URL and processes it with OCR
-func (s *OCRService) ProcessImage(imageURL string) (*models.OCRResult, error) {
+func (s *OCRService) ProcessImage(imageURL, language string) (*models.OCRResult, error) {
 	tempPath, err := downloadImage(imageURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download image: %w", err)
 	}
 	defer os.Remove(tempPath)
 
-	return s.ProcessFile(tempPath)
+	return s.ProcessFile(tempPath, language)
 }
 
 // ProcessFile processes a local file with OCR
-func (s *OCRService) ProcessFile(filePath string) (*models.OCRResult, error) {
-	text, err := utils.ExtractTextFromImage(filePath)
+func (s *OCRService) ProcessFile(filePath, language string) (*models.OCRResult, error) {
+	text, err := utils.ExtractTextFromImage(filePath, language)
 	if err != nil {
 		return nil, fmt.Errorf("OCR extraction failed: %w", err)
 	}
