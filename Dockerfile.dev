@@ -1,6 +1,17 @@
 FROM golang:1.25
 
+RUN apt-get update && apt-get install -y \
+    libtesseract-dev \
+    libleptonica-dev \
+    tesseract-ocr-rus \
+    tesseract-ocr-eng \
+    tesseract-ocr-ukr \
+    tesseract-ocr-pol \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN go install github.com/air-verse/air@latest
+
 ENV PATH="$PATH:/go/bin"
 WORKDIR /app
 
