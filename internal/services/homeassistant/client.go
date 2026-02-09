@@ -2,6 +2,7 @@ package homeassistant
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -46,7 +47,7 @@ func NewHAClient(baseURL, token string) *HAClient {
 }
 
 // doRequest performs an HTTP request to Home Assistant API
-func (c *HAClient) doRequest(method, endpoint string, body interface{}) ([]byte, error) {
+func (c *HAClient) doRequest(ctx context.Context, method, endpoint string, body interface{}) ([]byte, error) {
 	url := c.baseURL + endpoint
 
 	var reqBody io.Reader
@@ -58,7 +59,7 @@ func (c *HAClient) doRequest(method, endpoint string, body interface{}) ([]byte,
 		reqBody = bytes.NewBuffer(jsonData)
 	}
 
-	req, err := http.NewRequest(method, url, reqBody)
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -85,8 +86,8 @@ func (c *HAClient) doRequest(method, endpoint string, body interface{}) ([]byte,
 }
 
 // CheckConnection verifies the connection to Home Assistant
-func (c *HAClient) CheckConnection() error {
-	body, err := c.doRequest(http.MethodGet, "/api/", nil)
+func (c *HAClient) CheckConnection(ctx context.Context) error {
+	body, err := c.doRequest(ctx, http.MethodGet, "/api/", nil)
 	if err != nil {
 		return err
 	}
@@ -104,8 +105,8 @@ func (c *HAClient) CheckConnection() error {
 }
 
 // GetStates returns all entity states from Home Assistant
-func (c *HAClient) GetStates() ([]HAState, error) {
-	body, err := c.doRequest(http.MethodGet, "/api/states", nil)
+func (c *HAClient) GetStates(ctx context.Context) ([]HAState, error) {
+	body, err := c.doRequest(ctx, http.MethodGet, "/api/states", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +120,8 @@ func (c *HAClient) GetStates() ([]HAState, error) {
 }
 
 // GetState returns the state of a specific entity
-func (c *HAClient) GetState(entityID string) (*HAState, error) {
-	body, err := c.doRequest(http.MethodGet, "/api/states/"+entityID, nil)
+func (c *HAClient) GetState(ctx context.Context, entityID string) (*HAState, error) {
+	body, err := c.doRequest(ctx, http.MethodGet, "/api/states/"+entityID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -134,15 +135,15 @@ func (c *HAClient) GetState(entityID string) (*HAState, error) {
 }
 
 // CallService calls a service in Home Assistant
-func (c *HAClient) CallService(domain, service string, data map[string]interface{}) error {
+func (c *HAClient) CallService(ctx context.Context, domain, service string, data map[string]interface{}) error {
 	endpoint := fmt.Sprintf("/api/services/%s/%s", domain, service)
 
-	_, err := c.doRequest(http.MethodPost, endpoint, data)
+	_, err := c.doRequest(ctx, http.MethodPost, endpoint, data)
 	return err
 }
 
 // CallServiceForEntity calls a service for a specific entity
-func (c *HAClient) CallServiceForEntity(entityID, service string, data map[string]interface{}) error {
+func (c *HAClient) CallServiceForEntity(ctx context.Context, entityID, service string, data map[string]interface{}) error {
 	// Extract domain from entity_id (e.g., "light.living_room" -> "light")
 	parts := strings.SplitN(entityID, ".", 2)
 	if len(parts) != 2 {
@@ -156,7 +157,7 @@ func (c *HAClient) CallServiceForEntity(entityID, service string, data map[strin
 	}
 	data["entity_id"] = entityID
 
-	return c.CallService(domain, service, data)
+	return c.CallService(ctx, domain, service, data)
 }
 
 // GetEntityDomain extracts the domain from an entity ID

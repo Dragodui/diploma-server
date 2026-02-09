@@ -19,19 +19,19 @@ type BillService struct {
 }
 
 type IBillService interface {
-	CreateBill(billType string, billCategoryID *int, totalAmount float64, start, end time.Time,
+	CreateBill(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time,
 		ocrData datatypes.JSON, homeID, uploadedBy int) error
-	GetBillByID(id int) (*models.Bill, error)
-	GetBillsByHomeID(homeID int) ([]models.Bill, error)
-	Delete(id int) error
-	MarkBillPayed(id int) error
+	GetBillByID(ctx context.Context, id int) (*models.Bill, error)
+	GetBillsByHomeID(ctx context.Context, homeID int) ([]models.Bill, error)
+	Delete(ctx context.Context, id int) error
+	MarkBillPayed(ctx context.Context, id int) error
 }
 
 func NewBillService(repo repository.BillRepository, cache *redis.Client) *BillService {
 	return &BillService{repo: repo, cache: cache}
 }
 
-func (s *BillService) CreateBill(billType string, billCategoryID *int, totalAmount float64, start, end time.Time,
+func (s *BillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time,
 	ocrData datatypes.JSON, homeID, uploadedBy int) error {
 
 	bill := &models.Bill{
@@ -47,11 +47,11 @@ func (s *BillService) CreateBill(billType string, billCategoryID *int, totalAmou
 		CreatedAt:      time.Now(),
 	}
 
-	if err := s.repo.Create(bill); err != nil {
+	if err := s.repo.Create(ctx, bill); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleBill,
 		Action: event.ActionCreated,
 		Data:   bill,
@@ -60,33 +60,33 @@ func (s *BillService) CreateBill(billType string, billCategoryID *int, totalAmou
 	return nil
 }
 
-func (s *BillService) GetBillByID(id int) (*models.Bill, error) {
+func (s *BillService) GetBillByID(ctx context.Context, id int) (*models.Bill, error) {
 	key := utils.GetBillKey(id)
 
 	// get bill from cache
-	cached, err := utils.GetFromCache[models.Bill](key, s.cache)
+	cached, err := utils.GetFromCache[models.Bill](ctx, key, s.cache)
 	if cached != nil && err == nil {
 		return cached, nil
 	}
 
-	return s.repo.FindByID(id)
+	return s.repo.FindByID(ctx, id)
 }
 
-func (s *BillService) GetBillsByHomeID(homeID int) ([]models.Bill, error) {
-	return s.repo.FindByHomeID(homeID)
+func (s *BillService) GetBillsByHomeID(ctx context.Context, homeID int) ([]models.Bill, error) {
+	return s.repo.FindByHomeID(ctx, homeID)
 }
 
-func (s *BillService) Delete(id int) error {
-	if err := s.repo.Delete(id); err != nil {
+func (s *BillService) Delete(ctx context.Context, id int) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
 		return err
 	}
 
 	key := utils.GetBillKey(id)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleBill,
 		Action: event.ActionDeleted,
 		Data:   map[string]int{"id": id},
@@ -95,30 +95,30 @@ func (s *BillService) Delete(id int) error {
 	return nil
 }
 
-func (s *BillService) MarkBillPayed(id int) error {
+func (s *BillService) MarkBillPayed(ctx context.Context, id int) error {
 	// change payed status
-	if err := s.repo.MarkPayed(id); err != nil {
+	if err := s.repo.MarkPayed(ctx, id); err != nil {
 		return err
 	}
 
 	// remove from cache
 	key := utils.GetBillKey(id)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
 	// get new bill data
-	bill, err := s.repo.FindByID(id)
+	bill, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
 
 	// write to cache
-	if err := utils.WriteToCache(key, bill, s.cache); err != nil {
+	if err := utils.WriteToCache(ctx, key, bill, s.cache); err != nil {
 		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleBill,
 		Action: event.ActionMarkedPayed,
 		Data:   bill,
@@ -126,3 +126,4 @@ func (s *BillService) MarkBillPayed(id int) error {
 
 	return nil
 }
+

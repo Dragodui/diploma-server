@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -11,26 +12,26 @@ import (
 
 type ISmartHomeService interface {
 	// Config management
-	ConnectHA(homeID int, url, token string) error
-	DisconnectHA(homeID int) error
-	GetHAConfig(homeID int) (*models.HomeAssistantConfig, error)
-	TestConnection(homeID int) error
+	ConnectHA(ctx context.Context, homeID int, url, token string) error
+	DisconnectHA(ctx context.Context, homeID int) error
+	GetHAConfig(ctx context.Context, homeID int) (*models.HomeAssistantConfig, error)
+	TestConnection(ctx context.Context, homeID int) error
 
 	// Device management
-	AddDevice(homeID int, entityID, name string, deviceType string, roomID *int, icon *string) error
-	RemoveDevice(deviceID int) error
-	UpdateDevice(deviceID int, name string, roomID *int, icon *string) error
-	GetDevices(homeID int) ([]models.SmartDevice, error)
-	GetDevicesByRoom(roomID int) ([]models.SmartDevice, error)
-	GetDeviceByID(deviceID int) (*models.SmartDevice, error)
+	AddDevice(ctx context.Context, homeID int, entityID, name string, deviceType string, roomID *int, icon *string) error
+	RemoveDevice(ctx context.Context, deviceID int) error
+	UpdateDevice(ctx context.Context, deviceID int, name string, roomID *int, icon *string) error
+	GetDevices(ctx context.Context, homeID int) ([]models.SmartDevice, error)
+	GetDevicesByRoom(ctx context.Context, roomID int) ([]models.SmartDevice, error)
+	GetDeviceByID(ctx context.Context, deviceID int) (*models.SmartDevice, error)
 
 	// Device control & state
-	GetDeviceState(homeID int, entityID string) (*homeassistant.HAState, error)
-	GetAllStates(homeID int) ([]homeassistant.HAState, error)
-	ControlDevice(homeID int, entityID string, service string, data map[string]interface{}) error
+	GetDeviceState(ctx context.Context, homeID int, entityID string) (*homeassistant.HAState, error)
+	GetAllStates(ctx context.Context, homeID int) ([]homeassistant.HAState, error)
+	ControlDevice(ctx context.Context, homeID int, entityID string, service string, data map[string]interface{}) error
 
 	// Discovery
-	DiscoverDevices(homeID int) ([]homeassistant.HAState, error)
+	DiscoverDevices(ctx context.Context, homeID int) ([]homeassistant.HAState, error)
 }
 
 type SmartHomeService struct {
@@ -43,8 +44,8 @@ func NewSmartHomeService(repo repository.SmartHomeRepository, cache *redis.Clien
 }
 
 // getHAClient creates a Home Assistant client for a given home
-func (s *SmartHomeService) getHAClient(homeID int) (*homeassistant.HAClient, error) {
-	config, err := s.repo.GetConfigByHomeID(homeID)
+func (s *SmartHomeService) getHAClient(ctx context.Context, homeID int) (*homeassistant.HAClient, error) {
+	config, err := s.repo.GetConfigByHomeID(ctx, homeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get HA config: %w", err)
 	}
@@ -60,15 +61,15 @@ func (s *SmartHomeService) getHAClient(homeID int) (*homeassistant.HAClient, err
 
 // Config management
 
-func (s *SmartHomeService) ConnectHA(homeID int, url, token string) error {
-	// Test connection first
+func (s *SmartHomeService) ConnectHA(ctx context.Context, homeID int, url, token string) error {
+	// Test Connection first
 	client := homeassistant.NewHAClient(url, token)
-	if err := client.CheckConnection(); err != nil {
+	if err := client.CheckConnection(ctx); err != nil {
 		return fmt.Errorf("failed to connect to Home Assistant: %w", err)
 	}
 
 	// Check if config already exists
-	existing, err := s.repo.GetConfigByHomeID(homeID)
+	existing, err := s.repo.GetConfigByHomeID(ctx, homeID)
 	if err != nil {
 		return err
 	}
@@ -78,7 +79,7 @@ func (s *SmartHomeService) ConnectHA(homeID int, url, token string) error {
 		existing.URL = url
 		existing.Token = token
 		existing.IsActive = true
-		return s.repo.UpdateConfig(existing)
+		return s.repo.UpdateConfig(ctx, existing)
 	}
 
 	// Create new config
@@ -88,30 +89,30 @@ func (s *SmartHomeService) ConnectHA(homeID int, url, token string) error {
 		Token:    token,
 		IsActive: true,
 	}
-	return s.repo.CreateConfig(config)
+	return s.repo.CreateConfig(ctx, config)
 }
 
-func (s *SmartHomeService) DisconnectHA(homeID int) error {
-	return s.repo.DeleteConfig(homeID)
+func (s *SmartHomeService) DisconnectHA(ctx context.Context, homeID int) error {
+	return s.repo.DeleteConfig(ctx, homeID)
 }
 
-func (s *SmartHomeService) GetHAConfig(homeID int) (*models.HomeAssistantConfig, error) {
-	return s.repo.GetConfigByHomeID(homeID)
+func (s *SmartHomeService) GetHAConfig(ctx context.Context, homeID int) (*models.HomeAssistantConfig, error) {
+	return s.repo.GetConfigByHomeID(ctx, homeID)
 }
 
-func (s *SmartHomeService) TestConnection(homeID int) error {
-	client, err := s.getHAClient(homeID)
+func (s *SmartHomeService) TestConnection(ctx context.Context, homeID int) error {
+	client, err := s.getHAClient(ctx, homeID)
 	if err != nil {
 		return err
 	}
-	return client.CheckConnection()
+	return client.CheckConnection(ctx)
 }
 
 // Device management
 
-func (s *SmartHomeService) AddDevice(homeID int, entityID, name string, deviceType string, roomID *int, icon *string) error {
+func (s *SmartHomeService) AddDevice(ctx context.Context, homeID int, entityID, name string, deviceType string, roomID *int, icon *string) error {
 	// Check if device already exists
-	existing, err := s.repo.GetDeviceByEntityID(homeID, entityID)
+	existing, err := s.repo.GetDeviceByEntityID(ctx, homeID, entityID)
 	if err != nil {
 		return err
 	}
@@ -120,12 +121,12 @@ func (s *SmartHomeService) AddDevice(homeID int, entityID, name string, deviceTy
 	}
 
 	// Verify entity exists in HA
-	client, err := s.getHAClient(homeID)
+	client, err := s.getHAClient(ctx, homeID)
 	if err != nil {
 		return err
 	}
 
-	state, err := client.GetState(entityID)
+	state, err := client.GetState(ctx, entityID)
 	if err != nil {
 		return fmt.Errorf("entity not found in Home Assistant: %w", err)
 	}
@@ -149,15 +150,15 @@ func (s *SmartHomeService) AddDevice(homeID int, entityID, name string, deviceTy
 		Icon:     icon,
 	}
 
-	return s.repo.CreateDevice(device)
+	return s.repo.CreateDevice(ctx, device)
 }
 
-func (s *SmartHomeService) RemoveDevice(deviceID int) error {
-	return s.repo.DeleteDevice(deviceID)
+func (s *SmartHomeService) RemoveDevice(ctx context.Context, deviceID int) error {
+	return s.repo.DeleteDevice(ctx, deviceID)
 }
 
-func (s *SmartHomeService) UpdateDevice(deviceID int, name string, roomID *int, icon *string) error {
-	device, err := s.repo.GetDeviceByID(deviceID)
+func (s *SmartHomeService) UpdateDevice(ctx context.Context, deviceID int, name string, roomID *int, icon *string) error {
+	device, err := s.repo.GetDeviceByID(ctx, deviceID)
 	if err != nil {
 		return err
 	}
@@ -169,45 +170,45 @@ func (s *SmartHomeService) UpdateDevice(deviceID int, name string, roomID *int, 
 	device.RoomID = roomID
 	device.Icon = icon
 
-	return s.repo.UpdateDevice(device)
+	return s.repo.UpdateDevice(ctx, device)
 }
 
-func (s *SmartHomeService) GetDevices(homeID int) ([]models.SmartDevice, error) {
-	return s.repo.GetDevicesByHomeID(homeID)
+func (s *SmartHomeService) GetDevices(ctx context.Context, homeID int) ([]models.SmartDevice, error) {
+	return s.repo.GetDevicesByHomeID(ctx, homeID)
 }
 
-func (s *SmartHomeService) GetDevicesByRoom(roomID int) ([]models.SmartDevice, error) {
-	return s.repo.GetDevicesByRoomID(roomID)
+func (s *SmartHomeService) GetDevicesByRoom(ctx context.Context, roomID int) ([]models.SmartDevice, error) {
+	return s.repo.GetDevicesByRoomID(ctx, roomID)
 }
 
-func (s *SmartHomeService) GetDeviceByID(deviceID int) (*models.SmartDevice, error) {
-	return s.repo.GetDeviceByID(deviceID)
+func (s *SmartHomeService) GetDeviceByID(ctx context.Context, deviceID int) (*models.SmartDevice, error) {
+	return s.repo.GetDeviceByID(ctx, deviceID)
 }
 
 // Device control & state
 
-func (s *SmartHomeService) GetDeviceState(homeID int, entityID string) (*homeassistant.HAState, error) {
-	client, err := s.getHAClient(homeID)
+func (s *SmartHomeService) GetDeviceState(ctx context.Context, homeID int, entityID string) (*homeassistant.HAState, error) {
+	client, err := s.getHAClient(ctx, homeID)
 	if err != nil {
 		return nil, err
 	}
-	return client.GetState(entityID)
+	return client.GetState(ctx, entityID)
 }
 
-func (s *SmartHomeService) GetAllStates(homeID int) ([]homeassistant.HAState, error) {
-	client, err := s.getHAClient(homeID)
+func (s *SmartHomeService) GetAllStates(ctx context.Context, homeID int) ([]homeassistant.HAState, error) {
+	client, err := s.getHAClient(ctx, homeID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get all states from HA
-	allStates, err := client.GetStates()
+	allStates, err := client.GetStates(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get added devices for this home
-	devices, err := s.repo.GetDevicesByHomeID(homeID)
+	devices, err := s.repo.GetDevicesByHomeID(ctx, homeID)
 	if err != nil {
 		return nil, err
 	}
@@ -229,23 +230,23 @@ func (s *SmartHomeService) GetAllStates(homeID int) ([]homeassistant.HAState, er
 	return filteredStates, nil
 }
 
-func (s *SmartHomeService) ControlDevice(homeID int, entityID string, service string, data map[string]interface{}) error {
-	client, err := s.getHAClient(homeID)
+func (s *SmartHomeService) ControlDevice(ctx context.Context, homeID int, entityID string, service string, data map[string]interface{}) error {
+	client, err := s.getHAClient(ctx, homeID)
 	if err != nil {
 		return err
 	}
-	return client.CallServiceForEntity(entityID, service, data)
+	return client.CallServiceForEntity(ctx, entityID, service, data)
 }
 
 // Discovery
 
-func (s *SmartHomeService) DiscoverDevices(homeID int) ([]homeassistant.HAState, error) {
-	client, err := s.getHAClient(homeID)
+func (s *SmartHomeService) DiscoverDevices(ctx context.Context, homeID int) ([]homeassistant.HAState, error) {
+	client, err := s.getHAClient(ctx, homeID)
 	if err != nil {
 		return nil, err
 	}
 
-	states, err := client.GetStates()
+	states, err := client.GetStates(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -15,21 +15,21 @@ type UserService struct {
 }
 
 type IUserService interface {
-	GetUserByID(userID int) (*models.User, error)
-	UpdateUser(userID int, name string) error
-	UpdateUserAvatar(userID int, imagePath string) error
+	GetUserByID(ctx context.Context, userID int) (*models.User, error)
+	UpdateUser(ctx context.Context, userID int, name string) error
+	UpdateUserAvatar(ctx context.Context, userID int, imagePath string) error
 }
 
 func NewUserService(repo repository.UserRepository, redis *redis.Client) *UserService {
 	return &UserService{repo: repo, cache: redis}
 }
 
-func (s *UserService) GetUserByID(userID int) (*models.User, error) {
-	return s.repo.FindByID(userID)
+func (s *UserService) GetUserByID(ctx context.Context, userID int) (*models.User, error) {
+	return s.repo.FindByID(ctx, userID)
 }
 
-func (s *UserService) UpdateUser(userID int, name string) error {
-	user, err := s.repo.FindByID(userID)
+func (s *UserService) UpdateUser(ctx context.Context, userID int, name string) error {
+	user, err := s.repo.FindByID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -37,11 +37,11 @@ func (s *UserService) UpdateUser(userID int, name string) error {
 	updates := map[string]interface{}{}
 	updates["name"] = name
 
-	if err := s.repo.Update(user, updates); err != nil {
+	if err := s.repo.Update(ctx, user, updates); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleUser,
 		Action: event.ActionUpdated,
 		Data:   user,
@@ -50,8 +50,8 @@ func (s *UserService) UpdateUser(userID int, name string) error {
 	return nil
 }
 
-func (s *UserService) UpdateUserAvatar(userID int, imagePath string) error {
-	user, err := s.repo.FindByID(userID)
+func (s *UserService) UpdateUserAvatar(ctx context.Context, userID int, imagePath string) error {
+	user, err := s.repo.FindByID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -59,11 +59,11 @@ func (s *UserService) UpdateUserAvatar(userID int, imagePath string) error {
 	updates := map[string]interface{}{}
 	updates["avatar"] = imagePath
 
-	if err := s.repo.Update(user, updates); err != nil {
+	if err := s.repo.Update(ctx, user, updates); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleUser,
 		Action: event.ActionUpdated,
 		Data:   user,
@@ -71,3 +71,4 @@ func (s *UserService) UpdateUserAvatar(userID int, imagePath string) error {
 
 	return nil
 }
+

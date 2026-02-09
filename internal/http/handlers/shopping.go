@@ -49,7 +49,7 @@ func (h *ShoppingHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.svc.CreateCategory(req.Name, req.Icon, req.Color, homeID); err != nil {
+	if err := h.svc.CreateCategory(r.Context(), req.Name, req.Icon, req.Color, homeID); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -77,7 +77,7 @@ func (h *ShoppingHandler) GetAllCategories(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	categories, err := h.svc.FindAllCategoriesForHome(homeID)
+	categories, err := h.svc.FindAllCategoriesForHome(r.Context(), homeID)
 
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
@@ -118,7 +118,7 @@ func (h *ShoppingHandler) GetCategoryByID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	category, err := h.svc.FindCategoryByID(categoryID, homeID)
+	category, err := h.svc.FindCategoryByID(r.Context(), categoryID, homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -156,7 +156,7 @@ func (h *ShoppingHandler) DeleteCategory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.svc.DeleteCategory(categoryID, homeID); err != nil {
+	if err := h.svc.DeleteCategory(r.Context(), categoryID, homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -201,7 +201,7 @@ func (h *ShoppingHandler) EditCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.EditCategory(categoryID, homeID, req.Name, req.Icon, req.Color); err != nil {
+	if err := h.svc.EditCategory(r.Context(), categoryID, homeID, req.Name, req.Icon, req.Color); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -239,7 +239,7 @@ func (h *ShoppingHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := middleware.GetUserID(r)
 
-	if err := h.svc.CreateItem(req.CategoryID, userID, req.Name, req.Image, req.Link); err != nil {
+	if err := h.svc.CreateItem(r.Context(), req.CategoryID, userID, req.Name, req.Image, req.Link); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -268,7 +268,7 @@ func (h *ShoppingHandler) GetItemByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.svc.FindItemByID(itemID)
+	item, err := h.svc.FindItemByID(r.Context(), itemID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -300,7 +300,7 @@ func (h *ShoppingHandler) GetItemsByCategoryID(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	items, err := h.svc.FindItemsByCategoryID(categoryID)
+	items, err := h.svc.FindItemsByCategoryID(r.Context(), categoryID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -332,7 +332,7 @@ func (h *ShoppingHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.DeleteItem(itemID); err != nil {
+	if err := h.svc.DeleteItem(r.Context(), itemID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -361,7 +361,7 @@ func (h *ShoppingHandler) MarkIsBought(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.MarkIsBought(itemID); err != nil {
+	if err := h.svc.MarkIsBought(r.Context(), itemID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -398,7 +398,7 @@ func (h *ShoppingHandler) EditItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.EditItem(itemID, req.Name, req.Image, req.Link, req.IsBought, req.BoughtAt); err != nil {
+	if err := h.svc.EditItem(r.Context(), itemID, req.Name, req.Image, req.Link, req.IsBought, req.BoughtAt); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

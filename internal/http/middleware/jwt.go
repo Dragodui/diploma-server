@@ -50,7 +50,7 @@ func GetUser(r *http.Request, db *gorm.DB) (*models.User, error) {
 	}
 
 	userRepo := repository.NewUserRepository(db)
-	user, err := userRepo.FindByID(id)
+	user, err := userRepo.FindByID(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}

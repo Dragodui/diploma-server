@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -18,81 +19,85 @@ import (
 
 // Mock service
 type mockAuthService struct {
-	RegisterFunc              func(email, password, name string) error
-	LoginFunc                 func(email, password string) (string, *models.User, error)
-	HandleCallbackFunc        func(user goth.User) (string, error)
-	SendVerificationEmailFunc func(email string) error
-	VerifyEmailFunc           func(token string) error
-	SendResetPasswordFunc     func(email string) error
-	ResetPasswordFunc         func(token, newPass string) error
-	GetUserByVerifyTokenFunc  func(token string) (*models.User, error)
-	GetUserByEmailFunc        func(email string) (*models.User, error)
+	RegisterFunc              func(ctx context.Context, email, password, name string) error
+	LoginFunc                 func(ctx context.Context, email, password string) (string, *models.User, error)
+	HandleCallbackFunc        func(ctx context.Context, user goth.User) (string, error)
+	SendVerificationEmailFunc func(ctx context.Context, email string) error
+	VerifyEmailFunc           func(ctx context.Context, token string) error
+	SendResetPasswordFunc     func(ctx context.Context, email string) error
+	ResetPasswordFunc         func(ctx context.Context, token, newPass string) error
+	GetUserByVerifyTokenFunc  func(ctx context.Context, token string) (*models.User, error)
+	GetUserByEmailFunc        func(ctx context.Context, email string) (*models.User, error)
+	GoogleSignInFunc          func(ctx context.Context, email, name, avatar string) (string, *models.User, error)
 }
 
 // GoogleSignIn implements services.IAuthService.
-func (m *mockAuthService) GoogleSignIn(email string, name string, avatar string) (string, *models.User, error) {
-	panic("unimplemented")
-}
-
-func (m *mockAuthService) Register(email, password, name string) error {
-	if m.RegisterFunc != nil {
-		return m.RegisterFunc(email, password, name)
-	}
-	return nil
-}
-
-func (m *mockAuthService) Login(email, password string) (string, *models.User, error) {
-	if m.LoginFunc != nil {
-		return m.LoginFunc(email, password)
+func (m *mockAuthService) GoogleSignIn(ctx context.Context, email string, name string, avatar string) (string, *models.User, error) {
+	if m.GoogleSignInFunc != nil {
+		return m.GoogleSignInFunc(ctx, email, name, avatar)
 	}
 	return "", nil, nil
 }
 
-func (m *mockAuthService) HandleCallback(user goth.User) (string, error) {
+func (m *mockAuthService) Register(ctx context.Context, email, password, name string) error {
+	if m.RegisterFunc != nil {
+		return m.RegisterFunc(ctx, email, password, name)
+	}
+	return nil
+}
+
+func (m *mockAuthService) Login(ctx context.Context, email, password string) (string, *models.User, error) {
+	if m.LoginFunc != nil {
+		return m.LoginFunc(ctx, email, password)
+	}
+	return "", nil, nil
+}
+
+func (m *mockAuthService) HandleCallback(ctx context.Context, user goth.User) (string, error) {
 	if m.HandleCallbackFunc != nil {
-		return m.HandleCallbackFunc(user)
+		return m.HandleCallbackFunc(ctx, user)
 	}
 	return "", nil
 }
 
-func (m *mockAuthService) SendVerificationEmail(email string) error {
+func (m *mockAuthService) SendVerificationEmail(ctx context.Context, email string) error {
 	if m.SendVerificationEmailFunc != nil {
-		return m.SendVerificationEmailFunc(email)
+		return m.SendVerificationEmailFunc(ctx, email)
 	}
 	return nil
 }
 
-func (m *mockAuthService) VerifyEmail(token string) error {
+func (m *mockAuthService) VerifyEmail(ctx context.Context, token string) error {
 	if m.VerifyEmailFunc != nil {
-		return m.VerifyEmailFunc(token)
+		return m.VerifyEmailFunc(ctx, token)
 	}
 	return nil
 }
 
-func (m *mockAuthService) SendResetPassword(email string) error {
+func (m *mockAuthService) SendResetPassword(ctx context.Context, email string) error {
 	if m.SendResetPasswordFunc != nil {
-		return m.SendResetPasswordFunc(email)
+		return m.SendResetPasswordFunc(ctx, email)
 	}
 	return nil
 }
 
-func (m *mockAuthService) ResetPassword(token, newPass string) error {
+func (m *mockAuthService) ResetPassword(ctx context.Context, token, newPass string) error {
 	if m.ResetPasswordFunc != nil {
-		return m.ResetPasswordFunc(token, newPass)
+		return m.ResetPasswordFunc(ctx, token, newPass)
 	}
 	return nil
 }
 
-func (m *mockAuthService) GetUserByVerifyToken(token string) (*models.User, error) {
+func (m *mockAuthService) GetUserByVerifyToken(ctx context.Context, token string) (*models.User, error) {
 	if m.GetUserByVerifyTokenFunc != nil {
-		return m.GetUserByVerifyTokenFunc(token)
+		return m.GetUserByVerifyTokenFunc(ctx, token)
 	}
 	return nil, nil
 }
 
-func (m *mockAuthService) GetUserByEmail(email string) (*models.User, error) {
+func (m *mockAuthService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	if m.GetUserByEmailFunc != nil {
-		return m.GetUserByEmailFunc(email)
+		return m.GetUserByEmailFunc(ctx, email)
 	}
 	return nil, nil
 }
@@ -118,21 +123,21 @@ func TestAuthHandler_Register(t *testing.T) {
 	tests := []struct {
 		name                 string
 		body                 interface{}
-		registerFunc         func(email, password, name string) error
-		sendVerificationFunc func(email string) error
+		registerFunc         func(ctx context.Context, email, password, name string) error
+		sendVerificationFunc func(ctx context.Context, email string) error
 		expectedStatus       int
 		expectedBody         string
 	}{
 		{
 			name: "Success",
 			body: validRegisterInput,
-			registerFunc: func(email, password, name string) error {
+			registerFunc: func(ctx context.Context, email, password, name string) error {
 				assert.Equal(t, "test@example.com", email)
 				assert.Equal(t, "password123", password)
 				assert.Equal(t, "Test User", name)
 				return nil
 			},
-			sendVerificationFunc: func(email string) error {
+			sendVerificationFunc: func(ctx context.Context, email string) error {
 				return nil
 			},
 			expectedStatus: http.StatusCreated,
@@ -158,7 +163,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		{
 			name: "User Already Exists",
 			body: validRegisterInput,
-			registerFunc: func(email, password, name string) error {
+			registerFunc: func(ctx context.Context, email, password, name string) error {
 				return errors.New("user already exists")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -167,10 +172,10 @@ func TestAuthHandler_Register(t *testing.T) {
 		{
 			name: "Send Verification Failed",
 			body: validRegisterInput,
-			registerFunc: func(email, password, name string) error {
+			registerFunc: func(ctx context.Context, email, password, name string) error {
 				return nil
 			},
-			sendVerificationFunc: func(email string) error {
+			sendVerificationFunc: func(ctx context.Context, email string) error {
 				return errors.New("mail error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -206,18 +211,18 @@ func TestAuthHandler_Login(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		getUserByEmail func(email string) (*models.User, error)
-		loginFunc      func(email, password string) (string, *models.User, error)
+		getUserByEmail func(ctx context.Context, email string) (*models.User, error)
+		loginFunc      func(ctx context.Context, email, password string) (string, *models.User, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validLoginInput,
-			getUserByEmail: func(email string) (*models.User, error) {
+			getUserByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return &models.User{ID: 1, Email: email, EmailVerified: true}, nil
 			},
-			loginFunc: func(email, password string) (string, *models.User, error) {
+			loginFunc: func(ctx context.Context, email, password string) (string, *models.User, error) {
 				require.Equal(t, "test@example.com", email)
 				require.Equal(t, "password123", password)
 				return "jwt-token-123", &models.User{ID: 1, Email: email}, nil
@@ -242,7 +247,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		{
 			name: "User Not Found",
 			body: validLoginInput,
-			getUserByEmail: func(email string) (*models.User, error) {
+			getUserByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return nil, errors.New("user not found")
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -251,7 +256,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		{
 			name: "Email Not Verified",
 			body: validLoginInput,
-			getUserByEmail: func(email string) (*models.User, error) {
+			getUserByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return &models.User{ID: 1, Email: email, EmailVerified: false}, nil
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -260,10 +265,10 @@ func TestAuthHandler_Login(t *testing.T) {
 		{
 			name: "Invalid Credentials",
 			body: validLoginInput,
-			getUserByEmail: func(email string) (*models.User, error) {
+			getUserByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return &models.User{ID: 1, Email: email, EmailVerified: true}, nil
 			},
-			loginFunc: func(email, password string) (string, *models.User, error) {
+			loginFunc: func(ctx context.Context, email, password string) (string, *models.User, error) {
 				return "", nil, errors.New("invalid credentials")
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -299,14 +304,14 @@ func TestAuthHandler_VerifyEmail(t *testing.T) {
 	tests := []struct {
 		name           string
 		token          string
-		verifyFunc     func(token string) error
+		verifyFunc     func(ctx context.Context, token string) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:  "Success",
 			token: "valid-token",
-			verifyFunc: func(token string) error {
+			verifyFunc: func(ctx context.Context, token string) error {
 				require.Equal(t, "valid-token", token)
 				return nil
 			},
@@ -316,7 +321,7 @@ func TestAuthHandler_VerifyEmail(t *testing.T) {
 		{
 			name:  "Invalid Token",
 			token: "invalid-token",
-			verifyFunc: func(token string) error {
+			verifyFunc: func(ctx context.Context, token string) error {
 				return errors.New("invalid token")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -360,7 +365,7 @@ func TestAuthHandler_ForgotPassword(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &mockAuthService{
-				SendResetPasswordFunc: func(email string) error {
+				SendResetPasswordFunc: func(ctx context.Context, email string) error {
 					return nil
 				},
 			}
@@ -385,7 +390,7 @@ func TestAuthHandler_ResetPassword(t *testing.T) {
 		name           string
 		token          string
 		password       string
-		resetFunc      func(token, newPass string) error
+		resetFunc      func(ctx context.Context, token, newPass string) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -393,7 +398,7 @@ func TestAuthHandler_ResetPassword(t *testing.T) {
 			name:     "Success",
 			token:    "valid-token",
 			password: "newpassword123",
-			resetFunc: func(token, newPass string) error {
+			resetFunc: func(ctx context.Context, token, newPass string) error {
 				require.Equal(t, "valid-token", token)
 				require.Equal(t, "newpassword123", newPass)
 				return nil
@@ -405,7 +410,7 @@ func TestAuthHandler_ResetPassword(t *testing.T) {
 			name:     "Invalid Token",
 			token:    "invalid-token",
 			password: "newpassword123",
-			resetFunc: func(token, newPass string) error {
+			resetFunc: func(ctx context.Context, token, newPass string) error {
 				return errors.New("invalid token")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -439,13 +444,13 @@ func TestAuthHandler_RegenerateVerify(t *testing.T) {
 	tests := []struct {
 		name           string
 		email          string
-		sendFunc       func(email string) error
+		sendFunc       func(ctx context.Context, email string) error
 		expectedStatus int
 	}{
 		{
 			name:  "Success",
 			email: "test@example.com",
-			sendFunc: func(email string) error {
+			sendFunc: func(ctx context.Context, email string) error {
 				require.Equal(t, "test@example.com", email)
 				return nil
 			},
@@ -454,7 +459,7 @@ func TestAuthHandler_RegenerateVerify(t *testing.T) {
 		{
 			name:  "Failed to Send",
 			email: "test@example.com",
-			sendFunc: func(email string) error {
+			sendFunc: func(ctx context.Context, email string) error {
 				return errors.New("mail error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -478,3 +483,4 @@ func TestAuthHandler_RegenerateVerify(t *testing.T) {
 		})
 	}
 }
+

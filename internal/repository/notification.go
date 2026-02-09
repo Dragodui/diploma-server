@@ -1,18 +1,20 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/Dragodui/diploma-server/internal/models"
 	"gorm.io/gorm"
 )
 
 type NotificationRepository interface {
-	Create(n *models.Notification) error
-	FindByUserID(id int) ([]models.Notification, error)
-	MarkAsRead(id int) error
+	Create(ctx context.Context, n *models.Notification) error
+	FindByUserID(ctx context.Context, id int) ([]models.Notification, error)
+	MarkAsRead(ctx context.Context, id int) error
 
-	CreateHomeNotification(n *models.HomeNotification) error
-	FindByHomeID(id int) ([]models.HomeNotification, error)
-	MarkAsReadForHomeNotification(id int) error
+	CreateHomeNotification(ctx context.Context, n *models.HomeNotification) error
+	FindByHomeID(ctx context.Context, id int) ([]models.HomeNotification, error)
+	MarkAsReadForHomeNotification(ctx context.Context, id int) error
 }
 
 type notificationRepo struct {
@@ -24,13 +26,13 @@ func NewNotificationRepository(db *gorm.DB) NotificationRepository {
 }
 
 // user notifications
-func (r *notificationRepo) Create(n *models.Notification) error {
-	return r.db.Create(n).Error
+func (r *notificationRepo) Create(ctx context.Context, n *models.Notification) error {
+	return r.db.WithContext(ctx).Create(n).Error
 }
 
-func (r *notificationRepo) FindByUserID(id int) ([]models.Notification, error) {
+func (r *notificationRepo) FindByUserID(ctx context.Context, id int) ([]models.Notification, error) {
 	var notifications []models.Notification
-	if err := r.db.Where("to = ?", id).Find(&notifications).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("to = ?", id).Find(&notifications).Error; err != nil {
 		return nil, err
 	}
 
@@ -38,15 +40,15 @@ func (r *notificationRepo) FindByUserID(id int) ([]models.Notification, error) {
 
 }
 
-func (r *notificationRepo) MarkAsRead(id int) error {
+func (r *notificationRepo) MarkAsRead(ctx context.Context, id int) error {
 	var notification models.Notification
 
-	if err := r.db.First(&notification, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&notification, id).Error; err != nil {
 		return err
 	}
 
 	notification.Read = true
-	if err := r.db.Save(notification).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(notification).Error; err != nil {
 		return err
 	}
 
@@ -54,13 +56,13 @@ func (r *notificationRepo) MarkAsRead(id int) error {
 }
 
 // home notifications
-func (r *notificationRepo) CreateHomeNotification(n *models.HomeNotification) error {
-	return r.db.Create(n).Error
+func (r *notificationRepo) CreateHomeNotification(ctx context.Context, n *models.HomeNotification) error {
+	return r.db.WithContext(ctx).Create(n).Error
 }
 
-func (r *notificationRepo) FindByHomeID(id int) ([]models.HomeNotification, error) {
+func (r *notificationRepo) FindByHomeID(ctx context.Context, id int) ([]models.HomeNotification, error) {
 	var notifications []models.HomeNotification
-	if err := r.db.Where("to = ?", id).Find(&notifications).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("to = ?", id).Find(&notifications).Error; err != nil {
 		return nil, err
 	}
 
@@ -68,17 +70,18 @@ func (r *notificationRepo) FindByHomeID(id int) ([]models.HomeNotification, erro
 
 }
 
-func (r *notificationRepo) MarkAsReadForHomeNotification(id int) error {
+func (r *notificationRepo) MarkAsReadForHomeNotification(ctx context.Context, id int) error {
 	var notification models.Notification
 
-	if err := r.db.First(&notification, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&notification, id).Error; err != nil {
 		return err
 	}
 
 	notification.Read = true
-	if err := r.db.Save(notification).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(notification).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
+

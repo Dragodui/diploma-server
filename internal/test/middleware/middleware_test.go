@@ -2,6 +2,7 @@ package middleware_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -19,30 +20,40 @@ import (
 
 // Mock home repository
 type mockHomeRepo struct {
-	IsMemberFunc func(homeID, userID int) (bool, error)
-	IsAdminFunc  func(homeID, userID int) (bool, error)
+	IsMemberFunc func(ctx context.Context, homeID, userID int) (bool, error)
+	IsAdminFunc  func(ctx context.Context, homeID, userID int) (bool, error)
 }
 
-func (m *mockHomeRepo) Create(h *models.Home) error                              { return nil }
-func (m *mockHomeRepo) FindByID(id int) (*models.Home, error)                    { return nil, nil }
-func (m *mockHomeRepo) FindByInviteCode(inviteCode string) (*models.Home, error) { return nil, nil }
-func (m *mockHomeRepo) Delete(id int) error                                      { return nil }
-func (m *mockHomeRepo) AddMember(id int, userID int, role string) error          { return nil }
-func (m *mockHomeRepo) DeleteMember(id int, userID int) error                    { return nil }
-func (m *mockHomeRepo) GenerateUniqueInviteCode() (string, error)                { return "CODE1234", nil }
-func (m *mockHomeRepo) GetUserHome(userID int) (*models.Home, error)             { return nil, nil }
-func (m *mockHomeRepo) RegenerateCode(code string, id int) error                 { return nil }
+func (m *mockHomeRepo) Create(ctx context.Context, h *models.Home) error { return nil }
+func (m *mockHomeRepo) FindByID(ctx context.Context, id int) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) FindByInviteCode(ctx context.Context, inviteCode string) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) Delete(ctx context.Context, id int) error { return nil }
+func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role string) error {
+	return nil
+}
+func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) error { return nil }
+func (m *mockHomeRepo) GenerateUniqueInviteCode(ctx context.Context) (string, error) {
+	return "CODE1234", nil
+}
+func (m *mockHomeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) RegenerateCode(ctx context.Context, code string, id int) error { return nil }
 
-func (m *mockHomeRepo) IsMember(homeID, userID int) (bool, error) {
+func (m *mockHomeRepo) IsMember(ctx context.Context, homeID, userID int) (bool, error) {
 	if m.IsMemberFunc != nil {
-		return m.IsMemberFunc(homeID, userID)
+		return m.IsMemberFunc(ctx, homeID, userID)
 	}
 	return false, nil
 }
 
-func (m *mockHomeRepo) IsAdmin(homeID, userID int) (bool, error) {
+func (m *mockHomeRepo) IsAdmin(ctx context.Context, homeID, userID int) (bool, error) {
 	if m.IsAdminFunc != nil {
-		return m.IsAdminFunc(homeID, userID)
+		return m.IsAdminFunc(ctx, homeID, userID)
 	}
 	return false, nil
 }
@@ -203,7 +214,7 @@ func TestRequireMember(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := &mockHomeRepo{
-				IsMemberFunc: func(homeID, userID int) (bool, error) {
+				IsMemberFunc: func(ctx context.Context, homeID, userID int) (bool, error) {
 					return tt.isMember, nil
 				},
 			}
@@ -298,10 +309,10 @@ func TestRequireAdmin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := &mockHomeRepo{
-				IsMemberFunc: func(homeID, userID int) (bool, error) {
+				IsMemberFunc: func(ctx context.Context, homeID, userID int) (bool, error) {
 					return tt.isMember, nil
 				},
-				IsAdminFunc: func(homeID, userID int) (bool, error) {
+				IsAdminFunc: func(ctx context.Context, homeID, userID int) (bool, error) {
 					return tt.isAdmin, nil
 				},
 			}

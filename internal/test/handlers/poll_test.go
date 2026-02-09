@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -86,63 +87,63 @@ func setupPollRouter(h *handlers.PollHandler) *chi.Mux {
 // Mock service
 type mockPollService struct {
 	// Polls
-	CreateFunc              func(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
-	GetPollByIDFunc         func(pollID int) (*models.Poll, error)
-	GetAllPollsByHomeIDFunc func(homeID int) (*[]models.Poll, error)
-	ClosePollFunc           func(pollID, homeID int) error
-	DeleteFunc              func(pollID, homeID int) error
+	CreateFunc              func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
+	GetPollByIDFunc         func(ctx context.Context, pollID int) (*models.Poll, error)
+	GetAllPollsByHomeIDFunc func(ctx context.Context, homeID int) (*[]models.Poll, error)
+	ClosePollFunc           func(ctx context.Context, pollID, homeID int) error
+	DeleteFunc              func(ctx context.Context, pollID, homeID int) error
 
 	// Votes
-	VoteFunc   func(userID, optionID, homeID int) error
-	UnvoteFunc func(userID, pollID, homeID int) error
+	VoteFunc   func(ctx context.Context, userID, optionID, homeID int) error
+	UnvoteFunc func(ctx context.Context, userID, pollID, homeID int) error
 }
 
 // Poll methods
-func (m *mockPollService) Create(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
+func (m *mockPollService) Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
 	if m.CreateFunc != nil {
-		return m.CreateFunc(homeID, question, pollType, options, allowRevote, endsAt)
+		return m.CreateFunc(ctx, homeID, question, pollType, options, allowRevote, endsAt)
 	}
 	return nil
 }
 
-func (m *mockPollService) GetPollByID(pollID int) (*models.Poll, error) {
+func (m *mockPollService) GetPollByID(ctx context.Context, pollID int) (*models.Poll, error) {
 	if m.GetPollByIDFunc != nil {
-		return m.GetPollByIDFunc(pollID)
+		return m.GetPollByIDFunc(ctx, pollID)
 	}
 	return nil, nil
 }
 
-func (m *mockPollService) GetAllPollsByHomeID(homeID int) (*[]models.Poll, error) {
+func (m *mockPollService) GetAllPollsByHomeID(ctx context.Context, homeID int) (*[]models.Poll, error) {
 	if m.GetAllPollsByHomeIDFunc != nil {
-		return m.GetAllPollsByHomeIDFunc(homeID)
+		return m.GetAllPollsByHomeIDFunc(ctx, homeID)
 	}
 	return nil, nil
 }
 
-func (m *mockPollService) ClosePoll(pollID, homeID int) error {
+func (m *mockPollService) ClosePoll(ctx context.Context, pollID, homeID int) error {
 	if m.ClosePollFunc != nil {
-		return m.ClosePollFunc(pollID, homeID)
+		return m.ClosePollFunc(ctx, pollID, homeID)
 	}
 	return nil
 }
 
-func (m *mockPollService) Delete(pollID, homeID int) error {
+func (m *mockPollService) Delete(ctx context.Context, pollID, homeID int) error {
 	if m.DeleteFunc != nil {
-		return m.DeleteFunc(pollID, homeID)
+		return m.DeleteFunc(ctx, pollID, homeID)
 	}
 	return nil
 }
 
-func (m *mockPollService) Vote(userID, optionID, homeID int) error {
+func (m *mockPollService) Vote(ctx context.Context, userID, optionID, homeID int) error {
 	if m.VoteFunc != nil {
-		return m.VoteFunc(userID, optionID, homeID)
+		return m.VoteFunc(ctx, userID, optionID, homeID)
 	}
 	return nil
 }
 
-func (m *mockPollService) Unvote(userID, pollID, homeID int) error {
+func (m *mockPollService) Unvote(ctx context.Context, userID, pollID, homeID int) error {
 	if m.UnvoteFunc != nil {
-		return m.UnvoteFunc(userID, pollID, homeID)
+		return m.UnvoteFunc(ctx, userID, pollID, homeID)
 	}
 	return nil
 }
@@ -153,7 +154,7 @@ func TestPollHandler_Create(t *testing.T) {
 		name           string
 		homeID         string
 		body           interface{}
-		mockFunc       func(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
+		mockFunc       func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -161,7 +162,7 @@ func TestPollHandler_Create(t *testing.T) {
 			name:   "Success",
 			homeID: "1",
 			body:   validCreatePollRequest,
-			mockFunc: func(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
+			mockFunc: func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, "What's for dinner?", question)
 				assert.Equal(t, "public", pollType)
@@ -205,7 +206,7 @@ func TestPollHandler_Create(t *testing.T) {
 			name:   "Service Error",
 			homeID: "1",
 			body:   validCreatePollRequest,
-			mockFunc: func(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
+			mockFunc: func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -243,14 +244,14 @@ func TestPollHandler_GetAllByHomeID(t *testing.T) {
 	tests := []struct {
 		name           string
 		homeID         string
-		mockFunc       func(homeID int) (*[]models.Poll, error)
+		mockFunc       func(ctx context.Context, homeID int) (*[]models.Poll, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			homeID: "1",
-			mockFunc: func(homeID int) (*[]models.Poll, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*[]models.Poll, error) {
 				require.Equal(t, 1, homeID)
 				polls := []models.Poll{*validPoll}
 				return &polls, nil
@@ -268,7 +269,7 @@ func TestPollHandler_GetAllByHomeID(t *testing.T) {
 		{
 			name:   "Service Error",
 			homeID: "1",
-			mockFunc: func(homeID int) (*[]models.Poll, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*[]models.Poll, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -300,7 +301,7 @@ func TestPollHandler_GetByID(t *testing.T) {
 		name           string
 		homeID         string
 		pollID         string
-		mockFunc       func(pollID int) (*models.Poll, error)
+		mockFunc       func(ctx context.Context, pollID int) (*models.Poll, error)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -308,7 +309,7 @@ func TestPollHandler_GetByID(t *testing.T) {
 			name:   "Success",
 			homeID: "1",
 			pollID: "1",
-			mockFunc: func(pollID int) (*models.Poll, error) {
+			mockFunc: func(ctx context.Context, pollID int) (*models.Poll, error) {
 				require.Equal(t, 1, pollID)
 				return validPoll, nil
 			},
@@ -327,7 +328,7 @@ func TestPollHandler_GetByID(t *testing.T) {
 			name:   "Poll Not Found",
 			homeID: "1",
 			pollID: "1",
-			mockFunc: func(pollID int) (*models.Poll, error) {
+			mockFunc: func(ctx context.Context, pollID int) (*models.Poll, error) {
 				return nil, nil
 			},
 			expectedStatus: http.StatusNotFound,
@@ -337,7 +338,7 @@ func TestPollHandler_GetByID(t *testing.T) {
 			name:   "Service Error",
 			homeID: "1",
 			pollID: "1",
-			mockFunc: func(pollID int) (*models.Poll, error) {
+			mockFunc: func(ctx context.Context, pollID int) (*models.Poll, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -370,7 +371,7 @@ func TestPollHandler_Close(t *testing.T) {
 		name           string
 		homeID         string
 		pollID         string
-		mockFunc       func(pollID, homeID int) error
+		mockFunc       func(ctx context.Context, pollID, homeID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -378,7 +379,7 @@ func TestPollHandler_Close(t *testing.T) {
 			name:   "Success",
 			homeID: "1",
 			pollID: "1",
-			mockFunc: func(pollID, homeID int) error {
+			mockFunc: func(ctx context.Context, pollID, homeID int) error {
 				assert.Equal(t, 1, pollID)
 				assert.Equal(t, 1, homeID)
 				return nil
@@ -406,7 +407,7 @@ func TestPollHandler_Close(t *testing.T) {
 			name:   "Service Error",
 			homeID: "1",
 			pollID: "1",
-			mockFunc: func(pollID, homeID int) error {
+			mockFunc: func(ctx context.Context, pollID, homeID int) error {
 				return errors.New("close failed")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -439,7 +440,7 @@ func TestPollHandler_Delete(t *testing.T) {
 		name           string
 		homeID         string
 		pollID         string
-		mockFunc       func(pollID, homeID int) error
+		mockFunc       func(ctx context.Context, pollID, homeID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -447,7 +448,7 @@ func TestPollHandler_Delete(t *testing.T) {
 			name:   "Success",
 			homeID: "1",
 			pollID: "1",
-			mockFunc: func(pollID, homeID int) error {
+			mockFunc: func(ctx context.Context, pollID, homeID int) error {
 				assert.Equal(t, 1, pollID)
 				assert.Equal(t, 1, homeID)
 				return nil
@@ -475,7 +476,7 @@ func TestPollHandler_Delete(t *testing.T) {
 			name:   "Service Error",
 			homeID: "1",
 			pollID: "1",
-			mockFunc: func(pollID, homeID int) error {
+			mockFunc: func(ctx context.Context, pollID, homeID int) error {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -509,7 +510,7 @@ func TestPollHandler_Vote(t *testing.T) {
 		homeID         string
 		pollID         string
 		body           interface{}
-		mockFunc       func(userID, optionID, homeID int) error
+		mockFunc       func(ctx context.Context, userID, optionID, homeID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -518,7 +519,7 @@ func TestPollHandler_Vote(t *testing.T) {
 			homeID: "1",
 			pollID: "1",
 			body:   validVoteRequest,
-			mockFunc: func(userID, optionID, homeID int) error {
+			mockFunc: func(ctx context.Context, userID, optionID, homeID int) error {
 				assert.Equal(t, 123, userID) // From mock middleware
 				assert.Equal(t, 1, optionID)
 				assert.Equal(t, 1, homeID)
@@ -561,7 +562,7 @@ func TestPollHandler_Vote(t *testing.T) {
 			homeID: "1",
 			pollID: "1",
 			body:   validVoteRequest,
-			mockFunc: func(userID, optionID, homeID int) error {
+			mockFunc: func(ctx context.Context, userID, optionID, homeID int) error {
 				return errors.New("vote failed")
 			},
 			expectedStatus: http.StatusBadRequest,

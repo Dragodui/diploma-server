@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"mime/multipart"
@@ -16,28 +17,28 @@ import (
 
 // Mock image service
 type mockImageService struct {
-	UploadFunc          func(file multipart.File, header *multipart.FileHeader) (string, error)
-	GetPresignedURLFunc func(key string, expiration time.Duration) (string, error)
-	DeleteFunc          func(imageURL string) error
+	UploadFunc          func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error)
+	GetPresignedURLFunc func(ctx context.Context, key string, expiration time.Duration) (string, error)
+	DeleteFunc          func(ctx context.Context, imageURL string) error
 }
 
-func (m *mockImageService) Upload(file multipart.File, header *multipart.FileHeader) (string, error) {
+func (m *mockImageService) Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 	if m.UploadFunc != nil {
-		return m.UploadFunc(file, header)
+		return m.UploadFunc(ctx, file, header)
 	}
 	return "", nil
 }
 
-func (m *mockImageService) GetPresignedURL(key string, expiration time.Duration) (string, error) {
+func (m *mockImageService) GetPresignedURL(ctx context.Context, key string, expiration time.Duration) (string, error) {
 	if m.GetPresignedURLFunc != nil {
-		return m.GetPresignedURLFunc(key, expiration)
+		return m.GetPresignedURLFunc(ctx, key, expiration)
 	}
 	return "", nil
 }
 
-func (m *mockImageService) Delete(imageURL string) error {
+func (m *mockImageService) Delete(ctx context.Context, imageURL string) error {
 	if m.DeleteFunc != nil {
-		return m.DeleteFunc(imageURL)
+		return m.DeleteFunc(ctx, imageURL)
 	}
 	return nil
 }
@@ -77,7 +78,7 @@ func TestImageHandler_UploadImage(t *testing.T) {
 		hasFile        bool
 		fieldName      string
 		fileName       string
-		uploadFunc     func(file multipart.File, header *multipart.FileHeader) (string, error)
+		uploadFunc     func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -86,7 +87,7 @@ func TestImageHandler_UploadImage(t *testing.T) {
 			hasFile:   true,
 			fieldName: "image",
 			fileName:  "test.jpg",
-			uploadFunc: func(file multipart.File, header *multipart.FileHeader) (string, error) {
+			uploadFunc: func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 				require.Equal(t, "test.jpg", header.Filename)
 				return "https://s3.amazonaws.com/bucket/test.jpg", nil
 			},
@@ -113,7 +114,7 @@ func TestImageHandler_UploadImage(t *testing.T) {
 			hasFile:   true,
 			fieldName: "image",
 			fileName:  "test.jpg",
-			uploadFunc: func(file multipart.File, header *multipart.FileHeader) (string, error) {
+			uploadFunc: func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 				return "", errors.New("S3 upload failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -151,3 +152,4 @@ func TestImageHandler_UploadImage(t *testing.T) {
 		})
 	}
 }
+

@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -120,96 +121,96 @@ func assertJSONEqual(t *testing.T, rr *httptest.ResponseRecorder, expected inter
 // Mock service
 type mockShoppingService struct {
 	// Categories
-	CreateCategoryFunc           func(name string, icon *string, color string, homeID int) error
-	FindAllCategoriesForHomeFunc func(homeID int) (*[]models.ShoppingCategory, error)
-	FindCategoryByIDFunc         func(categoryID, homeID int) (*models.ShoppingCategory, error)
-	DeleteCategoryFunc           func(categoryID, homeID int) error
-	EditCategoryFunc             func(categoryID, homeID int, name, icon, color *string) error
+	CreateCategoryFunc           func(ctx context.Context, name string, icon *string, color string, homeID int) error
+	FindAllCategoriesForHomeFunc func(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error)
+	FindCategoryByIDFunc         func(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error)
+	DeleteCategoryFunc           func(ctx context.Context, categoryID, homeID int) error
+	EditCategoryFunc             func(ctx context.Context, categoryID, homeID int, name, icon, color *string) error
 
 	// Items
-	CreateItemFunc            func(categoryID, userID int, name string, image, link *string) error
-	FindItemByIDFunc          func(itemID int) (*models.ShoppingItem, error)
-	FindItemsByCategoryIDFunc func(categoryID int) ([]models.ShoppingItem, error)
-	DeleteItemFunc            func(itemID int) error
-	MarkIsBoughtFunc          func(itemID int) error
-	EditItemFunc              func(itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error
+	CreateItemFunc            func(ctx context.Context, categoryID, userID int, name string, image, link *string) error
+	FindItemByIDFunc          func(ctx context.Context, itemID int) (*models.ShoppingItem, error)
+	FindItemsByCategoryIDFunc func(ctx context.Context, categoryID int) ([]models.ShoppingItem, error)
+	DeleteItemFunc            func(ctx context.Context, itemID int) error
+	MarkIsBoughtFunc          func(ctx context.Context, itemID int) error
+	EditItemFunc              func(ctx context.Context, itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error
 }
 
 // Category methods
-func (m *mockShoppingService) CreateCategory(name string, icon *string, color string, homeID int) error {
+func (m *mockShoppingService) CreateCategory(ctx context.Context, name string, icon *string, color string, homeID int) error {
 	if m.CreateCategoryFunc != nil {
-		return m.CreateCategoryFunc(name, icon, color, homeID)
+		return m.CreateCategoryFunc(ctx, name, icon, color, homeID)
 	}
 	return nil
 }
 
-func (m *mockShoppingService) FindAllCategoriesForHome(homeID int) (*[]models.ShoppingCategory, error) {
+func (m *mockShoppingService) FindAllCategoriesForHome(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error) {
 	if m.FindAllCategoriesForHomeFunc != nil {
-		return m.FindAllCategoriesForHomeFunc(homeID)
+		return m.FindAllCategoriesForHomeFunc(ctx, homeID)
 	}
 	return nil, nil
 }
 
-func (m *mockShoppingService) FindCategoryByID(categoryID, homeID int) (*models.ShoppingCategory, error) {
+func (m *mockShoppingService) FindCategoryByID(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error) {
 	if m.FindCategoryByIDFunc != nil {
-		return m.FindCategoryByIDFunc(categoryID, homeID)
+		return m.FindCategoryByIDFunc(ctx, categoryID, homeID)
 	}
 	return nil, nil
 }
 
-func (m *mockShoppingService) DeleteCategory(categoryID, homeID int) error {
+func (m *mockShoppingService) DeleteCategory(ctx context.Context, categoryID, homeID int) error {
 	if m.DeleteCategoryFunc != nil {
-		return m.DeleteCategoryFunc(categoryID, homeID)
+		return m.DeleteCategoryFunc(ctx, categoryID, homeID)
 	}
 	return nil
 }
 
-func (m *mockShoppingService) EditCategory(categoryID, homeID int, name, icon, color *string) error {
+func (m *mockShoppingService) EditCategory(ctx context.Context, categoryID, homeID int, name, icon, color *string) error {
 	if m.EditCategoryFunc != nil {
-		return m.EditCategoryFunc(categoryID, homeID, name, icon, color)
+		return m.EditCategoryFunc(ctx, categoryID, homeID, name, icon, color)
 	}
 	return nil
 }
 
 // Item methods
-func (m *mockShoppingService) CreateItem(categoryID, userID int, name string, image, link *string) error {
+func (m *mockShoppingService) CreateItem(ctx context.Context, categoryID, userID int, name string, image, link *string) error {
 	if m.CreateItemFunc != nil {
-		return m.CreateItemFunc(categoryID, userID, name, image, link)
+		return m.CreateItemFunc(ctx, categoryID, userID, name, image, link)
 	}
 	return nil
 }
 
-func (m *mockShoppingService) FindItemByID(itemID int) (*models.ShoppingItem, error) {
+func (m *mockShoppingService) FindItemByID(ctx context.Context, itemID int) (*models.ShoppingItem, error) {
 	if m.FindItemByIDFunc != nil {
-		return m.FindItemByIDFunc(itemID)
+		return m.FindItemByIDFunc(ctx, itemID)
 	}
 	return nil, nil
 }
 
-func (m *mockShoppingService) FindItemsByCategoryID(categoryID int) ([]models.ShoppingItem, error) {
+func (m *mockShoppingService) FindItemsByCategoryID(ctx context.Context, categoryID int) ([]models.ShoppingItem, error) {
 	if m.FindItemsByCategoryIDFunc != nil {
-		return m.FindItemsByCategoryIDFunc(categoryID)
+		return m.FindItemsByCategoryIDFunc(ctx, categoryID)
 	}
 	return nil, nil
 }
 
-func (m *mockShoppingService) DeleteItem(itemID int) error {
+func (m *mockShoppingService) DeleteItem(ctx context.Context, itemID int) error {
 	if m.DeleteItemFunc != nil {
-		return m.DeleteItemFunc(itemID)
+		return m.DeleteItemFunc(ctx, itemID)
 	}
 	return nil
 }
 
-func (m *mockShoppingService) MarkIsBought(itemID int) error {
+func (m *mockShoppingService) MarkIsBought(ctx context.Context, itemID int) error {
 	if m.MarkIsBoughtFunc != nil {
-		return m.MarkIsBoughtFunc(itemID)
+		return m.MarkIsBoughtFunc(ctx, itemID)
 	}
 	return nil
 }
 
-func (m *mockShoppingService) EditItem(itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
+func (m *mockShoppingService) EditItem(ctx context.Context, itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
 	if m.EditItemFunc != nil {
-		return m.EditItemFunc(itemID, name, image, link, isBought, boughtAt)
+		return m.EditItemFunc(ctx, itemID, name, image, link, isBought, boughtAt)
 	}
 	return nil
 }
@@ -221,7 +222,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			name           string
 			homeID         string
 			body           interface{}
-			mockFunc       func(name string, icon *string, color string, homeID int) error
+			mockFunc       func(ctx context.Context, name string, icon *string, color string, homeID int) error
 			expectedStatus int
 			expectedBody   string
 		}{
@@ -229,7 +230,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:   "Success",
 				homeID: "1",
 				body:   validCreateCategoryRequest,
-				mockFunc: func(name string, icon *string, color string, homeID int) error {
+				mockFunc: func(ctx context.Context, name string, icon *string, color string, homeID int) error {
 					assert.Equal(t, "Groceries", name)
 					assert.Equal(t, "🛒", *icon)
 					assert.Equal(t, "#ffffff", color)
@@ -259,7 +260,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:   "Service Error",
 				homeID: "1",
 				body:   validCreateCategoryRequest,
-				mockFunc: func(name string, icon *string, color string, homeID int) error {
+				mockFunc: func(ctx context.Context, name string, icon *string, color string, homeID int) error {
 					return errors.New("service error")
 				},
 				expectedStatus: http.StatusBadRequest,
@@ -296,14 +297,14 @@ func TestShoppingHandler_Categories(t *testing.T) {
 		tests := []struct {
 			name           string
 			homeID         string
-			mockFunc       func(homeID int) (*[]models.ShoppingCategory, error)
+			mockFunc       func(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error)
 			expectedStatus int
 			expectedBody   string
 		}{
 			{
 				name:   "Success",
 				homeID: "1",
-				mockFunc: func(homeID int) (*[]models.ShoppingCategory, error) {
+				mockFunc: func(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error) {
 					require.Equal(t, 1, homeID)
 					categories := []models.ShoppingCategory{*validCategory}
 					return &categories, nil
@@ -321,7 +322,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			{
 				name:   "Service Error",
 				homeID: "1",
-				mockFunc: func(homeID int) (*[]models.ShoppingCategory, error) {
+				mockFunc: func(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error) {
 					return nil, errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -353,7 +354,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			name           string
 			categoryID     string
 			homeID         string
-			mockFunc       func(categoryID, homeID int) (*models.ShoppingCategory, error)
+			mockFunc       func(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error)
 			expectedStatus int
 			expectedBody   string
 		}{
@@ -361,7 +362,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:       "Success",
 				categoryID: "1",
 				homeID:     "1",
-				mockFunc: func(categoryID, homeID int) (*models.ShoppingCategory, error) {
+				mockFunc: func(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error) {
 					require.Equal(t, 1, categoryID)
 					return validCategory, nil
 				},
@@ -388,7 +389,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:       "Service Error",
 				categoryID: "1",
 				homeID:     "1",
-				mockFunc: func(categoryID, homeID int) (*models.ShoppingCategory, error) {
+				mockFunc: func(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error) {
 					return nil, errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -422,7 +423,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			categoryID     string
 			homeID         string
 			body           interface{}
-			mockFunc       func(categoryID, homeID int, name, icon, color *string) error
+			mockFunc       func(ctx context.Context, categoryID, homeID int, name, icon, color *string) error
 			expectedStatus int
 			expectedBody   string
 		}{
@@ -431,7 +432,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				categoryID: "1",
 				homeID:     "1",
 				body:       validUpdateCategoryRequest,
-				mockFunc: func(categoryID, homeID int, name, icon, color *string) error {
+				mockFunc: func(ctx context.Context, categoryID, homeID int, name, icon, color *string) error {
 					assert.Equal(t, 1, categoryID)
 					assert.Equal(t, 1, homeID)
 					assert.Equal(t, "Updated Category", *name)
@@ -474,7 +475,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				categoryID: "1",
 				homeID:     "1",
 				body:       validUpdateCategoryRequest,
-				mockFunc: func(categoryID, homeID int, name, icon, color *string) error {
+				mockFunc: func(ctx context.Context, categoryID, homeID int, name, icon, color *string) error {
 					return errors.New("edit failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -514,7 +515,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			name           string
 			categoryID     string
 			homeID         string
-			mockFunc       func(categoryID, homeID int) error
+			mockFunc       func(ctx context.Context, categoryID, homeID int) error
 			expectedStatus int
 			expectedBody   string
 		}{
@@ -522,7 +523,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:       "Success",
 				categoryID: "1",
 				homeID:     "1",
-				mockFunc: func(categoryID, homeID int) error {
+				mockFunc: func(ctx context.Context, categoryID, homeID int) error {
 					assert.Equal(t, 1, categoryID)
 					assert.Equal(t, 1, homeID)
 					return nil
@@ -550,7 +551,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:       "Service Error",
 				categoryID: "1",
 				homeID:     "1",
-				mockFunc: func(categoryID, homeID int) error {
+				mockFunc: func(ctx context.Context, categoryID, homeID int) error {
 					return errors.New("delete failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -585,14 +586,14 @@ func TestShoppingHandler_Items(t *testing.T) {
 		tests := []struct {
 			name           string
 			body           interface{}
-			mockFunc       func(categoryID, userID int, name string, image, link *string) error
+			mockFunc       func(ctx context.Context, categoryID, userID int, name string, image, link *string) error
 			expectedStatus int
 			expectedBody   string
 		}{
 			{
 				name: "Success",
 				body: validCreateItemRequest,
-				mockFunc: func(categoryID, userID int, name string, image, link *string) error {
+				mockFunc: func(ctx context.Context, categoryID, userID int, name string, image, link *string) error {
 					assert.Equal(t, 1, categoryID)
 					assert.Equal(t, "Milk", name)
 					assert.Equal(t, "milk.jpg", *image)
@@ -612,7 +613,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 			{
 				name: "Service Error",
 				body: validCreateItemRequest,
-				mockFunc: func(categoryID, userID int, name string, image, link *string) error {
+				mockFunc: func(ctx context.Context, categoryID, userID int, name string, image, link *string) error {
 					return errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -648,14 +649,14 @@ func TestShoppingHandler_Items(t *testing.T) {
 		tests := []struct {
 			name           string
 			itemID         string
-			mockFunc       func(itemID int) (*models.ShoppingItem, error)
+			mockFunc       func(ctx context.Context, itemID int) (*models.ShoppingItem, error)
 			expectedStatus int
 			expectedBody   string
 		}{
 			{
 				name:   "Success",
 				itemID: "1",
-				mockFunc: func(itemID int) (*models.ShoppingItem, error) {
+				mockFunc: func(ctx context.Context, itemID int) (*models.ShoppingItem, error) {
 					require.Equal(t, 1, itemID)
 					return validItem, nil
 				},
@@ -672,7 +673,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 			{
 				name:   "Service Error",
 				itemID: "1",
-				mockFunc: func(itemID int) (*models.ShoppingItem, error) {
+				mockFunc: func(ctx context.Context, itemID int) (*models.ShoppingItem, error) {
 					return nil, errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -703,14 +704,14 @@ func TestShoppingHandler_Items(t *testing.T) {
 		tests := []struct {
 			name           string
 			categoryID     string
-			mockFunc       func(categoryID int) ([]models.ShoppingItem, error)
+			mockFunc       func(ctx context.Context, categoryID int) ([]models.ShoppingItem, error)
 			expectedStatus int
 			expectedBody   string
 		}{
 			{
 				name:       "Success",
 				categoryID: "1",
-				mockFunc: func(categoryID int) ([]models.ShoppingItem, error) {
+				mockFunc: func(ctx context.Context, categoryID int) ([]models.ShoppingItem, error) {
 					require.Equal(t, 1, categoryID)
 					return []models.ShoppingItem{*validItem}, nil
 				},
@@ -727,7 +728,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 			{
 				name:       "Service Error",
 				categoryID: "1",
-				mockFunc: func(categoryID int) ([]models.ShoppingItem, error) {
+				mockFunc: func(ctx context.Context, categoryID int) ([]models.ShoppingItem, error) {
 					return nil, errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -759,7 +760,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 			name           string
 			itemID         string
 			body           interface{}
-			mockFunc       func(itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error
+			mockFunc       func(ctx context.Context, itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error
 			expectedStatus int
 			expectedBody   string
 		}{
@@ -767,7 +768,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 				name:   "Success",
 				itemID: "1",
 				body:   validUpdateItemRequest,
-				mockFunc: func(itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
+				mockFunc: func(ctx context.Context, itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
 					assert.Equal(t, 1, itemID)
 					assert.Equal(t, "Updated Item", *name)
 					assert.Equal(t, "updated.jpg", *image)
@@ -797,7 +798,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 				name:   "Service Error",
 				itemID: "1",
 				body:   validUpdateItemRequest,
-				mockFunc: func(itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
+				mockFunc: func(ctx context.Context, itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
 					return errors.New("edit failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -834,14 +835,14 @@ func TestShoppingHandler_Items(t *testing.T) {
 		tests := []struct {
 			name           string
 			itemID         string
-			mockFunc       func(itemID int) error
+			mockFunc       func(ctx context.Context, itemID int) error
 			expectedStatus int
 			expectedBody   string
 		}{
 			{
 				name:   "Success",
 				itemID: "1",
-				mockFunc: func(itemID int) error {
+				mockFunc: func(ctx context.Context, itemID int) error {
 					assert.Equal(t, 1, itemID)
 					return nil
 				},
@@ -858,7 +859,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 			{
 				name:   "Service Error",
 				itemID: "1",
-				mockFunc: func(itemID int) error {
+				mockFunc: func(ctx context.Context, itemID int) error {
 					return errors.New("delete failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -889,14 +890,14 @@ func TestShoppingHandler_Items(t *testing.T) {
 		tests := []struct {
 			name           string
 			itemID         string
-			mockFunc       func(itemID int) error
+			mockFunc       func(ctx context.Context, itemID int) error
 			expectedStatus int
 			expectedBody   string
 		}{
 			{
 				name:   "Success",
 				itemID: "1",
-				mockFunc: func(itemID int) error {
+				mockFunc: func(ctx context.Context, itemID int) error {
 					assert.Equal(t, 1, itemID)
 					return nil
 				},
@@ -913,7 +914,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 			{
 				name:   "Service Error",
 				itemID: "1",
-				mockFunc: func(itemID int) error {
+				mockFunc: func(ctx context.Context, itemID int) error {
 					return errors.New("mark failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
@@ -941,3 +942,4 @@ func TestShoppingHandler_Items(t *testing.T) {
 	})
 
 }
+

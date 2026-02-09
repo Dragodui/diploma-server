@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -9,19 +10,19 @@ import (
 
 type SmartHomeRepository interface {
 	// Config operations
-	CreateConfig(config *models.HomeAssistantConfig) error
-	GetConfigByHomeID(homeID int) (*models.HomeAssistantConfig, error)
-	UpdateConfig(config *models.HomeAssistantConfig) error
-	DeleteConfig(homeID int) error
+	CreateConfig(ctx context.Context, config *models.HomeAssistantConfig) error
+	GetConfigByHomeID(ctx context.Context, homeID int) (*models.HomeAssistantConfig, error)
+	UpdateConfig(ctx context.Context, config *models.HomeAssistantConfig) error
+	DeleteConfig(ctx context.Context, homeID int) error
 
 	// Device operations
-	CreateDevice(device *models.SmartDevice) error
-	GetDeviceByID(id int) (*models.SmartDevice, error)
-	GetDevicesByHomeID(homeID int) ([]models.SmartDevice, error)
-	GetDevicesByRoomID(roomID int) ([]models.SmartDevice, error)
-	GetDeviceByEntityID(homeID int, entityID string) (*models.SmartDevice, error)
-	UpdateDevice(device *models.SmartDevice) error
-	DeleteDevice(id int) error
+	CreateDevice(ctx context.Context, device *models.SmartDevice) error
+	GetDeviceByID(ctx context.Context, id int) (*models.SmartDevice, error)
+	GetDevicesByHomeID(ctx context.Context, homeID int) ([]models.SmartDevice, error)
+	GetDevicesByRoomID(ctx context.Context, roomID int) ([]models.SmartDevice, error)
+	GetDeviceByEntityID(ctx context.Context, homeID int, entityID string) (*models.SmartDevice, error)
+	UpdateDevice(ctx context.Context, device *models.SmartDevice) error
+	DeleteDevice(ctx context.Context, id int) error
 }
 
 type smartHomeRepo struct {
@@ -34,13 +35,13 @@ func NewSmartHomeRepository(db *gorm.DB) SmartHomeRepository {
 
 // Config operations
 
-func (r *smartHomeRepo) CreateConfig(config *models.HomeAssistantConfig) error {
-	return r.db.Create(config).Error
+func (r *smartHomeRepo) CreateConfig(ctx context.Context, config *models.HomeAssistantConfig) error {
+	return r.db.WithContext(ctx).Create(config).Error
 }
 
-func (r *smartHomeRepo) GetConfigByHomeID(homeID int) (*models.HomeAssistantConfig, error) {
+func (r *smartHomeRepo) GetConfigByHomeID(ctx context.Context, homeID int) (*models.HomeAssistantConfig, error) {
 	var config models.HomeAssistantConfig
-	if err := r.db.Where("home_id = ?", homeID).First(&config).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("home_id = ?", homeID).First(&config).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -49,23 +50,23 @@ func (r *smartHomeRepo) GetConfigByHomeID(homeID int) (*models.HomeAssistantConf
 	return &config, nil
 }
 
-func (r *smartHomeRepo) UpdateConfig(config *models.HomeAssistantConfig) error {
-	return r.db.Save(config).Error
+func (r *smartHomeRepo) UpdateConfig(ctx context.Context, config *models.HomeAssistantConfig) error {
+	return r.db.WithContext(ctx).Save(config).Error
 }
 
-func (r *smartHomeRepo) DeleteConfig(homeID int) error {
-	return r.db.Where("home_id = ?", homeID).Delete(&models.HomeAssistantConfig{}).Error
+func (r *smartHomeRepo) DeleteConfig(ctx context.Context, homeID int) error {
+	return r.db.WithContext(ctx).Where("home_id = ?", homeID).Delete(&models.HomeAssistantConfig{}).Error
 }
 
 // Device operations
 
-func (r *smartHomeRepo) CreateDevice(device *models.SmartDevice) error {
-	return r.db.Create(device).Error
+func (r *smartHomeRepo) CreateDevice(ctx context.Context, device *models.SmartDevice) error {
+	return r.db.WithContext(ctx).Create(device).Error
 }
 
-func (r *smartHomeRepo) GetDeviceByID(id int) (*models.SmartDevice, error) {
+func (r *smartHomeRepo) GetDeviceByID(ctx context.Context, id int) (*models.SmartDevice, error) {
 	var device models.SmartDevice
-	if err := r.db.Preload("Room").First(&device, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Room").First(&device, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -74,25 +75,25 @@ func (r *smartHomeRepo) GetDeviceByID(id int) (*models.SmartDevice, error) {
 	return &device, nil
 }
 
-func (r *smartHomeRepo) GetDevicesByHomeID(homeID int) ([]models.SmartDevice, error) {
+func (r *smartHomeRepo) GetDevicesByHomeID(ctx context.Context, homeID int) ([]models.SmartDevice, error) {
 	var devices []models.SmartDevice
-	if err := r.db.Preload("Room").Where("home_id = ?", homeID).Order("created_at DESC").Find(&devices).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Room").Where("home_id = ?", homeID).Order("created_at DESC").Find(&devices).Error; err != nil {
 		return nil, err
 	}
 	return devices, nil
 }
 
-func (r *smartHomeRepo) GetDevicesByRoomID(roomID int) ([]models.SmartDevice, error) {
+func (r *smartHomeRepo) GetDevicesByRoomID(ctx context.Context, roomID int) ([]models.SmartDevice, error) {
 	var devices []models.SmartDevice
-	if err := r.db.Preload("Room").Where("room_id = ?", roomID).Order("created_at DESC").Find(&devices).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Room").Where("room_id = ?", roomID).Order("created_at DESC").Find(&devices).Error; err != nil {
 		return nil, err
 	}
 	return devices, nil
 }
 
-func (r *smartHomeRepo) GetDeviceByEntityID(homeID int, entityID string) (*models.SmartDevice, error) {
+func (r *smartHomeRepo) GetDeviceByEntityID(ctx context.Context, homeID int, entityID string) (*models.SmartDevice, error) {
 	var device models.SmartDevice
-	if err := r.db.Where("home_id = ? AND entity_id = ?", homeID, entityID).First(&device).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("home_id = ? AND entity_id = ?", homeID, entityID).First(&device).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -101,10 +102,11 @@ func (r *smartHomeRepo) GetDeviceByEntityID(homeID int, entityID string) (*model
 	return &device, nil
 }
 
-func (r *smartHomeRepo) UpdateDevice(device *models.SmartDevice) error {
-	return r.db.Save(device).Error
+func (r *smartHomeRepo) UpdateDevice(ctx context.Context, device *models.SmartDevice) error {
+	return r.db.WithContext(ctx).Save(device).Error
 }
 
-func (r *smartHomeRepo) DeleteDevice(id int) error {
-	return r.db.Delete(&models.SmartDevice{}, id).Error
+func (r *smartHomeRepo) DeleteDevice(ctx context.Context, id int) error {
+	return r.db.WithContext(ctx).Delete(&models.SmartDevice{}, id).Error
 }
+

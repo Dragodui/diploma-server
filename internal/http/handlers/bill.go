@@ -40,7 +40,7 @@ func (h *BillHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bills, err := h.svc.GetBillsByHomeID(homeID)
+	bills, err := h.svc.GetBillsByHomeID(r.Context(), homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -89,7 +89,7 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateBill(req.BillType, req.BillCategoryID, req.TotalAmount, req.Start, req.End, req.OCRData, homeID, userID); err != nil {
+	if err := h.svc.CreateBill(r.Context(), req.BillType, req.BillCategoryID, req.TotalAmount, req.Start, req.End, req.OCRData, homeID, userID); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -117,7 +117,7 @@ func (h *BillHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "invalid bill ID", http.StatusBadRequest)
 		return
 	}
-	bill, err := h.svc.GetBillByID(billID)
+	bill, err := h.svc.GetBillByID(r.Context(), billID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -148,7 +148,7 @@ func (h *BillHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "invalid bill ID", http.StatusBadRequest)
 		return
 	}
-	if err := h.svc.Delete(billID); err != nil {
+	if err := h.svc.Delete(r.Context(), billID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -176,7 +176,7 @@ func (h *BillHandler) MarkPayed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.MarkBillPayed(billID); err != nil {
+	if err := h.svc.MarkBillPayed(r.Context(), billID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

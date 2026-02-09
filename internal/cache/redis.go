@@ -10,8 +10,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var Ctx = context.Background()
-
 func NewRedisClient(addr, password string) *redis.Client {
 
 	if addr == "" {

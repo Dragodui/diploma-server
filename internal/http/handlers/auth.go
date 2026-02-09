@@ -41,7 +41,7 @@ func (h *AuthHandler) RegenerateVerify(w http.ResponseWriter, r *http.Request) {
 	// 	email = user.Email
 
 	// }
-	if err := h.svc.SendVerificationEmail(email); err != nil {
+	if err := h.svc.SendVerificationEmail(r.Context(), email); err != nil {
 		utils.JSONError(w, "Failed to send verification email", http.StatusInternalServerError)
 		return
 	}
@@ -70,13 +70,13 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		utils.JSONValidationErrors(w, err)
 		return
 	}
-	err := h.svc.Register(input.Email, input.Password, input.Name)
+	err := h.svc.Register(r.Context(), input.Email, input.Password, input.Name)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := h.svc.SendVerificationEmail(input.Email); err != nil {
+	if err := h.svc.SendVerificationEmail(r.Context(), input.Email); err != nil {
 		utils.JSONError(w, "Failed to send verification email", http.StatusInternalServerError)
 		return
 	}
@@ -111,7 +111,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.svc.GetUserByEmail(input.Email)
+	user, err := h.svc.GetUserByEmail(r.Context(), input.Email)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -122,7 +122,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, user, err := h.svc.Login(input.Email, input.Password)
+	token, user, err := h.svc.Login(r.Context(), input.Email, input.Password)
 	if err != nil {
 		utils.JSONError(w, "Invalid credentials", http.StatusUnauthorized)
 		return
@@ -170,7 +170,7 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	redirectURL, err := h.svc.HandleCallback(user)
+	redirectURL, err := h.svc.HandleCallback(r.Context(), user)
 
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
@@ -189,7 +189,7 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 // @Router       /auth/verify [get]
 func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
-	err := h.svc.VerifyEmail(token)
+	err := h.svc.VerifyEmail(r.Context(), token)
 	if err != nil {
 		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)
 		return
@@ -208,7 +208,7 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 // @Router       /auth/forgot [post]
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
-	h.svc.SendResetPassword(email)
+	h.svc.SendResetPassword(r.Context(), email)
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Reset link was sended to your email"})
 }
 
@@ -227,7 +227,7 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	// ?token=...&password=...
 	token := r.FormValue("token")
 	pass := r.FormValue("password")
-	if err := h.svc.ResetPassword(token, pass); err != nil {
+	if err := h.svc.ResetPassword(r.Context(), token, pass); err != nil {
 		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)
 		return
 	}
@@ -258,7 +258,7 @@ func (h *AuthHandler) GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, user, err := h.svc.GoogleSignIn(input.Email, input.Name, input.Avatar)
+	token, user, err := h.svc.GoogleSignIn(r.Context(), input.Email, input.Name, input.Avatar)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return

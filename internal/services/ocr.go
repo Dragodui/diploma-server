@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,8 +17,8 @@ import (
 type OCRService struct{}
 
 type IOCRService interface {
-	ProcessImage(imageURL, language string) (*models.OCRResult, error)
-	ProcessFile(filePath, language string) (*models.OCRResult, error)
+	ProcessImage(ctx context.Context, imageURL, language string) (*models.OCRResult, error)
+	ProcessFile(ctx context.Context, filePath, language string) (*models.OCRResult, error)
 }
 
 func NewOCRService() *OCRService {
@@ -25,18 +26,18 @@ func NewOCRService() *OCRService {
 }
 
 // ProcessImage downloads image from URL and processes it with OCR
-func (s *OCRService) ProcessImage(imageURL, language string) (*models.OCRResult, error) {
-	tempPath, err := downloadImage(imageURL)
+func (s *OCRService) ProcessImage(ctx context.Context, imageURL, language string) (*models.OCRResult, error) {
+	tempPath, err := downloadImage(ctx, imageURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download image: %w", err)
 	}
 	defer os.Remove(tempPath)
 
-	return s.ProcessFile(tempPath, language)
+	return s.ProcessFile(ctx, tempPath, language)
 }
 
 // ProcessFile processes a local file with OCR
-func (s *OCRService) ProcessFile(filePath, language string) (*models.OCRResult, error) {
+func (s *OCRService) ProcessFile(ctx context.Context, filePath, language string) (*models.OCRResult, error) {
 	text, err := utils.ExtractTextFromImage(filePath, language)
 	if err != nil {
 		return nil, fmt.Errorf("OCR extraction failed: %w", err)
@@ -48,8 +49,13 @@ func (s *OCRService) ProcessFile(filePath, language string) (*models.OCRResult, 
 }
 
 // downloadImage downloads image from URL and saves to temp file
-func downloadImage(url string) (string, error) {
-	resp, err := http.Get(url)
+func downloadImage(ctx context.Context, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch image: %w", err)
 	}

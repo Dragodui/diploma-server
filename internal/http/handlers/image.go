@@ -42,7 +42,7 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	publicPath, err := h.svc.Upload(file, header)
+	publicPath, err := h.svc.Upload(r.Context(), file, header)
 
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)

@@ -24,7 +24,7 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 			homeIDStr := chi.URLParam(r, "home_id")
 			if homeIDStr != "" {
 				if homeID, err := strconv.Atoi(homeIDStr); err == nil {
-					if ok, _ := homeRepo.IsMember(homeID, userID); ok {
+					if ok, _ := homeRepo.IsMember(r.Context(), homeID, userID); ok {
 						next.ServeHTTP(w, r)
 						return
 					}
@@ -46,7 +46,7 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 			// Restore the original body for the next handler
 			r.Body = io.NopCloser(&bodyCopy)
 
-			ok, err := homeRepo.IsAdmin(req.HomeID, userID)
+			ok, err := homeRepo.IsAdmin(r.Context(), req.HomeID, userID)
 			if err != nil {
 				utils.JSONError(w, "forbidden", http.StatusForbidden)
 				return
@@ -75,7 +75,7 @@ func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.H
 			homeIDStr := chi.URLParam(r, "home_id")
 			if homeIDStr != "" {
 				if homeID, err := strconv.Atoi(homeIDStr); err == nil {
-					if ok, _ := homeRepo.IsMember(homeID, userID); ok {
+					if ok, _ := homeRepo.IsMember(r.Context(), homeID, userID); ok {
 						next.ServeHTTP(w, r)
 						return
 					}
@@ -97,7 +97,7 @@ func RequireMember(homeRepo repository.HomeRepository) func(http.Handler) http.H
 			// Restore the original body for the next handler
 			r.Body = io.NopCloser(&bodyCopy)
 
-			ok, err := homeRepo.IsMember(req.HomeID, userID)
+			ok, err := homeRepo.IsMember(r.Context(), req.HomeID, userID)
 			if err != nil {
 				utils.JSONError(w, "forbidden", http.StatusForbidden)
 				return

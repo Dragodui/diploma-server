@@ -18,24 +18,24 @@ type NotificationService struct {
 
 type INotificationService interface {
 	// user notifications
-	Create(from *int, to int, description string) error
-	GetByUserID(userID int) ([]models.Notification, error)
-	MarkAsRead(notificationID, userID int) error
+	Create(ctx context.Context, from *int, to int, description string) error
+	GetByUserID(ctx context.Context, userID int) ([]models.Notification, error)
+	MarkAsRead(ctx context.Context, notificationID, userID int) error
 
 	// home notifications
-	CreateHomeNotification(from *int, homeID int, description string) error
-	GetByHomeID(homeID int) ([]models.HomeNotification, error)
-	MarkAsReadForHomeNotification(notificationID, homeID int) error
+	CreateHomeNotification(ctx context.Context, from *int, homeID int, description string) error
+	GetByHomeID(ctx context.Context, homeID int) ([]models.HomeNotification, error)
+	MarkAsReadForHomeNotification(ctx context.Context, notificationID, homeID int) error
 }
 
 func NewNotificationService(repo repository.NotificationRepository, cache *redis.Client) *NotificationService {
 	return &NotificationService{repo: repo, cache: cache}
 }
 
-func (s *NotificationService) Create(from *int, to int, description string) error {
+func (s *NotificationService) Create(ctx context.Context, from *int, to int, description string) error {
 	// remove from cache
 	key := utils.GetUserNotificationsKey(to)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
@@ -44,11 +44,11 @@ func (s *NotificationService) Create(from *int, to int, description string) erro
 		To:          to,
 		Description: description,
 	}
-	if err := s.repo.Create(notification); err != nil {
+	if err := s.repo.Create(ctx, notification); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleNotification,
 		Action: event.ActionCreated,
 		Data:   notification,
@@ -57,36 +57,36 @@ func (s *NotificationService) Create(from *int, to int, description string) erro
 	return nil
 }
 
-func (s *NotificationService) GetByUserID(userID int) ([]models.Notification, error) {
+func (s *NotificationService) GetByUserID(ctx context.Context, userID int) ([]models.Notification, error) {
 	key := utils.GetUserNotificationsKey(userID)
-	cached, err := utils.GetFromCache[[]models.Notification](key, s.cache)
+	cached, err := utils.GetFromCache[[]models.Notification](ctx, key, s.cache)
 	if cached != nil && err == nil {
 		return *cached, err
 	}
 
-	notifications, err := s.repo.FindByUserID(userID)
+	notifications, err := s.repo.FindByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := utils.WriteToCache(key, notifications, s.cache); err != nil {
+	if err := utils.WriteToCache(ctx, key, notifications, s.cache); err != nil {
 		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return notifications, err
 }
 
-func (s *NotificationService) MarkAsRead(notificationID, userID int) error {
+func (s *NotificationService) MarkAsRead(ctx context.Context, notificationID, userID int) error {
 	key := utils.GetUserNotificationsKey(userID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	if err := s.repo.MarkAsRead(notificationID); err != nil {
+	if err := s.repo.MarkAsRead(ctx, notificationID); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleNotification,
 		Action: event.ActionMarkRead,
 		Data:   map[string]int{"id": notificationID},
@@ -95,9 +95,9 @@ func (s *NotificationService) MarkAsRead(notificationID, userID int) error {
 	return nil
 }
 
-func (s *NotificationService) CreateHomeNotification(from *int, homeID int, description string) error {
+func (s *NotificationService) CreateHomeNotification(ctx context.Context, from *int, homeID int, description string) error {
 	key := utils.GetHomeNotificationsKey(homeID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
@@ -106,11 +106,11 @@ func (s *NotificationService) CreateHomeNotification(from *int, homeID int, desc
 		HomeID:      homeID,
 		Description: description,
 	}
-	if err := s.repo.CreateHomeNotification(notification); err != nil {
+	if err := s.repo.CreateHomeNotification(ctx, notification); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHomeNotification,
 		Action: event.ActionCreated,
 		Data:   notification,
@@ -119,36 +119,36 @@ func (s *NotificationService) CreateHomeNotification(from *int, homeID int, desc
 	return nil
 }
 
-func (s *NotificationService) GetByHomeID(homeID int) ([]models.HomeNotification, error) {
+func (s *NotificationService) GetByHomeID(ctx context.Context, homeID int) ([]models.HomeNotification, error) {
 	key := utils.GetHomeNotificationsKey(homeID)
-	cached, err := utils.GetFromCache[[]models.HomeNotification](key, s.cache)
+	cached, err := utils.GetFromCache[[]models.HomeNotification](ctx, key, s.cache)
 	if cached != nil && err == nil {
 		return *cached, err
 	}
 
-	notifications, err := s.repo.FindByHomeID(homeID)
+	notifications, err := s.repo.FindByHomeID(ctx, homeID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := utils.WriteToCache(key, notifications, s.cache); err != nil {
+	if err := utils.WriteToCache(ctx, key, notifications, s.cache); err != nil {
 		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return notifications, err
 }
 
-func (s *NotificationService) MarkAsReadForHomeNotification(notificationID, homeID int) error {
+func (s *NotificationService) MarkAsReadForHomeNotification(ctx context.Context, notificationID, homeID int) error {
 	key := utils.GetHomeNotificationsKey(homeID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	if err := s.repo.MarkAsReadForHomeNotification(notificationID); err != nil {
+	if err := s.repo.MarkAsReadForHomeNotification(ctx, notificationID); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHomeNotification,
 		Action: event.ActionMarkRead,
 		Data:   map[string]int{"id": notificationID},
@@ -156,3 +156,4 @@ func (s *NotificationService) MarkAsReadForHomeNotification(notificationID, home
 
 	return nil
 }
+

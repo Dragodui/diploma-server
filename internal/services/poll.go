@@ -22,15 +22,15 @@ type PollService struct {
 
 type IPollService interface {
 	// polls
-	Create(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
-	GetPollByID(pollID int) (*models.Poll, error)
-	GetAllPollsByHomeID(homeID int) (*[]models.Poll, error)
-	ClosePoll(pollID, homeID int) error
-	Delete(pollID, homeID int) error
+	Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
+	GetPollByID(ctx context.Context, pollID int) (*models.Poll, error)
+	GetAllPollsByHomeID(ctx context.Context, homeID int) (*[]models.Poll, error)
+	ClosePoll(ctx context.Context, pollID, homeID int) error
+	Delete(ctx context.Context, pollID, homeID int) error
 
 	// votes
-	Vote(userID, optionID, homeID int) error
-	Unvote(userID, pollID, homeID int) error
+	Vote(ctx context.Context, userID, optionID, homeID int) error
+	Unvote(ctx context.Context, userID, pollID, homeID int) error
 }
 
 func NewPollService(repo repository.PollRepository, cache *redis.Client) *PollService {
@@ -40,7 +40,7 @@ func NewPollService(repo repository.PollRepository, cache *redis.Client) *PollSe
 }
 
 // polls
-func (s *PollService) Create(homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
+func (s *PollService) Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
 	var optionModels []models.Option
 	for _, option := range options {
 		optionModels = append(optionModels, models.Option{
@@ -49,7 +49,7 @@ func (s *PollService) Create(homeID int, question, pollType string, options []mo
 	}
 
 	key := utils.GetAllPollsForHomeKey(homeID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
@@ -61,11 +61,11 @@ func (s *PollService) Create(homeID int, question, pollType string, options []mo
 		EndsAt:      endsAt,
 	}
 
-	if err := s.repo.Create(poll, optionModels); err != nil {
+	if err := s.repo.Create(ctx, poll, optionModels); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,
 		Action: event.ActionCreated,
 		Data:   poll,
@@ -74,48 +74,48 @@ func (s *PollService) Create(homeID int, question, pollType string, options []mo
 	return nil
 }
 
-func (s *PollService) GetPollByID(pollID int) (*models.Poll, error) {
+func (s *PollService) GetPollByID(ctx context.Context, pollID int) (*models.Poll, error) {
 	key := utils.GetPollKey(pollID)
-	cached, err := utils.GetFromCache[models.Poll](key, s.cache)
+	cached, err := utils.GetFromCache[models.Poll](ctx, key, s.cache)
 	if cached != nil && err == nil {
 		return cached, nil
 	}
 
-	poll, err := s.repo.FindPollByID(pollID)
+	poll, err := s.repo.FindPollByID(ctx, pollID)
 	if poll != nil && err == nil {
-		_ = utils.WriteToCache(key, poll, s.cache)
+		_ = utils.WriteToCache(ctx, key, poll, s.cache)
 	}
 
 	return poll, err
 }
 
-func (s *PollService) GetAllPollsByHomeID(homeID int) (*[]models.Poll, error) {
+func (s *PollService) GetAllPollsByHomeID(ctx context.Context, homeID int) (*[]models.Poll, error) {
 	key := utils.GetAllPollsForHomeKey(homeID)
-	cached, err := utils.GetFromCache[[]models.Poll](key, s.cache)
+	cached, err := utils.GetFromCache[[]models.Poll](ctx, key, s.cache)
 	if cached != nil && err == nil {
 		return cached, nil
 	}
 
-	return s.repo.FindAllPollsByHomeID(homeID)
+	return s.repo.FindAllPollsByHomeID(ctx, homeID)
 }
 
-func (s *PollService) ClosePoll(pollID, homeID int) error {
+func (s *PollService) ClosePoll(ctx context.Context, pollID, homeID int) error {
 	pollsKey := utils.GetPollKey(pollID)
 	pollsForHomeKey := utils.GetAllPollsForHomeKey(homeID)
 
-	if err := utils.DeleteFromCache(pollsKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, pollsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsKey, err)
 	}
 
-	if err := utils.DeleteFromCache(pollsForHomeKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, pollsForHomeKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsForHomeKey, err)
 	}
 
-	if err := s.repo.ClosePoll(pollID); err != nil {
+	if err := s.repo.ClosePoll(ctx, pollID); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,
 		Action: event.ActionClosed,
 		Data:   map[string]int{"id": pollID},
@@ -124,23 +124,23 @@ func (s *PollService) ClosePoll(pollID, homeID int) error {
 	return nil
 }
 
-func (s *PollService) Delete(pollID, homeID int) error {
+func (s *PollService) Delete(ctx context.Context, pollID, homeID int) error {
 	pollsKey := utils.GetPollKey(pollID)
 	pollsForHomeKey := utils.GetAllPollsForHomeKey(homeID)
 
-	if err := utils.DeleteFromCache(pollsKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, pollsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsKey, err)
 	}
 
-	if err := utils.DeleteFromCache(pollsForHomeKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, pollsForHomeKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsForHomeKey, err)
 	}
 
-	if err := s.repo.Delete(pollID); err != nil {
+	if err := s.repo.Delete(ctx, pollID); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,
 		Action: event.ActionDeleted,
 		Data:   map[string]int{"id": pollID},
@@ -150,8 +150,8 @@ func (s *PollService) Delete(pollID, homeID int) error {
 }
 
 // votes
-func (s *PollService) Vote(userID, optionID, homeID int) error {
-	poll, err := s.repo.FindPollByOptionID(optionID)
+func (s *PollService) Vote(ctx context.Context, userID, optionID, homeID int) error {
+	poll, err := s.repo.FindPollByOptionID(ctx, optionID)
 	if err != nil {
 		return err
 	}
@@ -160,11 +160,11 @@ func (s *PollService) Vote(userID, optionID, homeID int) error {
 	pollsKey := utils.GetPollKey(poll.ID)
 	pollsForHomeKey := utils.GetAllPollsForHomeKey(homeID)
 
-	if err := utils.DeleteFromCache(pollsKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, pollsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsKey, err)
 	}
 
-	if err := utils.DeleteFromCache(pollsForHomeKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, pollsForHomeKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsForHomeKey, err)
 	}
 
@@ -172,11 +172,11 @@ func (s *PollService) Vote(userID, optionID, homeID int) error {
 		UserID:   userID,
 		OptionID: optionID,
 	}
-	if err := s.repo.Vote(vote); err != nil {
+	if err := s.repo.Vote(ctx, vote); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,
 		Action: event.ActionVoted,
 		Data:   vote,
@@ -185,8 +185,8 @@ func (s *PollService) Vote(userID, optionID, homeID int) error {
 	return nil
 }
 
-func (s *PollService) Unvote(userID, pollID, homeID int) error {
-	poll, err := s.repo.FindPollByID(pollID)
+func (s *PollService) Unvote(ctx context.Context, userID, pollID, homeID int) error {
+	poll, err := s.repo.FindPollByID(ctx, pollID)
 	if err != nil {
 		return err
 	}
@@ -199,19 +199,19 @@ func (s *PollService) Unvote(userID, pollID, homeID int) error {
 	pollsKey := utils.GetPollKey(poll.ID)
 	pollsForHomeKey := utils.GetAllPollsForHomeKey(homeID)
 
-	if err := utils.DeleteFromCache(pollsKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, pollsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsKey, err)
 	}
 
-	if err := utils.DeleteFromCache(pollsForHomeKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, pollsForHomeKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", pollsForHomeKey, err)
 	}
 
-	if err := s.repo.Unvote(userID, pollID); err != nil {
+	if err := s.repo.Unvote(ctx, userID, pollID); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,
 		Action: event.ActionUnvoted,
 		Data:   map[string]int{"userID": userID, "pollID": pollID},
@@ -219,3 +219,4 @@ func (s *PollService) Unvote(userID, pollID, homeID int) error {
 
 	return nil
 }
+

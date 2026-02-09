@@ -40,7 +40,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateTask(req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate); err != nil {
+	if err := h.svc.CreateTask(r.Context(), req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -69,7 +69,7 @@ func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.svc.GetTaskByID(taskID)
+	task, err := h.svc.GetTaskByID(r.Context(), taskID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -99,7 +99,7 @@ func (h *TaskHandler) GetTasksByHomeID(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
-	tasks, err := h.svc.GetTasksByHomeID(homeID)
+	tasks, err := h.svc.GetTasksByHomeID(r.Context(), homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -131,7 +131,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.svc.DeleteTask(taskID)
+	err = h.svc.DeleteTask(r.Context(), taskID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -161,7 +161,7 @@ func (h *TaskHandler) AssignUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.AssignUser(assignUserRequest.TaskID, assignUserRequest.UserID, assignUserRequest.HomeID, assignUserRequest.Date); err != nil {
+	if err := h.svc.AssignUser(r.Context(), assignUserRequest.TaskID, assignUserRequest.UserID, assignUserRequest.HomeID, assignUserRequest.Date); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -189,7 +189,7 @@ func (h *TaskHandler) GetAssignmentsForUser(w http.ResponseWriter, r *http.Reque
 		utils.JSONError(w, "invalid user ID", http.StatusBadRequest)
 		return
 	}
-	assignments, err := h.svc.GetAssignmentsForUser(userID)
+	assignments, err := h.svc.GetAssignmentsForUser(r.Context(), userID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -221,7 +221,7 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 		return
 	}
 
-	assignment, err := h.svc.GetClosestAssignmentForUser(userID)
+	assignment, err := h.svc.GetClosestAssignmentForUser(r.Context(), userID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -235,7 +235,7 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 
 	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"status":     true,
-		"assignment": responseAssignment, 
+		"assignment": responseAssignment,
 	})
 }
 
@@ -261,7 +261,7 @@ func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.svc.MarkAssignmentCompleted(assignmentRequest.AssignmentID); err != nil {
+	if err := h.svc.MarkAssignmentCompleted(r.Context(), assignmentRequest.AssignmentID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -291,7 +291,7 @@ func (h *TaskHandler) MarkAssignmentUncompleted(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := h.svc.MarkAssignmentUncompleted(assignmentRequest.AssignmentID); err != nil {
+	if err := h.svc.MarkAssignmentUncompleted(r.Context(), assignmentRequest.AssignmentID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -333,7 +333,7 @@ func (h *TaskHandler) MarkTaskCompleted(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.svc.MarkTaskCompletedForUser(taskID, userID, homeID); err != nil {
+	if err := h.svc.MarkTaskCompletedForUser(r.Context(), taskID, userID, homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -363,7 +363,7 @@ func (h *TaskHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.DeleteAssignment(assignmentID); err != nil {
+	if err := h.svc.DeleteAssignment(r.Context(), assignmentID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -393,7 +393,7 @@ func (h *TaskHandler) ReassignRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.ReassignRoom(req.TaskID, req.RoomID); err != nil {
+	if err := h.svc.ReassignRoom(r.Context(), req.TaskID, req.RoomID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

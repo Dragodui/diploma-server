@@ -22,19 +22,19 @@ type ShoppingService struct {
 
 type IShoppingService interface {
 	// categories
-	CreateCategory(name string, icon *string, color string, homeID int) error
-	FindAllCategoriesForHome(homeID int) (*[]models.ShoppingCategory, error)
-	FindCategoryByID(categoryID, homeID int) (*models.ShoppingCategory, error)
-	DeleteCategory(categoryID, homeID int) error
-	EditCategory(categoryID, homeID int, name, icon, color *string) error
+	CreateCategory(ctx context.Context, name string, icon *string, color string, homeID int) error
+	FindAllCategoriesForHome(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error)
+	FindCategoryByID(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error)
+	DeleteCategory(ctx context.Context, categoryID, homeID int) error
+	EditCategory(ctx context.Context, categoryID, homeID int, name, icon, color *string) error
 
 	// items
-	CreateItem(categoryID, userID int, name string, image, link *string) error
-	FindItemByID(itemID int) (*models.ShoppingItem, error)
-	FindItemsByCategoryID(categoryID int) ([]models.ShoppingItem, error)
-	DeleteItem(itemID int) error
-	MarkIsBought(itemID int) error
-	EditItem(itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error
+	CreateItem(ctx context.Context, categoryID, userID int, name string, image, link *string) error
+	FindItemByID(ctx context.Context, itemID int) (*models.ShoppingItem, error)
+	FindItemsByCategoryID(ctx context.Context, categoryID int) ([]models.ShoppingItem, error)
+	DeleteItem(ctx context.Context, itemID int) error
+	MarkIsBought(ctx context.Context, itemID int) error
+	EditItem(ctx context.Context, itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error
 }
 
 func NewShoppingService(repo repository.ShoppingRepository, cache *redis.Client) *ShoppingService {
@@ -45,9 +45,9 @@ func NewShoppingService(repo repository.ShoppingRepository, cache *redis.Client)
 }
 
 // categories
-func (s *ShoppingService) CreateCategory(name string, icon *string, color string, homeID int) error {
+func (s *ShoppingService) CreateCategory(ctx context.Context, name string, icon *string, color string, homeID int) error {
 	key := utils.GetAllCategoriesForHomeKey(homeID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 	category := &models.ShoppingCategory{
@@ -56,11 +56,11 @@ func (s *ShoppingService) CreateCategory(name string, icon *string, color string
 		Color:  color,
 		HomeID: homeID,
 	}
-	if err := s.repo.CreateCategory(category); err != nil {
+	if err := s.repo.CreateCategory(ctx, category); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingCategory,
 		Action: event.ActionCreated,
 		Data:   category,
@@ -69,36 +69,36 @@ func (s *ShoppingService) CreateCategory(name string, icon *string, color string
 	return nil
 }
 
-func (s *ShoppingService) FindAllCategoriesForHome(homeID int) (*[]models.ShoppingCategory, error) {
+func (s *ShoppingService) FindAllCategoriesForHome(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error) {
 	key := utils.GetAllCategoriesForHomeKey(homeID)
-	cached, err := utils.GetFromCache[[]models.ShoppingCategory](key, s.cache)
+	cached, err := utils.GetFromCache[[]models.ShoppingCategory](ctx, key, s.cache)
 
 	if cached != nil && err == nil {
 		return cached, nil
 	}
 
-	categories, err := s.repo.FindAllCategories(homeID)
+	categories, err := s.repo.FindAllCategories(ctx, homeID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if err := utils.WriteToCache(key, categories, s.cache); err != nil {
+	if err := utils.WriteToCache(ctx, key, categories, s.cache); err != nil {
 		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return categories, nil
 }
 
-func (s *ShoppingService) FindCategoryByID(categoryID, homeID int) (*models.ShoppingCategory, error) {
+func (s *ShoppingService) FindCategoryByID(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error) {
 	key := utils.GetCategoryKey(categoryID)
-	cached, err := utils.GetFromCache[models.ShoppingCategory](key, s.cache)
+	cached, err := utils.GetFromCache[models.ShoppingCategory](ctx, key, s.cache)
 
 	if cached != nil && err == nil {
 		return cached, nil
 	}
 
-	category, err := s.repo.FindCategoryByID(categoryID)
+	category, err := s.repo.FindCategoryByID(ctx, categoryID)
 
 	if category.HomeID != homeID {
 		return nil, errCategoryNotBelongsToHome
@@ -108,31 +108,31 @@ func (s *ShoppingService) FindCategoryByID(categoryID, homeID int) (*models.Shop
 		return nil, err
 	}
 
-	if err := utils.WriteToCache(key, category, s.cache); err != nil {
+	if err := utils.WriteToCache(ctx, key, category, s.cache); err != nil {
 		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
 
 	return category, nil
 }
 
-func (s *ShoppingService) DeleteCategory(categoryID, homeID int) error {
+func (s *ShoppingService) DeleteCategory(ctx context.Context, categoryID, homeID int) error {
 	// Remove from cache
 	categoryKey := utils.GetCategoryKey(categoryID)
 	categoriesForHomeKey := utils.GetAllCategoriesForHomeKey(homeID)
 
-	if err := utils.DeleteFromCache(categoryKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, categoryKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", categoryKey, err)
 	}
 
-	if err := utils.DeleteFromCache(categoriesForHomeKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, categoriesForHomeKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", categoryKey, err)
 	}
 
-	if err := s.repo.DeleteCategory(categoryID); err != nil {
+	if err := s.repo.DeleteCategory(ctx, categoryID); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingCategory,
 		Action: event.ActionDeleted,
 		Data:   map[string]int{"id": categoryID},
@@ -141,8 +141,8 @@ func (s *ShoppingService) DeleteCategory(categoryID, homeID int) error {
 	return nil
 }
 
-func (s *ShoppingService) EditCategory(categoryID, homeID int, name, icon, color *string) error {
-	category, err := s.repo.FindCategoryByID(categoryID)
+func (s *ShoppingService) EditCategory(ctx context.Context, categoryID, homeID int, name, icon, color *string) error {
+	category, err := s.repo.FindCategoryByID(ctx, categoryID)
 
 	if err != nil {
 		return err
@@ -163,19 +163,19 @@ func (s *ShoppingService) EditCategory(categoryID, homeID int, name, icon, color
 	categoryKey := utils.GetCategoryKey(categoryID)
 	categoriesForHomeKey := utils.GetAllCategoriesForHomeKey(homeID)
 
-	if err := utils.DeleteFromCache(categoryKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, categoryKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", categoryKey, err)
 	}
 
-	if err := utils.DeleteFromCache(categoriesForHomeKey, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, categoriesForHomeKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", categoryKey, err)
 	}
 
-	if err := s.repo.EditCategory(category, updates); err != nil {
+	if err := s.repo.EditCategory(ctx, category, updates); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingCategory,
 		Action: event.ActionUpdated,
 		Data:   category,
@@ -185,10 +185,10 @@ func (s *ShoppingService) EditCategory(categoryID, homeID int, name, icon, color
 }
 
 // items
-func (s *ShoppingService) CreateItem(categoryID int, userID int, name string, image, link *string) error {
+func (s *ShoppingService) CreateItem(ctx context.Context, categoryID int, userID int, name string, image, link *string) error {
 	// Remove cache
 	key := utils.GetCategoryKey(categoryID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
@@ -199,11 +199,11 @@ func (s *ShoppingService) CreateItem(categoryID int, userID int, name string, im
 		Link:       link,
 		UploadedBy: userID,
 	}
-	if err := s.repo.CreateItem(item); err != nil {
+	if err := s.repo.CreateItem(ctx, item); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingItem,
 		Action: event.ActionCreated,
 		Data:   item,
@@ -212,32 +212,32 @@ func (s *ShoppingService) CreateItem(categoryID int, userID int, name string, im
 	return nil
 }
 
-func (s *ShoppingService) FindItemsByCategoryID(categoryID int) ([]models.ShoppingItem, error) {
-	return s.repo.FindItemsByCategoryID(categoryID)
+func (s *ShoppingService) FindItemsByCategoryID(ctx context.Context, categoryID int) ([]models.ShoppingItem, error) {
+	return s.repo.FindItemsByCategoryID(ctx, categoryID)
 }
 
-func (s *ShoppingService) FindItemByID(itemID int) (*models.ShoppingItem, error) {
-	return s.repo.FindItemByID(itemID)
+func (s *ShoppingService) FindItemByID(ctx context.Context, itemID int) (*models.ShoppingItem, error) {
+	return s.repo.FindItemByID(ctx, itemID)
 }
 
-func (s *ShoppingService) DeleteItem(itemID int) error {
+func (s *ShoppingService) DeleteItem(ctx context.Context, itemID int) error {
 	// Remove cache
-	item, err := s.repo.FindItemByID(itemID)
+	item, err := s.repo.FindItemByID(ctx, itemID)
 	if err != nil {
 		return err
 	}
 	categoryID := item.CategoryID
 
 	key := utils.GetCategoryKey(categoryID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	if err := s.repo.DeleteItem(itemID); err != nil {
+	if err := s.repo.DeleteItem(ctx, itemID); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingItem,
 		Action: event.ActionDeleted,
 		Data:   item,
@@ -246,24 +246,24 @@ func (s *ShoppingService) DeleteItem(itemID int) error {
 	return nil
 }
 
-func (s *ShoppingService) MarkIsBought(itemID int) error {
+func (s *ShoppingService) MarkIsBought(ctx context.Context, itemID int) error {
 	// Remove cache
-	item, err := s.repo.FindItemByID(itemID)
+	item, err := s.repo.FindItemByID(ctx, itemID)
 	if err != nil {
 		return err
 	}
 	categoryID := item.CategoryID
 
 	key := utils.GetCategoryKey(categoryID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	if err := s.repo.MarkIsBought(itemID); err != nil {
+	if err := s.repo.MarkIsBought(ctx, itemID); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingItem,
 		Action: event.ActionUpdated,
 		Data:   item,
@@ -272,8 +272,8 @@ func (s *ShoppingService) MarkIsBought(itemID int) error {
 	return nil
 }
 
-func (s *ShoppingService) EditItem(itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
-	item, err := s.repo.FindItemByID(itemID)
+func (s *ShoppingService) EditItem(ctx context.Context, itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
+	item, err := s.repo.FindItemByID(ctx, itemID)
 	if err != nil {
 		return err
 	}
@@ -305,15 +305,15 @@ func (s *ShoppingService) EditItem(itemID int, name, image, link *string, isBoug
 	categoryID := item.CategoryID
 
 	key := utils.GetCategoryKey(categoryID)
-	if err := utils.DeleteFromCache(key, s.cache); err != nil {
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	if err := s.repo.EditItem(item, updates); err != nil {
+	if err := s.repo.EditItem(ctx, item, updates); err != nil {
 		return err
 	}
 
-	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingItem,
 		Action: event.ActionUpdated,
 		Data:   item,
@@ -321,3 +321,4 @@ func (s *ShoppingService) EditItem(itemID int, name, image, link *string, isBoug
 
 	return nil
 }
+

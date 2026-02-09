@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -25,24 +26,24 @@ type AuthService struct {
 }
 
 type IAuthService interface {
-	Register(email, password, name string) error
-	Login(email, password string) (string, *models.User, error)
-	HandleCallback(user goth.User) (string, error)
-	GoogleSignIn(email, name, avatar string) (string, *models.User, error)
-	SendVerificationEmail(email string) error
-	VerifyEmail(token string) error
-	SendResetPassword(email string) error
-	ResetPassword(token, newPass string) error
-	GetUserByVerifyToken(token string) (*models.User, error)
-	GetUserByEmail(email string) (*models.User, error)
+	Register(ctx context.Context, email, password, name string) error
+	Login(ctx context.Context, email, password string) (string, *models.User, error)
+	HandleCallback(ctx context.Context, user goth.User) (string, error)
+	GoogleSignIn(ctx context.Context, email, name, avatar string) (string, *models.User, error)
+	SendVerificationEmail(ctx context.Context, email string) error
+	VerifyEmail(ctx context.Context, token string) error
+	SendResetPassword(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, token, newPass string) error
+	GetUserByVerifyToken(ctx context.Context, token string) (*models.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 }
 
 func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string, mail utils.Mailer) *AuthService {
 	return &AuthService{repo: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, mail: mail}
 }
 
-func (s *AuthService) Register(email, password, name string) error {
-	existing, _ := s.repo.FindByEmail(email)
+func (s *AuthService) Register(ctx context.Context, email, password, name string) error {
+	existing, _ := s.repo.FindByEmail(ctx, email)
 	if existing != nil {
 		return errors.New("user already exists")
 	}
@@ -58,11 +59,11 @@ func (s *AuthService) Register(email, password, name string) error {
 		PasswordHash: hash,
 	}
 
-	return s.repo.Create(u)
+	return s.repo.Create(ctx, u)
 }
 
-func (s *AuthService) Login(email, password string) (string, *models.User, error) {
-	user, err := s.repo.FindByEmail(email)
+func (s *AuthService) Login(ctx context.Context, email, password string) (string, *models.User, error) {
+	user, err := s.repo.FindByEmail(ctx, email)
 
 	if err != nil {
 		return "", nil, err
@@ -86,8 +87,8 @@ func (s *AuthService) Login(email, password string) (string, *models.User, error
 	return token, user, nil
 }
 
-func (s *AuthService) HandleCallback(user goth.User) (string, error) {
-	u, err := s.repo.FindByEmail(user.Email)
+func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (string, error) {
+	u, err := s.repo.FindByEmail(ctx, user.Email)
 	if err != nil || u == nil {
 		// User does not exist, create a new one
 		u = &models.User{
@@ -97,11 +98,11 @@ func (s *AuthService) HandleCallback(user goth.User) (string, error) {
 			EmailVerified: true, // OAuth users are already verified
 			Avatar:        user.AvatarURL,
 		}
-		if err := s.repo.Create(u); err != nil {
+		if err := s.repo.Create(ctx, u); err != nil {
 			return "", err
 		}
 		// Fetch the created user to get the ID
-		u, err = s.repo.FindByEmail(user.Email)
+		u, err = s.repo.FindByEmail(ctx, user.Email)
 		if err != nil {
 			return "", err
 		}
@@ -120,8 +121,8 @@ func (s *AuthService) HandleCallback(user goth.User) (string, error) {
 }
 
 // GoogleSignIn handles Google Sign-In from mobile apps using user info from Google
-func (s *AuthService) GoogleSignIn(email, name, avatar string) (string, *models.User, error) {
-	u, err := s.repo.FindByEmail(email)
+func (s *AuthService) GoogleSignIn(ctx context.Context, email, name, avatar string) (string, *models.User, error) {
+	u, err := s.repo.FindByEmail(ctx, email)
 	if err != nil || u == nil {
 		// User does not exist, create a new one
 		u = &models.User{
@@ -131,11 +132,11 @@ func (s *AuthService) GoogleSignIn(email, name, avatar string) (string, *models.
 			EmailVerified: true, // OAuth users are already verified
 			Avatar:        avatar,
 		}
-		if err := s.repo.Create(u); err != nil {
+		if err := s.repo.Create(ctx, u); err != nil {
 			return "", nil, err
 		}
 		// Fetch the created user to get the ID
-		u, err = s.repo.FindByEmail(email)
+		u, err = s.repo.FindByEmail(ctx, email)
 		if err != nil {
 			return "", nil, err
 		}
@@ -150,13 +151,13 @@ func (s *AuthService) GoogleSignIn(email, name, avatar string) (string, *models.
 	return token, u, nil
 }
 
-func (s *AuthService) SendVerificationEmail(email string) error {
+func (s *AuthService) SendVerificationEmail(ctx context.Context, email string) error {
 	tok, err := utils.GenToken(32)
 	if (err != nil) {
 		return err
 	}
 	exp := time.Now().Add(24 * time.Hour)
-	if err := s.repo.SetVerifyToken(email, tok, exp); err != nil {
+	if err := s.repo.SetVerifyToken(ctx, email, tok, exp); err != nil {
 		return err
 	}
 	link := fmt.Sprintf(s.clientURL+"/verify?token=%s", tok)
@@ -164,14 +165,14 @@ func (s *AuthService) SendVerificationEmail(email string) error {
 	return s.mail.Send(email, "Verify your email", body)
 }
 
-func (s *AuthService) VerifyEmail(token string) error {
-	return s.repo.VerifyEmail(token)
+func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
+	return s.repo.VerifyEmail(ctx, token)
 }
 
-func (s *AuthService) SendResetPassword(email string) error {
+func (s *AuthService) SendResetPassword(ctx context.Context, email string) error {
 	tok, _ := utils.GenToken(32)
 	exp := time.Now().Add(2 * time.Hour)
-	if err := s.repo.SetResetToken(email, tok, exp); err != nil {
+	if err := s.repo.SetResetToken(ctx, email, tok, exp); err != nil {
 		return err
 	}
 	link := fmt.Sprintf(s.clientURL+"/reset-password?token=%s", tok)
@@ -179,17 +180,17 @@ func (s *AuthService) SendResetPassword(email string) error {
 	return s.mail.Send(email, "Reset password", body)
 }
 
-func (s *AuthService) ResetPassword(token, newPass string) error {
-	u, err := s.repo.GetByResetToken(token)
+func (s *AuthService) ResetPassword(ctx context.Context, token, newPass string) error {
+	u, err := s.repo.GetByResetToken(ctx, token)
 	if err != nil {
 		return err
 	}
 	hash, _ := security.HashPassword(newPass)
-	return s.repo.UpdatePassword(u.ID, string(hash))
+	return s.repo.UpdatePassword(ctx, u.ID, string(hash))
 }
 
-func (s *AuthService) GetUserByVerifyToken(token string) (*models.User, error) {
-	u, err := s.repo.GetByResetToken(token)
+func (s *AuthService) GetUserByVerifyToken(ctx context.Context, token string) (*models.User, error) {
+	u, err := s.repo.GetByResetToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +198,7 @@ func (s *AuthService) GetUserByVerifyToken(token string) (*models.User, error) {
 	return u, nil
 }
 
-func (s *AuthService) GetUserByEmail(email string) (*models.User, error) {
-	return s.repo.FindByEmail(email)
+func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	return s.repo.FindByEmail(ctx, email)
 }
+

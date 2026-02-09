@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -9,22 +10,22 @@ import (
 )
 
 type TaskRepository interface {
-	Create(t *models.Task) error
-	FindByID(id int) (*models.Task, error)
-	FindByHomeID(homeID int) (*[]models.Task, error)
-	Delete(id int) error
-	ReassignRoom(taskID, roomID int) error
+	Create(ctx context.Context, t *models.Task) error
+	FindByID(ctx context.Context, id int) (*models.Task, error)
+	FindByHomeID(ctx context.Context, homeID int) (*[]models.Task, error)
+	Delete(ctx context.Context, id int) error
+	ReassignRoom(ctx context.Context, taskID, roomID int) error
 
 	// task assignments
-	AssignUser(taskID, userID int, date time.Time) error
-	FindAssignmentsForUser(userID int) (*[]models.TaskAssignment, error)
-	FindClosestAssignmentForUser(userID int) (*models.TaskAssignment, error)
-	FindAssignmentByTaskAndUser(taskID, userID int) (*models.TaskAssignment, error)
-	FindAssignmentByID(assignmentID int) (*models.TaskAssignment, error)
-	MarkCompleted(assignmentID int) error
-	MarkUncompleted(assignmentID int) error
-	FindUserByAssignmentID(assignmentID int) (*models.User, error)
-	DeleteAssignment(assignmentID int) error
+	AssignUser(ctx context.Context, taskID, userID int, date time.Time) error
+	FindAssignmentsForUser(ctx context.Context, userID int) (*[]models.TaskAssignment, error)
+	FindClosestAssignmentForUser(ctx context.Context, userID int) (*models.TaskAssignment, error)
+	FindAssignmentByTaskAndUser(ctx context.Context, taskID, userID int) (*models.TaskAssignment, error)
+	FindAssignmentByID(ctx context.Context, assignmentID int) (*models.TaskAssignment, error)
+	MarkCompleted(ctx context.Context, assignmentID int) error
+	MarkUncompleted(ctx context.Context, assignmentID int) error
+	FindUserByAssignmentID(ctx context.Context, assignmentID int) (*models.User, error)
+	DeleteAssignment(ctx context.Context, assignmentID int) error
 }
 
 type taskRepo struct {
@@ -35,44 +36,44 @@ func NewTaskRepository(db *gorm.DB) TaskRepository {
 	return &taskRepo{db}
 }
 
-func (r *taskRepo) Create(t *models.Task) error {
-	return r.db.Create(t).Error
+func (r *taskRepo) Create(ctx context.Context, t *models.Task) error {
+	return r.db.WithContext(ctx).Create(t).Error
 }
 
-func (r *taskRepo) FindByID(id int) (*models.Task, error) {
+func (r *taskRepo) FindByID(ctx context.Context, id int) (*models.Task, error) {
 	var task models.Task
 	// we need preload to room field was not empty
-	err := r.db.Preload("Room").First(&task, id).Error
+	err := r.db.WithContext(ctx).Preload("Room").First(&task, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
 	return &task, err
 }
 
-func (r *taskRepo) FindByHomeID(homeID int) (*[]models.Task, error) {
+func (r *taskRepo) FindByHomeID(ctx context.Context, homeID int) (*[]models.Task, error) {
 	var tasks []models.Task
-	if err := r.db.Preload("Room").Preload("TaskAssignments").Preload("TaskAssignments.User").Where("home_id=?", homeID).Find(&tasks).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Room").Preload("TaskAssignments").Preload("TaskAssignments.User").Where("home_id=?", homeID).Find(&tasks).Error; err != nil {
 		return nil, err
 	}
 
 	return &tasks, nil
 }
 
-func (r *taskRepo) Delete(id int) error {
+func (r *taskRepo) Delete(ctx context.Context, id int) error {
 	// Delete associated task assignments first
-	if err := r.db.Where("task_id = ?", id).Delete(&models.TaskAssignment{}).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("task_id = ?", id).Delete(&models.TaskAssignment{}).Error; err != nil {
 		return err
 	}
 
-	if err := r.db.Delete(&models.Task{}, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Delete(&models.Task{}, id).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *taskRepo) AssignUser(taskID, userID int, date time.Time) error {
+func (r *taskRepo) AssignUser(ctx context.Context, taskID, userID int, date time.Time) error {
 	var task models.Task
-	if err := r.db.First(&task, taskID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&task, taskID).Error; err != nil {
 		return err
 	}
 	newTaskAssignment := models.TaskAssignment{
@@ -81,27 +82,27 @@ func (r *taskRepo) AssignUser(taskID, userID int, date time.Time) error {
 		Status:       "assigned",
 		AssignedDate: date,
 	}
-	if err := r.db.Create(&newTaskAssignment).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(&newTaskAssignment).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *taskRepo) FindAssignmentsForUser(userID int) (*[]models.TaskAssignment, error) {
+func (r *taskRepo) FindAssignmentsForUser(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
 	var assignments []models.TaskAssignment
 
-	if err := r.db.Where("user_id=?", userID).Find(&assignments).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("user_id=?", userID).Find(&assignments).Error; err != nil {
 		return nil, err
 	}
 
 	return &assignments, nil
 }
 
-func (r *taskRepo) FindClosestAssignmentForUser(userID int) (*models.TaskAssignment, error) {
+func (r *taskRepo) FindClosestAssignmentForUser(ctx context.Context, userID int) (*models.TaskAssignment, error) {
 	var assignment models.TaskAssignment
 
-	if err := r.db.Preload("Task").Where("user_id=? AND status != 'completed'", userID).Order("assigned_date asc").First(&assignment).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Task").Where("user_id=? AND status != 'completed'", userID).Order("assigned_date asc").First(&assignment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -111,26 +112,26 @@ func (r *taskRepo) FindClosestAssignmentForUser(userID int) (*models.TaskAssignm
 	return &assignment, nil
 }
 
-func (r *taskRepo) MarkUncompleted(assignmentID int) error {
+func (r *taskRepo) MarkUncompleted(ctx context.Context, assignmentID int) error {
 	var assignment models.TaskAssignment
-	if err := r.db.First(&assignment, assignmentID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&assignment, assignmentID).Error; err != nil {
 		return err
 	}
 
 	assignment.Status = "assigned"
 	assignment.CompleteDate = nil
 
-	if err := r.db.Save(&assignment).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(&assignment).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *taskRepo) FindAssignmentByTaskAndUser(taskID, userID int) (*models.TaskAssignment, error) {
+func (r *taskRepo) FindAssignmentByTaskAndUser(ctx context.Context, taskID, userID int) (*models.TaskAssignment, error) {
 	var assignment models.TaskAssignment
 
-	if err := r.db.Where("task_id = ? AND user_id = ?", taskID, userID).First(&assignment).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("task_id = ? AND user_id = ?", taskID, userID).First(&assignment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -140,30 +141,30 @@ func (r *taskRepo) FindAssignmentByTaskAndUser(taskID, userID int) (*models.Task
 	return &assignment, nil
 }
 
-func (r *taskRepo) FindAssignmentByID(assignmentID int) (*models.TaskAssignment, error) {
+func (r *taskRepo) FindAssignmentByID(ctx context.Context, assignmentID int) (*models.TaskAssignment, error) {
 	var assignment models.TaskAssignment
-	if err := r.db.Preload("Task").First(&assignment, assignmentID).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Task").First(&assignment, assignmentID).Error; err != nil {
 		return nil, err
 	}
 	return &assignment, nil
 }
 
-func (r *taskRepo) FindUserByAssignmentID(assignmentID int) (*models.User, error) {
+func (r *taskRepo) FindUserByAssignmentID(ctx context.Context, assignmentID int) (*models.User, error) {
 	var assignment models.TaskAssignment
-	if err := r.db.First(&assignment, assignmentID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&assignment, assignmentID).Error; err != nil {
 		return nil, err
 	}
 	var user models.User
-	if err := r.db.First(&user, assignment.UserID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&user, assignment.UserID).Error; err != nil {
 		return nil, err
 	}
 
 	return &user, nil
 }
 
-func (r *taskRepo) MarkCompleted(assignmentID int) error {
+func (r *taskRepo) MarkCompleted(ctx context.Context, assignmentID int) error {
 	var assignment models.TaskAssignment
-	if err := r.db.First(&assignment, assignmentID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&assignment, assignmentID).Error; err != nil {
 		return err
 	}
 
@@ -171,32 +172,33 @@ func (r *taskRepo) MarkCompleted(assignmentID int) error {
 	assignment.Status = "completed"
 	assignment.CompleteDate = &now
 
-	if err := r.db.Save(&assignment).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(&assignment).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *taskRepo) DeleteAssignment(assignmentID int) error {
-	if err := r.db.Delete(&models.TaskAssignment{}, assignmentID).Error; err != nil {
+func (r *taskRepo) DeleteAssignment(ctx context.Context, assignmentID int) error {
+	if err := r.db.WithContext(ctx).Delete(&models.TaskAssignment{}, assignmentID).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *taskRepo) ReassignRoom(taskID, roomID int) error {
+func (r *taskRepo) ReassignRoom(ctx context.Context, taskID, roomID int) error {
 	var task models.Task
 
-	if err := r.db.First(&task, taskID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&task, taskID).Error; err != nil {
 		return err
 	}
 
 	task.RoomID = &roomID
-	if err := r.db.Save(&task).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(&task).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
+

@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"mime/multipart"
@@ -19,49 +20,49 @@ import (
 
 // Mock user service
 type mockUserService struct {
-	GetUserByIDFunc      func(userID int) (*models.User, error)
-	UpdateUserFunc       func(userID int, name string) error
-	UpdateUserAvatarFunc func(userID int, imagePath string) error
+	GetUserByIDFunc      func(ctx context.Context, userID int) (*models.User, error)
+	UpdateUserFunc       func(ctx context.Context, userID int, name string) error
+	UpdateUserAvatarFunc func(ctx context.Context, userID int, imagePath string) error
 }
 
-func (m *mockUserService) GetUserByID(userID int) (*models.User, error) {
+func (m *mockUserService) GetUserByID(ctx context.Context, userID int) (*models.User, error) {
 	if m.GetUserByIDFunc != nil {
-		return m.GetUserByIDFunc(userID)
+		return m.GetUserByIDFunc(ctx, userID)
 	}
 	return nil, nil
 }
 
-func (m *mockUserService) UpdateUser(userID int, name string) error {
+func (m *mockUserService) UpdateUser(ctx context.Context, userID int, name string) error {
 	if m.UpdateUserFunc != nil {
-		return m.UpdateUserFunc(userID, name)
+		return m.UpdateUserFunc(ctx, userID, name)
 	}
 	return nil
 }
 
-func (m *mockUserService) UpdateUserAvatar(userID int, imagePath string) error {
+func (m *mockUserService) UpdateUserAvatar(ctx context.Context, userID int, imagePath string) error {
 	if m.UpdateUserAvatarFunc != nil {
-		return m.UpdateUserAvatarFunc(userID, imagePath)
+		return m.UpdateUserAvatarFunc(ctx, userID, imagePath)
 	}
 	return nil
 }
 
 // Mock image service for user handler
 type mockImageServiceForUser struct {
-	UploadFunc func(file multipart.File, header *multipart.FileHeader) (string, error)
+	UploadFunc func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error)
 }
 
-func (m *mockImageServiceForUser) Upload(file multipart.File, header *multipart.FileHeader) (string, error) {
+func (m *mockImageServiceForUser) Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 	if m.UploadFunc != nil {
-		return m.UploadFunc(file, header)
+		return m.UploadFunc(ctx, file, header)
 	}
 	return "", nil
 }
 
-func (m *mockImageServiceForUser) GetPresignedURL(key string, expiration time.Duration) (string, error) {
+func (m *mockImageServiceForUser) GetPresignedURL(ctx context.Context, key string, expiration time.Duration) (string, error) {
 	return "", nil
 }
 
-func (m *mockImageServiceForUser) Delete(imageURL string) error {
+func (m *mockImageServiceForUser) Delete(ctx context.Context, imageURL string) error {
 	return nil
 }
 
@@ -102,14 +103,14 @@ func TestUserHandler_GetMe(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         int
-		mockFunc       func(userID int) (*models.User, error)
+		mockFunc       func(ctx context.Context, userID int) (*models.User, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			userID: 123,
-			mockFunc: func(userID int) (*models.User, error) {
+			mockFunc: func(ctx context.Context, userID int) (*models.User, error) {
 				require.Equal(t, 123, userID)
 				return &models.User{ID: 123, Name: "Test User", Email: "test@example.com"}, nil
 			},
@@ -126,7 +127,7 @@ func TestUserHandler_GetMe(t *testing.T) {
 		{
 			name:   "User Not Found",
 			userID: 123,
-			mockFunc: func(userID int) (*models.User, error) {
+			mockFunc: func(ctx context.Context, userID int) (*models.User, error) {
 				return nil, nil
 			},
 			expectedStatus: http.StatusNotFound,
@@ -135,7 +136,7 @@ func TestUserHandler_GetMe(t *testing.T) {
 		{
 			name:   "Service Error",
 			userID: 123,
-			mockFunc: func(userID int) (*models.User, error) {
+			mockFunc: func(ctx context.Context, userID int) (*models.User, error) {
 				return nil, errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -170,9 +171,9 @@ func TestUserHandler_Update(t *testing.T) {
 		userID         int
 		formFields     map[string]string
 		hasAvatar      bool
-		updateNameFunc func(userID int, name string) error
-		uploadFunc     func(file multipart.File, header *multipart.FileHeader) (string, error)
-		updateAvatar   func(userID int, imagePath string) error
+		updateNameFunc func(ctx context.Context, userID int, name string) error
+		uploadFunc     func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error)
+		updateAvatar   func(ctx context.Context, userID int, imagePath string) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -183,7 +184,7 @@ func TestUserHandler_Update(t *testing.T) {
 				"name": "New Name",
 			},
 			hasAvatar: false,
-			updateNameFunc: func(userID int, name string) error {
+			updateNameFunc: func(ctx context.Context, userID int, name string) error {
 				assert.Equal(t, 123, userID)
 				assert.Equal(t, "New Name", name)
 				return nil
@@ -196,10 +197,10 @@ func TestUserHandler_Update(t *testing.T) {
 			userID:     123,
 			formFields: map[string]string{},
 			hasAvatar:  true,
-			uploadFunc: func(file multipart.File, header *multipart.FileHeader) (string, error) {
+			uploadFunc: func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 				return "https://s3.amazonaws.com/bucket/avatar.jpg", nil
 			},
-			updateAvatar: func(userID int, imagePath string) error {
+			updateAvatar: func(ctx context.Context, userID int, imagePath string) error {
 				assert.Equal(t, 123, userID)
 				assert.Equal(t, "https://s3.amazonaws.com/bucket/avatar.jpg", imagePath)
 				return nil
@@ -228,7 +229,7 @@ func TestUserHandler_Update(t *testing.T) {
 			formFields: map[string]string{
 				"name": "New Name",
 			},
-			updateNameFunc: func(userID int, name string) error {
+			updateNameFunc: func(ctx context.Context, userID int, name string) error {
 				return errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -239,7 +240,7 @@ func TestUserHandler_Update(t *testing.T) {
 			userID:     123,
 			formFields: map[string]string{},
 			hasAvatar:  true,
-			uploadFunc: func(file multipart.File, header *multipart.FileHeader) (string, error) {
+			uploadFunc: func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 				return "", errors.New("upload error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -281,3 +282,4 @@ func TestUserHandler_Update(t *testing.T) {
 		})
 	}
 }
+

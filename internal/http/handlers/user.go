@@ -35,7 +35,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(r.Context(), userID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -78,7 +78,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := r.FormValue("name")
-	avatarURL := r.FormValue("avatar") // URL аватара (если уже загружен)
+	avatarURL := r.FormValue("avatar")
 
 	file, fileHeader, err := r.FormFile("avatar_file")
 	hasAvatarFile := err == nil
@@ -89,31 +89,29 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if name != "" {
-		if err := h.svc.UpdateUser(userID, name); err != nil {
+		if err := h.svc.UpdateUser(r.Context(), userID, name); err != nil {
 			utils.JSONError(w, "Failed to update name: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
 
-	// Если передан URL аватара (уже загруженный через /upload)
 	if avatarURL != "" {
-		if err := h.svc.UpdateUserAvatar(userID, avatarURL); err != nil {
+		if err := h.svc.UpdateUserAvatar(r.Context(), userID, avatarURL); err != nil {
 			utils.JSONError(w, "Failed to update avatar: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
 
-	// Если передан файл аватара
 	if hasAvatarFile {
 		defer file.Close()
 
-		imagePath, err := h.imageSvc.Upload(file, fileHeader)
+		imagePath, err := h.imageSvc.Upload(r.Context(), file, fileHeader)
 		if err != nil {
 			utils.JSONError(w, "Failed to upload avatar: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if err := h.svc.UpdateUserAvatar(userID, imagePath); err != nil {
+		if err := h.svc.UpdateUserAvatar(r.Context(), userID, imagePath); err != nil {
 			utils.JSONError(w, "Failed to update avatar: "+err.Error(), http.StatusInternalServerError)
 			return
 		}

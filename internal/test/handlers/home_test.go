@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -18,76 +19,86 @@ import (
 
 // Mock repository
 type mockHomeRepo struct {
-	IsMemberFunc func(homeID, userID int) (bool, error)
-	IsAdminFunc  func(homeID, userID int) (bool, error)
+	IsMemberFunc func(ctx context.Context, homeID, userID int) (bool, error)
+	IsAdminFunc  func(ctx context.Context, homeID, userID int) (bool, error)
 }
 
-func (m *mockHomeRepo) Create(h *models.Home) error                              { return nil }
-func (m *mockHomeRepo) FindByID(id int) (*models.Home, error)                    { return nil, nil }
-func (m *mockHomeRepo) FindByInviteCode(inviteCode string) (*models.Home, error) { return nil, nil }
-func (m *mockHomeRepo) Delete(id int) error                                      { return nil }
-func (m *mockHomeRepo) AddMember(id int, userID int, role string) error          { return nil }
-func (m *mockHomeRepo) DeleteMember(id int, userID int) error                    { return nil }
-func (m *mockHomeRepo) GenerateUniqueInviteCode() (string, error)                { return "CODE1234", nil }
-func (m *mockHomeRepo) GetUserHome(userID int) (*models.Home, error)             { return nil, nil }
-func (m *mockHomeRepo) RegenerateCode(code string, id int) error                 { return nil }
+func (m *mockHomeRepo) Create(ctx context.Context, h *models.Home) error { return nil }
+func (m *mockHomeRepo) FindByID(ctx context.Context, id int) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) FindByInviteCode(ctx context.Context, inviteCode string) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) Delete(ctx context.Context, id int) error { return nil }
+func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role string) error {
+	return nil
+}
+func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) error { return nil }
+func (m *mockHomeRepo) GenerateUniqueInviteCode(ctx context.Context) (string, error) {
+	return "CODE1234", nil
+}
+func (m *mockHomeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) RegenerateCode(ctx context.Context, code string, id int) error { return nil }
 
-func (m *mockHomeRepo) IsMember(homeID, userID int) (bool, error) {
+func (m *mockHomeRepo) IsMember(ctx context.Context, homeID, userID int) (bool, error) {
 	if m.IsMemberFunc != nil {
-		return m.IsMemberFunc(homeID, userID)
+		return m.IsMemberFunc(ctx, homeID, userID)
 	}
 	return false, nil
 }
 
-func (m *mockHomeRepo) IsAdmin(homeID, userID int) (bool, error) {
+func (m *mockHomeRepo) IsAdmin(ctx context.Context, homeID, userID int) (bool, error) {
 	if m.IsAdminFunc != nil {
-		return m.IsAdminFunc(homeID, userID)
+		return m.IsAdminFunc(ctx, homeID, userID)
 	}
 	return false, nil
 }
 
 // Mock service
 type mockHomeService struct {
-	CreateHomeFunc           func(name string, userID int) error
-	RegenerateInviteCodeFunc func(homeID int) error
-	JoinHomeByCodeFunc       func(code string, userID int) error
-	GetUserHomeFunc          func(userID int) (*models.Home, error)
-	GetHomeByIDFunc          func(userID int) (*models.Home, error)
-	DeleteHomeFunc           func(homeID int) error
-	LeaveHomeFunc            func(homeID, userID int) error
-	RemoveMemberFunc         func(homeID, userID, currentUserID int) error
+	CreateHomeFunc           func(ctx context.Context, name string, userID int) error
+	RegenerateInviteCodeFunc func(ctx context.Context, homeID int) error
+	JoinHomeByCodeFunc       func(ctx context.Context, code string, userID int) error
+	GetUserHomeFunc          func(ctx context.Context, userID int) (*models.Home, error)
+	GetHomeByIDFunc          func(ctx context.Context, userID int) (*models.Home, error)
+	DeleteHomeFunc           func(ctx context.Context, homeID int) error
+	LeaveHomeFunc            func(ctx context.Context, homeID, userID int) error
+	RemoveMemberFunc         func(ctx context.Context, homeID, userID, currentUserID int) error
 }
 
-func (m *mockHomeService) CreateHome(name string, userID int) error {
-	return m.CreateHomeFunc(name, userID)
+func (m *mockHomeService) CreateHome(ctx context.Context, name string, userID int) error {
+	return m.CreateHomeFunc(ctx, name, userID)
 }
 
-func (m *mockHomeService) JoinHomeByCode(code string, userID int) error {
-	return m.JoinHomeByCodeFunc(code, userID)
+func (m *mockHomeService) JoinHomeByCode(ctx context.Context, code string, userID int) error {
+	return m.JoinHomeByCodeFunc(ctx, code, userID)
 }
 
-func (m *mockHomeService) GetUserHome(userID int) (*models.Home, error) {
-	return m.GetUserHomeFunc(userID)
+func (m *mockHomeService) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
+	return m.GetUserHomeFunc(ctx, userID)
 }
 
-func (m *mockHomeService) GetHomeByID(homeID int) (*models.Home, error) {
-	return m.GetHomeByIDFunc(homeID)
+func (m *mockHomeService) GetHomeByID(ctx context.Context, homeID int) (*models.Home, error) {
+	return m.GetHomeByIDFunc(ctx, homeID)
 }
 
-func (m *mockHomeService) DeleteHome(homeID int) error {
-	return m.DeleteHomeFunc(homeID)
+func (m *mockHomeService) DeleteHome(ctx context.Context, homeID int) error {
+	return m.DeleteHomeFunc(ctx, homeID)
 }
 
-func (m *mockHomeService) RegenerateInviteCode(homeID int) error {
-	return m.RegenerateInviteCodeFunc(homeID)
+func (m *mockHomeService) RegenerateInviteCode(ctx context.Context, homeID int) error {
+	return m.RegenerateInviteCodeFunc(ctx, homeID)
 }
 
-func (m *mockHomeService) LeaveHome(homeID, userID int) error {
-	return m.LeaveHomeFunc(homeID, userID)
+func (m *mockHomeService) LeaveHome(ctx context.Context, homeID, userID int) error {
+	return m.LeaveHomeFunc(ctx, homeID, userID)
 }
 
-func (m *mockHomeService) RemoveMember(homeID, userID, currentUserID int) error {
-	return m.RemoveMemberFunc(homeID, userID, currentUserID)
+func (m *mockHomeService) RemoveMember(ctx context.Context, homeID, userID, currentUserID int) error {
+	return m.RemoveMemberFunc(ctx, homeID, userID, currentUserID)
 }
 
 // Test fixtures
@@ -107,7 +118,7 @@ func TestHomeHandler_Create(t *testing.T) {
 		name           string
 		body           interface{}
 		userID         int
-		mockFunc       func(name string, userID int) error
+		mockFunc       func(ctx context.Context, name string, userID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -115,7 +126,7 @@ func TestHomeHandler_Create(t *testing.T) {
 			name:   "Success",
 			body:   validCreateHomeRequest,
 			userID: 123,
-			mockFunc: func(name string, userID int) error {
+			mockFunc: func(ctx context.Context, name string, userID int) error {
 				assert.Equal(t, "Test Home", name)
 				assert.Equal(t, 123, userID)
 				return nil
@@ -127,7 +138,7 @@ func TestHomeHandler_Create(t *testing.T) {
 			name:           "Invalid JSON",
 			body:           "{bad json}",
 			userID:         123,
-			mockFunc:       func(name string, userID int) error { return nil },
+			mockFunc:       func(ctx context.Context, name string, userID int) error { return nil },
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid JSON",
 		},
@@ -173,7 +184,7 @@ func TestHomeHandler_Join(t *testing.T) {
 		name           string
 		body           interface{}
 		userID         int
-		mockFunc       func(code string, userID int) error
+		mockFunc       func(ctx context.Context, code string, userID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -181,7 +192,7 @@ func TestHomeHandler_Join(t *testing.T) {
 			name:   "Success",
 			body:   validJoinRequest,
 			userID: 123,
-			mockFunc: func(code string, userID int) error {
+			mockFunc: func(ctx context.Context, code string, userID int) error {
 				assert.Equal(t, "TESTCODE", code)
 				assert.Equal(t, 123, userID)
 				return nil
@@ -193,7 +204,7 @@ func TestHomeHandler_Join(t *testing.T) {
 			name:           "Invalid JSON",
 			body:           "{bad Json}",
 			userID:         123,
-			mockFunc:       func(code string, userID int) error { return nil },
+			mockFunc:       func(ctx context.Context, code string, userID int) error { return nil },
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid JSON",
 		},
@@ -238,14 +249,14 @@ func TestHomeHandler_GetUserHome(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         int
-		mockFunc       func(userID int) (*models.Home, error)
+		mockFunc       func(ctx context.Context, userID int) (*models.Home, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			userID: 123,
-			mockFunc: func(userID int) (*models.Home, error) {
+			mockFunc: func(ctx context.Context, userID int) (*models.Home, error) {
 				require.Equal(t, 123, userID)
 				return &models.Home{ID: 1, Name: "TestHome"}, nil
 			},
@@ -255,7 +266,7 @@ func TestHomeHandler_GetUserHome(t *testing.T) {
 		{
 			name:   "Error",
 			userID: 123,
-			mockFunc: func(userID int) (*models.Home, error) {
+			mockFunc: func(ctx context.Context, userID int) (*models.Home, error) {
 				return nil, errors.New("test error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -264,7 +275,7 @@ func TestHomeHandler_GetUserHome(t *testing.T) {
 		{
 			name:   "Not Found",
 			userID: 123,
-			mockFunc: func(userID int) (*models.Home, error) {
+			mockFunc: func(ctx context.Context, userID int) (*models.Home, error) {
 				return nil, nil
 			},
 			expectedStatus: http.StatusNotFound,
@@ -306,7 +317,7 @@ func TestHomeHandler_GetByID(t *testing.T) {
 		homeID         string
 		userID         int
 		isMember       bool
-		mockFunc       func(homeID int) (*models.Home, error)
+		mockFunc       func(ctx context.Context, homeID int) (*models.Home, error)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -315,7 +326,7 @@ func TestHomeHandler_GetByID(t *testing.T) {
 			homeID:   "1",
 			userID:   123,
 			isMember: true,
-			mockFunc: func(homeID int) (*models.Home, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*models.Home, error) {
 				require.Equal(t, 1, homeID)
 				return &models.Home{ID: 1, Name: "TestHome"}, nil
 			},
@@ -327,7 +338,7 @@ func TestHomeHandler_GetByID(t *testing.T) {
 			homeID:   "1",
 			userID:   123,
 			isMember: true,
-			mockFunc: func(homeID int) (*models.Home, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*models.Home, error) {
 				return nil, errors.New("test error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -338,7 +349,7 @@ func TestHomeHandler_GetByID(t *testing.T) {
 			homeID:   "1",
 			userID:   123,
 			isMember: true,
-			mockFunc: func(homeID int) (*models.Home, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*models.Home, error) {
 				return nil, nil
 			},
 			expectedStatus: http.StatusNotFound,
@@ -349,7 +360,7 @@ func TestHomeHandler_GetByID(t *testing.T) {
 			homeID:   "1",
 			userID:   123,
 			isMember: false,
-			mockFunc: func(homeID int) (*models.Home, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*models.Home, error) {
 				return &models.Home{ID: 1, Name: "TestHome"}, nil
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -366,7 +377,7 @@ func TestHomeHandler_GetByID(t *testing.T) {
 			h := setupHomeHandler(svc)
 
 			mockRepo := &mockHomeRepo{
-				IsMemberFunc: func(homeID, userID int) (bool, error) {
+				IsMemberFunc: func(ctx context.Context, homeID, userID int) (bool, error) {
 					return tt.isMember, nil
 				},
 			}
@@ -392,7 +403,7 @@ func TestHomeHandler_Delete(t *testing.T) {
 		userID         int
 		isAdmin        bool
 		isMember       bool
-		mockFunc       func(homeID int) error
+		mockFunc       func(ctx context.Context, homeID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -402,7 +413,7 @@ func TestHomeHandler_Delete(t *testing.T) {
 			userID:   123,
 			isAdmin:  true,
 			isMember: true,
-			mockFunc: func(homeID int) error {
+			mockFunc: func(ctx context.Context, homeID int) error {
 				return nil
 			},
 			expectedStatus: http.StatusOK,
@@ -414,7 +425,7 @@ func TestHomeHandler_Delete(t *testing.T) {
 			userID:   123,
 			isAdmin:  true,
 			isMember: true,
-			mockFunc: func(homeID int) error {
+			mockFunc: func(ctx context.Context, homeID int) error {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -426,7 +437,7 @@ func TestHomeHandler_Delete(t *testing.T) {
 			userID:   123,
 			isAdmin:  false,
 			isMember: false,
-			mockFunc: func(homeID int) error { return nil },
+			mockFunc: func(ctx context.Context, homeID int) error { return nil },
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   "you are not a",
 		},
@@ -441,8 +452,8 @@ func TestHomeHandler_Delete(t *testing.T) {
 			h := setupHomeHandler(svc)
 
 			mockRepo := &mockHomeRepo{
-				IsAdminFunc:  func(homeID, userID int) (bool, error) { return tt.isAdmin, nil },
-				IsMemberFunc: func(homeID, userID int) (bool, error) { return tt.isMember, nil },
+				IsAdminFunc:  func(ctx context.Context, homeID, userID int) (bool, error) { return tt.isAdmin, nil },
+				IsMemberFunc: func(ctx context.Context, homeID, userID int) (bool, error) { return tt.isMember, nil },
 			}
 
 			r := chi.NewRouter()
@@ -464,7 +475,7 @@ func TestHomeHandler_Leave(t *testing.T) {
 		name           string
 		body           interface{}
 		userID         int
-		mockFunc       func(homeID, userID int) error
+		mockFunc       func(ctx context.Context, homeID, userID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -472,7 +483,7 @@ func TestHomeHandler_Leave(t *testing.T) {
 			name:   "Success",
 			body:   validLeaveRequest,
 			userID: 123,
-			mockFunc: func(homeID, userID int) error {
+			mockFunc: func(ctx context.Context, homeID, userID int) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, 123, userID)
 				return nil
@@ -484,7 +495,7 @@ func TestHomeHandler_Leave(t *testing.T) {
 			name:   "Error",
 			body:   validLeaveRequest,
 			userID: 123,
-			mockFunc: func(homeID, userID int) error {
+			mockFunc: func(ctx context.Context, homeID, userID int) error {
 				return errors.New("leave failed")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -526,7 +537,7 @@ func TestHomeHandler_RemoveMember(t *testing.T) {
 		name           string
 		body           interface{}
 		userID         int
-		mockFunc       func(homeID, userID, currentUserID int) error
+		mockFunc       func(ctx context.Context, homeID, userID, currentUserID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -534,7 +545,7 @@ func TestHomeHandler_RemoveMember(t *testing.T) {
 			name:   "Success",
 			body:   validRemoveMemberReq,
 			userID: 123,
-			mockFunc: func(homeID, userID, currentUserID int) error {
+			mockFunc: func(ctx context.Context, homeID, userID, currentUserID int) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, 2, userID)
 				assert.Equal(t, 123, currentUserID)
@@ -547,7 +558,7 @@ func TestHomeHandler_RemoveMember(t *testing.T) {
 			name:   "Error",
 			body:   validRemoveMemberReq,
 			userID: 123,
-			mockFunc: func(homeID, userID, currentUserID int) error {
+			mockFunc: func(ctx context.Context, homeID, userID, currentUserID int) error {
 				return errors.New("remove failed")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -583,3 +594,4 @@ func TestHomeHandler_RemoveMember(t *testing.T) {
 		})
 	}
 }
+

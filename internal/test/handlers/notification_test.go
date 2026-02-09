@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -15,52 +16,52 @@ import (
 
 // Mock notification service
 type mockNotificationService struct {
-	CreateFunc                       func(from *int, to int, description string) error
-	GetByUserIDFunc                  func(userID int) ([]models.Notification, error)
-	MarkAsReadFunc                   func(notificationID, userID int) error
-	CreateHomeNotificationFunc       func(from *int, homeID int, description string) error
-	GetByHomeIDFunc                  func(homeID int) ([]models.HomeNotification, error)
-	MarkAsReadForHomeNotificationFunc func(notificationID, homeID int) error
+	CreateFunc                       func(ctx context.Context, from *int, to int, description string) error
+	GetByUserIDFunc                  func(ctx context.Context, userID int) ([]models.Notification, error)
+	MarkAsReadFunc                   func(ctx context.Context, notificationID, userID int) error
+	CreateHomeNotificationFunc       func(ctx context.Context, from *int, homeID int, description string) error
+	GetByHomeIDFunc                  func(ctx context.Context, homeID int) ([]models.HomeNotification, error)
+	MarkAsReadForHomeNotificationFunc func(ctx context.Context, notificationID, homeID int) error
 }
 
-func (m *mockNotificationService) Create(from *int, to int, description string) error {
+func (m *mockNotificationService) Create(ctx context.Context, from *int, to int, description string) error {
 	if m.CreateFunc != nil {
-		return m.CreateFunc(from, to, description)
+		return m.CreateFunc(ctx, from, to, description)
 	}
 	return nil
 }
 
-func (m *mockNotificationService) GetByUserID(userID int) ([]models.Notification, error) {
+func (m *mockNotificationService) GetByUserID(ctx context.Context, userID int) ([]models.Notification, error) {
 	if m.GetByUserIDFunc != nil {
-		return m.GetByUserIDFunc(userID)
+		return m.GetByUserIDFunc(ctx, userID)
 	}
 	return nil, nil
 }
 
-func (m *mockNotificationService) MarkAsRead(notificationID, userID int) error {
+func (m *mockNotificationService) MarkAsRead(ctx context.Context, notificationID, userID int) error {
 	if m.MarkAsReadFunc != nil {
-		return m.MarkAsReadFunc(notificationID, userID)
+		return m.MarkAsReadFunc(ctx, notificationID, userID)
 	}
 	return nil
 }
 
-func (m *mockNotificationService) CreateHomeNotification(from *int, homeID int, description string) error {
+func (m *mockNotificationService) CreateHomeNotification(ctx context.Context, from *int, homeID int, description string) error {
 	if m.CreateHomeNotificationFunc != nil {
-		return m.CreateHomeNotificationFunc(from, homeID, description)
+		return m.CreateHomeNotificationFunc(ctx, from, homeID, description)
 	}
 	return nil
 }
 
-func (m *mockNotificationService) GetByHomeID(homeID int) ([]models.HomeNotification, error) {
+func (m *mockNotificationService) GetByHomeID(ctx context.Context, homeID int) ([]models.HomeNotification, error) {
 	if m.GetByHomeIDFunc != nil {
-		return m.GetByHomeIDFunc(homeID)
+		return m.GetByHomeIDFunc(ctx, homeID)
 	}
 	return nil, nil
 }
 
-func (m *mockNotificationService) MarkAsReadForHomeNotification(notificationID, homeID int) error {
+func (m *mockNotificationService) MarkAsReadForHomeNotification(ctx context.Context, notificationID, homeID int) error {
 	if m.MarkAsReadForHomeNotificationFunc != nil {
-		return m.MarkAsReadForHomeNotificationFunc(notificationID, homeID)
+		return m.MarkAsReadForHomeNotificationFunc(ctx, notificationID, homeID)
 	}
 	return nil
 }
@@ -82,14 +83,14 @@ func TestNotificationHandler_GetByUserID(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         int
-		mockFunc       func(userID int) ([]models.Notification, error)
+		mockFunc       func(ctx context.Context, userID int) ([]models.Notification, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			userID: 123,
-			mockFunc: func(userID int) ([]models.Notification, error) {
+			mockFunc: func(ctx context.Context, userID int) ([]models.Notification, error) {
 				require.Equal(t, 123, userID)
 				return []models.Notification{
 					{ID: 1, To: 123, Description: "Test notification"},
@@ -101,7 +102,7 @@ func TestNotificationHandler_GetByUserID(t *testing.T) {
 		{
 			name:   "Empty List",
 			userID: 123,
-			mockFunc: func(userID int) ([]models.Notification, error) {
+			mockFunc: func(ctx context.Context, userID int) ([]models.Notification, error) {
 				return []models.Notification{}, nil
 			},
 			expectedStatus: http.StatusOK,
@@ -110,7 +111,7 @@ func TestNotificationHandler_GetByUserID(t *testing.T) {
 		{
 			name:   "Service Error",
 			userID: 123,
-			mockFunc: func(userID int) ([]models.Notification, error) {
+			mockFunc: func(ctx context.Context, userID int) ([]models.Notification, error) {
 				return nil, errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -143,7 +144,7 @@ func TestNotificationHandler_MarkAsRead(t *testing.T) {
 		name           string
 		notificationID string
 		userID         int
-		mockFunc       func(notificationID, userID int) error
+		mockFunc       func(ctx context.Context, notificationID, userID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -151,7 +152,7 @@ func TestNotificationHandler_MarkAsRead(t *testing.T) {
 			name:           "Success",
 			notificationID: "1",
 			userID:         123,
-			mockFunc: func(notificationID, userID int) error {
+			mockFunc: func(ctx context.Context, notificationID, userID int) error {
 				require.Equal(t, 1, notificationID)
 				require.Equal(t, 123, userID)
 				return nil
@@ -171,7 +172,7 @@ func TestNotificationHandler_MarkAsRead(t *testing.T) {
 			name:           "Service Error",
 			notificationID: "1",
 			userID:         123,
-			mockFunc: func(notificationID, userID int) error {
+			mockFunc: func(ctx context.Context, notificationID, userID int) error {
 				return errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -203,14 +204,14 @@ func TestNotificationHandler_GetByHomeID(t *testing.T) {
 	tests := []struct {
 		name           string
 		homeID         string
-		mockFunc       func(homeID int) ([]models.HomeNotification, error)
+		mockFunc       func(ctx context.Context, homeID int) ([]models.HomeNotification, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			homeID: "1",
-			mockFunc: func(homeID int) ([]models.HomeNotification, error) {
+			mockFunc: func(ctx context.Context, homeID int) ([]models.HomeNotification, error) {
 				require.Equal(t, 1, homeID)
 				return []models.HomeNotification{
 					{ID: 1, HomeID: 1, Description: "Home notification"},
@@ -229,7 +230,7 @@ func TestNotificationHandler_GetByHomeID(t *testing.T) {
 		{
 			name:   "Service Error",
 			homeID: "1",
-			mockFunc: func(homeID int) ([]models.HomeNotification, error) {
+			mockFunc: func(ctx context.Context, homeID int) ([]models.HomeNotification, error) {
 				return nil, errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -262,7 +263,7 @@ func TestNotificationHandler_MarkAsReadForHome(t *testing.T) {
 		homeID         string
 		notificationID string
 		userID         int
-		mockFunc       func(notificationID, userID int) error
+		mockFunc       func(ctx context.Context, notificationID, userID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -271,7 +272,7 @@ func TestNotificationHandler_MarkAsReadForHome(t *testing.T) {
 			homeID:         "1",
 			notificationID: "1",
 			userID:         123,
-			mockFunc: func(notificationID, userID int) error {
+			mockFunc: func(ctx context.Context, notificationID, userID int) error {
 				require.Equal(t, 1, notificationID)
 				return nil
 			},
@@ -292,7 +293,7 @@ func TestNotificationHandler_MarkAsReadForHome(t *testing.T) {
 			homeID:         "1",
 			notificationID: "1",
 			userID:         123,
-			mockFunc: func(notificationID, userID int) error {
+			mockFunc: func(ctx context.Context, notificationID, userID int) error {
 				return errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -319,3 +320,4 @@ func TestNotificationHandler_MarkAsReadForHome(t *testing.T) {
 		})
 	}
 }
+

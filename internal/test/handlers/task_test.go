@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -17,108 +18,108 @@ import (
 
 // Mock service
 type mockTaskService struct {
-	CreateTaskFunc                  func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
-	CreateTaskWithAssignmentFunc    func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error
-	GetTaskByIDFunc                 func(taskID int) (*models.Task, error)
-	GetTasksByHomeIDFunc            func(homeID int) (*[]models.Task, error)
-	DeleteTaskFunc                  func(taskID int) error
-	AssignUserFunc                  func(taskID, userID, homeID int, date time.Time) error
-	GetAssignmentsForUserFunc       func(userID int) (*[]models.TaskAssignment, error)
-	GetClosestAssignmentForUserFunc func(userID int) (*models.TaskAssignment, error)
-	MarkAssignmentCompletedFunc     func(assignmentID int) error
-	MarkAssignmentUncompletedFunc   func(assignmentID int) error
-	MarkTaskCompletedForUserFunc    func(taskID, userID, homeID int) error
-	DeleteAssignmentFunc            func(assignmentID int) error
-	ReassignRoomFunc                func(taskID, roomID int) error
+	CreateTaskFunc                  func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
+	CreateTaskWithAssignmentFunc    func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error
+	GetTaskByIDFunc                 func(ctx context.Context, taskID int) (*models.Task, error)
+	GetTasksByHomeIDFunc            func(ctx context.Context, homeID int) (*[]models.Task, error)
+	DeleteTaskFunc                  func(ctx context.Context, taskID int) error
+	AssignUserFunc                  func(ctx context.Context, taskID, userID, homeID int, date time.Time) error
+	GetAssignmentsForUserFunc       func(ctx context.Context, userID int) (*[]models.TaskAssignment, error)
+	GetClosestAssignmentForUserFunc func(ctx context.Context, userID int) (*models.TaskAssignment, error)
+	MarkAssignmentCompletedFunc     func(ctx context.Context, assignmentID int) error
+	MarkAssignmentUncompletedFunc   func(ctx context.Context, assignmentID int) error
+	MarkTaskCompletedForUserFunc    func(ctx context.Context, taskID, userID, homeID int) error
+	DeleteAssignmentFunc            func(ctx context.Context, assignmentID int) error
+	ReassignRoomFunc                func(ctx context.Context, taskID, roomID int) error
 }
 
-func (m *mockTaskService) CreateTaskWithAssignment(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error {
-	if m.CreateTaskFunc != nil {
-		return m.CreateTaskWithAssignmentFunc(homeID, roomID, name, description, scheduleType, dueDate, userID)
+func (m *mockTaskService) CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error {
+	if m.CreateTaskWithAssignmentFunc != nil {
+		return m.CreateTaskWithAssignmentFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate, userID)
 	}
 	return nil
 }
 
-func (m *mockTaskService) CreateTask(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
+func (m *mockTaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
 	if m.CreateTaskFunc != nil {
-		return m.CreateTaskFunc(homeID, roomID, name, description, scheduleType, dueDate)
+		return m.CreateTaskFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate)
 	}
 	return nil
 }
 
-func (m *mockTaskService) GetTaskByID(taskID int) (*models.Task, error) {
+func (m *mockTaskService) GetTaskByID(ctx context.Context, taskID int) (*models.Task, error) {
 	if m.GetTaskByIDFunc != nil {
-		return m.GetTaskByIDFunc(taskID)
+		return m.GetTaskByIDFunc(ctx, taskID)
 	}
 	return nil, nil
 }
 
-func (m *mockTaskService) GetTasksByHomeID(homeID int) (*[]models.Task, error) {
+func (m *mockTaskService) GetTasksByHomeID(ctx context.Context, homeID int) (*[]models.Task, error) {
 	if m.GetTasksByHomeIDFunc != nil {
-		return m.GetTasksByHomeIDFunc(homeID)
+		return m.GetTasksByHomeIDFunc(ctx, homeID)
 	}
 	return nil, nil
 }
 
-func (m *mockTaskService) DeleteTask(taskID int) error {
+func (m *mockTaskService) DeleteTask(ctx context.Context, taskID int) error {
 	if m.DeleteTaskFunc != nil {
-		return m.DeleteTaskFunc(taskID)
+		return m.DeleteTaskFunc(ctx, taskID)
 	}
 	return nil
 }
 
-func (m *mockTaskService) AssignUser(taskID, userID, homeID int, date time.Time) error {
+func (m *mockTaskService) AssignUser(ctx context.Context, taskID, userID, homeID int, date time.Time) error {
 	if m.AssignUserFunc != nil {
-		return m.AssignUserFunc(taskID, userID, homeID, date)
+		return m.AssignUserFunc(ctx, taskID, userID, homeID, date)
 	}
 	return nil
 }
 
-func (m *mockTaskService) GetAssignmentsForUser(userID int) (*[]models.TaskAssignment, error) {
+func (m *mockTaskService) GetAssignmentsForUser(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
 	if m.GetAssignmentsForUserFunc != nil {
-		return m.GetAssignmentsForUserFunc(userID)
+		return m.GetAssignmentsForUserFunc(ctx, userID)
 	}
 	return nil, nil
 }
 
-func (m *mockTaskService) GetClosestAssignmentForUser(userID int) (*models.TaskAssignment, error) {
+func (m *mockTaskService) GetClosestAssignmentForUser(ctx context.Context, userID int) (*models.TaskAssignment, error) {
 	if m.GetClosestAssignmentForUserFunc != nil {
-		return m.GetClosestAssignmentForUserFunc(userID)
+		return m.GetClosestAssignmentForUserFunc(ctx, userID)
 	}
 	return nil, nil
 }
 
-func (m *mockTaskService) MarkAssignmentCompleted(assignmentID int) error {
+func (m *mockTaskService) MarkAssignmentCompleted(ctx context.Context, assignmentID int) error {
 	if m.MarkAssignmentCompletedFunc != nil {
-		return m.MarkAssignmentCompletedFunc(assignmentID)
+		return m.MarkAssignmentCompletedFunc(ctx, assignmentID)
 	}
 	return nil
 }
 
-func (m *mockTaskService) MarkAssignmentUncompleted(assignmentID int) error {
+func (m *mockTaskService) MarkAssignmentUncompleted(ctx context.Context, assignmentID int) error {
 	if m.MarkAssignmentUncompletedFunc != nil {
-		return m.MarkAssignmentUncompletedFunc(assignmentID)
+		return m.MarkAssignmentUncompletedFunc(ctx, assignmentID)
 	}
 	return nil
 }
 
-func (m *mockTaskService) MarkTaskCompletedForUser(taskID, userID, homeID int) error {
+func (m *mockTaskService) MarkTaskCompletedForUser(ctx context.Context, taskID, userID, homeID int) error {
 	if m.MarkTaskCompletedForUserFunc != nil {
-		return m.MarkTaskCompletedForUserFunc(taskID, userID, homeID)
+		return m.MarkTaskCompletedForUserFunc(ctx, taskID, userID, homeID)
 	}
 	return nil
 }
 
-func (m *mockTaskService) DeleteAssignment(assignmentID int) error {
+func (m *mockTaskService) DeleteAssignment(ctx context.Context, assignmentID int) error {
 	if m.DeleteAssignmentFunc != nil {
-		return m.DeleteAssignmentFunc(assignmentID)
+		return m.DeleteAssignmentFunc(ctx, assignmentID)
 	}
 	return nil
 }
 
-func (m *mockTaskService) ReassignRoom(taskID, roomID int) error {
+func (m *mockTaskService) ReassignRoom(ctx context.Context, taskID, roomID int) error {
 	if m.ReassignRoomFunc != nil {
-		return m.ReassignRoomFunc(taskID, roomID)
+		return m.ReassignRoomFunc(ctx, taskID, roomID)
 	}
 	return nil
 }
@@ -164,14 +165,14 @@ func TestTaskHandler_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
+		mockFunc       func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validCreateTaskReq,
-			mockFunc: func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
+			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, "Clean Kitchen", name)
 				assert.Equal(t, "Daily cleaning", description)
@@ -192,7 +193,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		{
 			name: "Service Error",
 			body: validCreateTaskReq,
-			mockFunc: func(homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
+			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -227,14 +228,14 @@ func TestTaskHandler_GetByID(t *testing.T) {
 	tests := []struct {
 		name           string
 		taskID         string
-		mockFunc       func(taskID int) (*models.Task, error)
+		mockFunc       func(ctx context.Context, taskID int) (*models.Task, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			taskID: "1",
-			mockFunc: func(taskID int) (*models.Task, error) {
+			mockFunc: func(ctx context.Context, taskID int) (*models.Task, error) {
 				require.Equal(t, 1, taskID)
 				return &models.Task{ID: 1, Name: "Clean Kitchen"}, nil
 			},
@@ -251,7 +252,7 @@ func TestTaskHandler_GetByID(t *testing.T) {
 		{
 			name:   "Service Error",
 			taskID: "1",
-			mockFunc: func(taskID int) (*models.Task, error) {
+			mockFunc: func(ctx context.Context, taskID int) (*models.Task, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -282,14 +283,14 @@ func TestTaskHandler_GetTasksByHomeID(t *testing.T) {
 	tests := []struct {
 		name           string
 		homeID         string
-		mockFunc       func(homeID int) (*[]models.Task, error)
+		mockFunc       func(ctx context.Context, homeID int) (*[]models.Task, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			homeID: "1",
-			mockFunc: func(homeID int) (*[]models.Task, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*[]models.Task, error) {
 				require.Equal(t, 1, homeID)
 				tasks := []models.Task{
 					{ID: 1, Name: "Clean Kitchen"},
@@ -310,7 +311,7 @@ func TestTaskHandler_GetTasksByHomeID(t *testing.T) {
 		{
 			name:   "Service Error",
 			homeID: "1",
-			mockFunc: func(homeID int) (*[]models.Task, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*[]models.Task, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -341,14 +342,14 @@ func TestTaskHandler_DeleteTask(t *testing.T) {
 	tests := []struct {
 		name           string
 		taskID         string
-		mockFunc       func(taskID int) error
+		mockFunc       func(ctx context.Context, taskID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			taskID: "1",
-			mockFunc: func(taskID int) error {
+			mockFunc: func(ctx context.Context, taskID int) error {
 				require.Equal(t, 1, taskID)
 				return nil
 			},
@@ -365,7 +366,7 @@ func TestTaskHandler_DeleteTask(t *testing.T) {
 		{
 			name:   "Service Error",
 			taskID: "1",
-			mockFunc: func(taskID int) error {
+			mockFunc: func(ctx context.Context, taskID int) error {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -396,14 +397,14 @@ func TestTaskHandler_AssignUser(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(taskID, userID, homeID int, date time.Time) error
+		mockFunc       func(ctx context.Context, taskID, userID, homeID int, date time.Time) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validAssignUserReq,
-			mockFunc: func(taskID, userID, homeID int, date time.Time) error {
+			mockFunc: func(ctx context.Context, taskID, userID, homeID int, date time.Time) error {
 				assert.Equal(t, 1, taskID)
 				assert.Equal(t, 2, userID)
 				assert.Equal(t, 3, homeID)
@@ -422,7 +423,7 @@ func TestTaskHandler_AssignUser(t *testing.T) {
 		{
 			name: "Service Error",
 			body: validAssignUserReq,
-			mockFunc: func(taskID, userID, homeID int, date time.Time) error {
+			mockFunc: func(ctx context.Context, taskID, userID, homeID int, date time.Time) error {
 				return errors.New("assign failed")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -457,14 +458,14 @@ func TestTaskHandler_GetAssignmentsForUser(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         string
-		mockFunc       func(userID int) (*[]models.TaskAssignment, error)
+		mockFunc       func(ctx context.Context, userID int) (*[]models.TaskAssignment, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			userID: "123",
-			mockFunc: func(userID int) (*[]models.TaskAssignment, error) {
+			mockFunc: func(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
 				require.Equal(t, 123, userID)
 				assignments := []models.TaskAssignment{
 					{ID: 1, TaskID: 1, UserID: 123},
@@ -485,7 +486,7 @@ func TestTaskHandler_GetAssignmentsForUser(t *testing.T) {
 		{
 			name:   "Service Error",
 			userID: "123",
-			mockFunc: func(userID int) (*[]models.TaskAssignment, error) {
+			mockFunc: func(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -516,14 +517,14 @@ func TestTaskHandler_GetClosestAssignmentForUser(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         string
-		mockFunc       func(userID int) (*models.TaskAssignment, error)
+		mockFunc       func(ctx context.Context, userID int) (*models.TaskAssignment, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			userID: "123",
-			mockFunc: func(userID int) (*models.TaskAssignment, error) {
+			mockFunc: func(ctx context.Context, userID int) (*models.TaskAssignment, error) {
 				require.Equal(t, 123, userID)
 				return &models.TaskAssignment{ID: 1, TaskID: 1, UserID: 123}, nil
 			},
@@ -540,7 +541,7 @@ func TestTaskHandler_GetClosestAssignmentForUser(t *testing.T) {
 		{
 			name:   "Service Error",
 			userID: "123",
-			mockFunc: func(userID int) (*models.TaskAssignment, error) {
+			mockFunc: func(ctx context.Context, userID int) (*models.TaskAssignment, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -571,14 +572,14 @@ func TestTaskHandler_MarkAssignmentCompleted(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(assignmentID int) error
+		mockFunc       func(ctx context.Context, assignmentID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: models.AssignmentIDRequest{AssignmentID: 1},
-			mockFunc: func(assignmentID int) error {
+			mockFunc: func(ctx context.Context, assignmentID int) error {
 				require.Equal(t, 1, assignmentID)
 				return nil
 			},
@@ -595,7 +596,7 @@ func TestTaskHandler_MarkAssignmentCompleted(t *testing.T) {
 		{
 			name: "Service Error",
 			body: models.AssignmentIDRequest{AssignmentID: 1},
-			mockFunc: func(assignmentID int) error {
+			mockFunc: func(ctx context.Context, assignmentID int) error {
 				return errors.New("mark failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -630,14 +631,14 @@ func TestTaskHandler_DeleteAssignment(t *testing.T) {
 	tests := []struct {
 		name           string
 		assignmentID   string
-		mockFunc       func(assignmentID int) error
+		mockFunc       func(ctx context.Context, assignmentID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:         "Success",
 			assignmentID: "1",
-			mockFunc: func(assignmentID int) error {
+			mockFunc: func(ctx context.Context, assignmentID int) error {
 				require.Equal(t, 1, assignmentID)
 				return nil
 			},
@@ -654,7 +655,7 @@ func TestTaskHandler_DeleteAssignment(t *testing.T) {
 		{
 			name:         "Service Error",
 			assignmentID: "1",
-			mockFunc: func(assignmentID int) error {
+			mockFunc: func(ctx context.Context, assignmentID int) error {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -685,14 +686,14 @@ func TestTaskHandler_ReassignRoom(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(taskID, roomID int) error
+		mockFunc       func(ctx context.Context, taskID, roomID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validReassignRoomReq,
-			mockFunc: func(taskID, roomID int) error {
+			mockFunc: func(ctx context.Context, taskID, roomID int) error {
 				assert.Equal(t, 1, taskID)
 				assert.Equal(t, 2, roomID)
 				return nil
@@ -710,7 +711,7 @@ func TestTaskHandler_ReassignRoom(t *testing.T) {
 		{
 			name: "Service Error",
 			body: validReassignRoomReq,
-			mockFunc: func(taskID, roomID int) error {
+			mockFunc: func(ctx context.Context, taskID, roomID int) error {
 				return errors.New("reassign failed")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -740,3 +741,4 @@ func TestTaskHandler_ReassignRoom(t *testing.T) {
 		})
 	}
 }
+

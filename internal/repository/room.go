@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -8,10 +9,10 @@ import (
 )
 
 type RoomRepository interface {
-	Create(room *models.Room) error
-	FindByID(id int) (*models.Room, error)
-	Delete(id int) error
-	FindByHomeID(homeID int) (*[]models.Room, error)
+	Create(ctx context.Context, room *models.Room) error
+	FindByID(ctx context.Context, id int) (*models.Room, error)
+	Delete(ctx context.Context, id int) error
+	FindByHomeID(ctx context.Context, homeID int) (*[]models.Room, error)
 }
 
 type roomRepo struct {
@@ -22,13 +23,13 @@ func NewRoomRepository(db *gorm.DB) RoomRepository {
 	return &roomRepo{db}
 }
 
-func (r *roomRepo) Create(room *models.Room) error {
-	return r.db.Create(room).Error
+func (r *roomRepo) Create(ctx context.Context, room *models.Room) error {
+	return r.db.WithContext(ctx).Create(room).Error
 }
 
-func (r *roomRepo) FindByID(id int) (*models.Room, error) {
+func (r *roomRepo) FindByID(ctx context.Context, id int) (*models.Room, error) {
 	var room models.Room
-	if err := r.db.First(&room, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&room, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -37,16 +38,17 @@ func (r *roomRepo) FindByID(id int) (*models.Room, error) {
 	return &room, nil
 }
 
-func (r *roomRepo) Delete(id int) error {
-	return r.db.Delete(&models.Room{}, id).Error
+func (r *roomRepo) Delete(ctx context.Context, id int) error {
+	return r.db.WithContext(ctx).Delete(&models.Room{}, id).Error
 }
 
-func (r *roomRepo) FindByHomeID(homeID int) (*[]models.Room, error) {
+func (r *roomRepo) FindByHomeID(ctx context.Context, homeID int) (*[]models.Room, error) {
 	var rooms []models.Room
 
-	if err := r.db.Where("home_id=?", homeID).Find(&rooms).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("home_id=?", homeID).Find(&rooms).Error; err != nil {
 		return nil, err
 	}
 
 	return &rooms, nil
 }
+

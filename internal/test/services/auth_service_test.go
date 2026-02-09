@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -13,84 +14,84 @@ import (
 
 // Mock user repository
 type mockUserRepo struct {
-	CreateFunc           func(user *models.User) error
-	FindByEmailFunc      func(email string) (*models.User, error)
-	FindByIDFunc         func(id int) (*models.User, error)
-	FindByNameFunc       func(name string) (*models.User, error)
-	UpdateFunc           func(user *models.User, updates map[string]interface{}) error
-	SetVerifyTokenFunc   func(email, token string, exp time.Time) error
-	VerifyEmailFunc      func(token string) error
-	SetResetTokenFunc    func(email, token string, exp time.Time) error
-	GetByResetTokenFunc  func(token string) (*models.User, error)
-	UpdatePasswordFunc   func(userID int, hash string) error
+	CreateFunc           func(ctx context.Context, user *models.User) error
+	FindByEmailFunc      func(ctx context.Context, email string) (*models.User, error)
+	FindByIDFunc         func(ctx context.Context, id int) (*models.User, error)
+	FindByNameFunc       func(ctx context.Context, name string) (*models.User, error)
+	UpdateFunc           func(ctx context.Context, user *models.User, updates map[string]interface{}) error
+	SetVerifyTokenFunc   func(ctx context.Context, email, token string, exp time.Time) error
+	VerifyEmailFunc      func(ctx context.Context, token string) error
+	SetResetTokenFunc    func(ctx context.Context, email, token string, exp time.Time) error
+	GetByResetTokenFunc  func(ctx context.Context, token string) (*models.User, error)
+	UpdatePasswordFunc   func(ctx context.Context, userID int, hash string) error
 }
 
-func (m *mockUserRepo) Create(user *models.User) error {
+func (m *mockUserRepo) Create(ctx context.Context, user *models.User) error {
 	if m.CreateFunc != nil {
-		return m.CreateFunc(user)
+		return m.CreateFunc(ctx, user)
 	}
 	return nil
 }
 
-func (m *mockUserRepo) FindByEmail(email string) (*models.User, error) {
+func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	if m.FindByEmailFunc != nil {
-		return m.FindByEmailFunc(email)
+		return m.FindByEmailFunc(ctx, email)
 	}
 	return nil, nil
 }
 
-func (m *mockUserRepo) FindByID(id int) (*models.User, error) {
+func (m *mockUserRepo) FindByID(ctx context.Context, id int) (*models.User, error) {
 	if m.FindByIDFunc != nil {
-		return m.FindByIDFunc(id)
+		return m.FindByIDFunc(ctx, id)
 	}
 	return nil, nil
 }
 
-func (m *mockUserRepo) FindByName(name string) (*models.User, error) {
+func (m *mockUserRepo) FindByName(ctx context.Context, name string) (*models.User, error) {
 	if m.FindByNameFunc != nil {
-		return m.FindByNameFunc(name)
+		return m.FindByNameFunc(ctx, name)
 	}
 	return nil, nil
 }
 
-func (m *mockUserRepo) Update(user *models.User, updates map[string]interface{}) error {
+func (m *mockUserRepo) Update(ctx context.Context, user *models.User, updates map[string]interface{}) error {
 	if m.UpdateFunc != nil {
-		return m.UpdateFunc(user, updates)
+		return m.UpdateFunc(ctx, user, updates)
 	}
 	return nil
 }
 
-func (m *mockUserRepo) SetVerifyToken(email, token string, exp time.Time) error {
+func (m *mockUserRepo) SetVerifyToken(ctx context.Context, email, token string, exp time.Time) error {
 	if m.SetVerifyTokenFunc != nil {
-		return m.SetVerifyTokenFunc(email, token, exp)
+		return m.SetVerifyTokenFunc(ctx, email, token, exp)
 	}
 	return nil
 }
 
-func (m *mockUserRepo) VerifyEmail(token string) error {
+func (m *mockUserRepo) VerifyEmail(ctx context.Context, token string) error {
 	if m.VerifyEmailFunc != nil {
-		return m.VerifyEmailFunc(token)
+		return m.VerifyEmailFunc(ctx, token)
 	}
 	return nil
 }
 
-func (m *mockUserRepo) SetResetToken(email, token string, exp time.Time) error {
+func (m *mockUserRepo) SetResetToken(ctx context.Context, email, token string, exp time.Time) error {
 	if m.SetResetTokenFunc != nil {
-		return m.SetResetTokenFunc(email, token, exp)
+		return m.SetResetTokenFunc(ctx, email, token, exp)
 	}
 	return nil
 }
 
-func (m *mockUserRepo) GetByResetToken(token string) (*models.User, error) {
+func (m *mockUserRepo) GetByResetToken(ctx context.Context, token string) (*models.User, error) {
 	if m.GetByResetTokenFunc != nil {
-		return m.GetByResetTokenFunc(token)
+		return m.GetByResetTokenFunc(ctx, token)
 	}
 	return nil, nil
 }
 
-func (m *mockUserRepo) UpdatePassword(userID int, hash string) error {
+func (m *mockUserRepo) UpdatePassword(ctx context.Context, userID int, hash string) error {
 	if m.UpdatePasswordFunc != nil {
-		return m.UpdatePasswordFunc(userID, hash)
+		return m.UpdatePasswordFunc(ctx, userID, hash)
 	}
 	return nil
 }
@@ -115,8 +116,8 @@ func TestAuthService_Register(t *testing.T) {
 		email         string
 		password      string
 		userName      string
-		findByEmail   func(email string) (*models.User, error)
-		create        func(user *models.User) error
+		findByEmail   func(ctx context.Context, email string) (*models.User, error)
+		create        func(ctx context.Context, user *models.User) error
 		expectedError string
 	}{
 		{
@@ -124,10 +125,10 @@ func TestAuthService_Register(t *testing.T) {
 			email:    "test@example.com",
 			password: "password123",
 			userName: "Test User",
-			findByEmail: func(email string) (*models.User, error) {
+			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return nil, nil // User doesn't exist
 			},
-			create: func(user *models.User) error {
+			create: func(ctx context.Context, user *models.User) error {
 				assert.Equal(t, "test@example.com", user.Email)
 				assert.Equal(t, "Test User", user.Name)
 				assert.NotEmpty(t, user.PasswordHash)
@@ -140,7 +141,7 @@ func TestAuthService_Register(t *testing.T) {
 			email:    "existing@example.com",
 			password: "password123",
 			userName: "Test User",
-			findByEmail: func(email string) (*models.User, error) {
+			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return &models.User{ID: 1, Email: email}, nil
 			},
 			create:        nil,
@@ -151,10 +152,10 @@ func TestAuthService_Register(t *testing.T) {
 			email:    "test@example.com",
 			password: "password123",
 			userName: "Test User",
-			findByEmail: func(email string) (*models.User, error) {
+			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return nil, nil
 			},
-			create: func(user *models.User) error {
+			create: func(ctx context.Context, user *models.User) error {
 				return errors.New("database error")
 			},
 			expectedError: "database error",
@@ -171,7 +172,7 @@ func TestAuthService_Register(t *testing.T) {
 
 			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
 
-			err := svc.Register(tt.email, tt.password, tt.userName)
+			err := svc.Register(context.Background(), tt.email, tt.password, tt.userName)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -188,7 +189,7 @@ func TestAuthService_Login(t *testing.T) {
 		name          string
 		email         string
 		password      string
-		findByEmail   func(email string) (*models.User, error)
+		findByEmail   func(ctx context.Context, email string) (*models.User, error)
 		expectedError string
 		expectToken   bool
 	}{
@@ -196,7 +197,7 @@ func TestAuthService_Login(t *testing.T) {
 			name:     "Success",
 			email:    "test@example.com",
 			password: "password123",
-			findByEmail: func(email string) (*models.User, error) {
+			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				// Using bcrypt hash for "password123"
 				return &models.User{
 					ID:           1,
@@ -211,7 +212,7 @@ func TestAuthService_Login(t *testing.T) {
 			name:     "User Not Found",
 			email:    "notfound@example.com",
 			password: "password123",
-			findByEmail: func(email string) (*models.User, error) {
+			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return nil, errors.New("not found")
 			},
 			expectedError: "not found",
@@ -221,7 +222,7 @@ func TestAuthService_Login(t *testing.T) {
 			name:     "User Is Nil",
 			email:    "nil@example.com",
 			password: "password123",
-			findByEmail: func(email string) (*models.User, error) {
+			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return nil, nil
 			},
 			expectedError: "invalid credentials",
@@ -238,7 +239,7 @@ func TestAuthService_Login(t *testing.T) {
 
 			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
 
-			token, user, err := svc.Login(tt.email, tt.password)
+			token, user, err := svc.Login(context.Background(), tt.email, tt.password)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -257,13 +258,13 @@ func TestAuthService_VerifyEmail(t *testing.T) {
 	tests := []struct {
 		name          string
 		token         string
-		verifyFunc    func(token string) error
+		verifyFunc    func(ctx context.Context, token string) error
 		expectedError string
 	}{
 		{
 			name:  "Success",
 			token: "valid-token",
-			verifyFunc: func(token string) error {
+			verifyFunc: func(ctx context.Context, token string) error {
 				assert.Equal(t, "valid-token", token)
 				return nil
 			},
@@ -272,7 +273,7 @@ func TestAuthService_VerifyEmail(t *testing.T) {
 		{
 			name:  "Invalid Token",
 			token: "invalid-token",
-			verifyFunc: func(token string) error {
+			verifyFunc: func(ctx context.Context, token string) error {
 				return errors.New("invalid token")
 			},
 			expectedError: "invalid token",
@@ -288,7 +289,7 @@ func TestAuthService_VerifyEmail(t *testing.T) {
 
 			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
 
-			err := svc.VerifyEmail(tt.token)
+			err := svc.VerifyEmail(context.Background(), tt.token)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -305,19 +306,19 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		name             string
 		token            string
 		newPassword      string
-		getByResetToken  func(token string) (*models.User, error)
-		updatePassword   func(userID int, hash string) error
+		getByResetToken  func(ctx context.Context, token string) (*models.User, error)
+		updatePassword   func(ctx context.Context, userID int, hash string) error
 		expectedError    string
 	}{
 		{
 			name:        "Success",
 			token:       "valid-reset-token",
 			newPassword: "newpassword123",
-			getByResetToken: func(token string) (*models.User, error) {
+			getByResetToken: func(ctx context.Context, token string) (*models.User, error) {
 				assert.Equal(t, "valid-reset-token", token)
 				return &models.User{ID: 1, Email: "test@example.com"}, nil
 			},
-			updatePassword: func(userID int, hash string) error {
+			updatePassword: func(ctx context.Context, userID int, hash string) error {
 				assert.Equal(t, 1, userID)
 				assert.NotEmpty(t, hash)
 				return nil
@@ -328,7 +329,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 			name:        "Invalid Token",
 			token:       "invalid-token",
 			newPassword: "newpassword123",
-			getByResetToken: func(token string) (*models.User, error) {
+			getByResetToken: func(ctx context.Context, token string) (*models.User, error) {
 				return nil, errors.New("token not found")
 			},
 			expectedError: "token not found",
@@ -337,10 +338,10 @@ func TestAuthService_ResetPassword(t *testing.T) {
 			name:        "Update Password Error",
 			token:       "valid-token",
 			newPassword: "newpassword123",
-			getByResetToken: func(token string) (*models.User, error) {
+			getByResetToken: func(ctx context.Context, token string) (*models.User, error) {
 				return &models.User{ID: 1}, nil
 			},
-			updatePassword: func(userID int, hash string) error {
+			updatePassword: func(ctx context.Context, userID int, hash string) error {
 				return errors.New("database error")
 			},
 			expectedError: "database error",
@@ -357,7 +358,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 
 			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
 
-			err := svc.ResetPassword(tt.token, tt.newPassword)
+			err := svc.ResetPassword(context.Background(), tt.token, tt.newPassword)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -373,14 +374,14 @@ func TestAuthService_GetUserByEmail(t *testing.T) {
 	tests := []struct {
 		name          string
 		email         string
-		findByEmail   func(email string) (*models.User, error)
+		findByEmail   func(ctx context.Context, email string) (*models.User, error)
 		expectedUser  *models.User
 		expectedError string
 	}{
 		{
 			name:  "Success",
 			email: "test@example.com",
-			findByEmail: func(email string) (*models.User, error) {
+			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return &models.User{ID: 1, Email: email, Name: "Test User"}, nil
 			},
 			expectedUser:  &models.User{ID: 1, Email: "test@example.com", Name: "Test User"},
@@ -389,7 +390,7 @@ func TestAuthService_GetUserByEmail(t *testing.T) {
 		{
 			name:  "User Not Found",
 			email: "notfound@example.com",
-			findByEmail: func(email string) (*models.User, error) {
+			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return nil, errors.New("not found")
 			},
 			expectedUser:  nil,
@@ -406,7 +407,7 @@ func TestAuthService_GetUserByEmail(t *testing.T) {
 
 			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
 
-			user, err := svc.GetUserByEmail(tt.email)
+			user, err := svc.GetUserByEmail(context.Background(), tt.email)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -419,3 +420,4 @@ func TestAuthService_GetUserByEmail(t *testing.T) {
 		})
 	}
 }
+

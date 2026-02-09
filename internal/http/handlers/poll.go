@@ -51,7 +51,7 @@ func (h *PollHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Create(homeID, req.Question, req.Type, req.Options, req.AllowRevote, req.EndsAt); err != nil {
+	if err := h.svc.Create(r.Context(), homeID, req.Question, req.Type, req.Options, req.AllowRevote, req.EndsAt); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -79,7 +79,7 @@ func (h *PollHandler) GetAllByHomeID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	polls, err := h.svc.GetAllPollsByHomeID(homeID)
+	polls, err := h.svc.GetAllPollsByHomeID(r.Context(), homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -110,7 +110,7 @@ func (h *PollHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	poll, err := h.svc.GetPollByID(pollID)
+	poll, err := h.svc.GetPollByID(r.Context(), pollID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -148,7 +148,7 @@ func (h *PollHandler) Close(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.ClosePoll(pollID, homeID); err != nil {
+	if err := h.svc.ClosePoll(r.Context(), pollID, homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -181,7 +181,7 @@ func (h *PollHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Delete(pollID, homeID); err != nil {
+	if err := h.svc.Delete(r.Context(), pollID, homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -226,7 +226,7 @@ func (h *PollHandler) Vote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Vote(userID, req.OptionID, homeID); err != nil {
+	if err := h.svc.Vote(r.Context(), userID, req.OptionID, homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -264,7 +264,7 @@ func (h *PollHandler) Unvote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Unvote(userID, pollID, homeID); err != nil {
+	if err := h.svc.Unvote(r.Context(), userID, pollID, homeID); err != nil {
 		if err == services.ErrRevoteNotAllowed {
 			utils.JSONError(w, "Revoting is not allowed for this poll", http.StatusForbidden)
 			return

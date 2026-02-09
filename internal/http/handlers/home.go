@@ -52,7 +52,7 @@ func (h *HomeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if err := h.svc.CreateHome(req.Name, userID); err != nil {
+	if err := h.svc.CreateHome(r.Context(), req.Name, userID); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -79,7 +79,7 @@ func (h *HomeHandler) RegenerateInviteCode(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := h.svc.RegenerateInviteCode(homeID); err != nil {
+	if err := h.svc.RegenerateInviteCode(r.Context(), homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -124,7 +124,7 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.JoinHomeByCode(req.Code, userID); err != nil {
+	if err := h.svc.JoinHomeByCode(r.Context(), req.Code, userID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -150,7 +150,7 @@ func (h HomeHandler) GetUserHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	home, err := h.svc.GetUserHome(userID)
+	home, err := h.svc.GetUserHome(r.Context(), userID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -186,7 +186,7 @@ func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
-	home, err := h.svc.GetHomeByID(homeID)
+	home, err := h.svc.GetHomeByID(r.Context(), homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -219,7 +219,7 @@ func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
-	if err := h.svc.DeleteHome(homeID); err != nil {
+	if err := h.svc.DeleteHome(r.Context(), homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -265,7 +265,7 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.LeaveHome(homeID, userID); err != nil {
+	if err := h.svc.LeaveHome(r.Context(), homeID, userID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -319,7 +319,7 @@ func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.RemoveMember(homeID, userID, currentUserID); err != nil {
+	if err := h.svc.RemoveMember(r.Context(), homeID, userID, currentUserID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

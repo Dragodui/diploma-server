@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -16,36 +17,36 @@ import (
 
 // Mock service
 type mockRoomService struct {
-	CreateRoomFunc       func(name string, homeID int) error
-	GetRoomByIDFunc      func(roomID int) (*models.Room, error)
-	GetRoomsByHomeIDFunc func(homeID int) (*[]models.Room, error)
-	DeleteRoomFunc       func(roomID int) error
+	CreateRoomFunc       func(ctx context.Context, name string, homeID int) error
+	GetRoomByIDFunc      func(ctx context.Context, roomID int) (*models.Room, error)
+	GetRoomsByHomeIDFunc func(ctx context.Context, homeID int) (*[]models.Room, error)
+	DeleteRoomFunc       func(ctx context.Context, roomID int) error
 }
 
-func (m *mockRoomService) CreateRoom(name string, homeID int) error {
+func (m *mockRoomService) CreateRoom(ctx context.Context, name string, homeID int) error {
 	if m.CreateRoomFunc != nil {
-		return m.CreateRoomFunc(name, homeID)
+		return m.CreateRoomFunc(ctx, name, homeID)
 	}
 	return nil
 }
 
-func (m *mockRoomService) GetRoomByID(roomID int) (*models.Room, error) {
+func (m *mockRoomService) GetRoomByID(ctx context.Context, roomID int) (*models.Room, error) {
 	if m.GetRoomByIDFunc != nil {
-		return m.GetRoomByIDFunc(roomID)
+		return m.GetRoomByIDFunc(ctx, roomID)
 	}
 	return nil, nil
 }
 
-func (m *mockRoomService) GetRoomsByHomeID(homeID int) (*[]models.Room, error) {
+func (m *mockRoomService) GetRoomsByHomeID(ctx context.Context, homeID int) (*[]models.Room, error) {
 	if m.GetRoomsByHomeIDFunc != nil {
-		return m.GetRoomsByHomeIDFunc(homeID)
+		return m.GetRoomsByHomeIDFunc(ctx, homeID)
 	}
 	return nil, nil
 }
 
-func (m *mockRoomService) DeleteRoom(roomID int) error {
+func (m *mockRoomService) DeleteRoom(ctx context.Context, roomID int) error {
 	if m.DeleteRoomFunc != nil {
-		return m.DeleteRoomFunc(roomID)
+		return m.DeleteRoomFunc(ctx, roomID)
 	}
 	return nil
 }
@@ -72,14 +73,14 @@ func TestRoomHandler_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(name string, homeID int) error
+		mockFunc       func(ctx context.Context, name string, homeID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validCreateRoomRequest,
-			mockFunc: func(name string, homeID int) error {
+			mockFunc: func(ctx context.Context, name string, homeID int) error {
 				assert.Equal(t, "Kitchen", name)
 				assert.Equal(t, 1, homeID)
 				return nil
@@ -97,7 +98,7 @@ func TestRoomHandler_Create(t *testing.T) {
 		{
 			name: "Service Error",
 			body: validCreateRoomRequest,
-			mockFunc: func(name string, homeID int) error {
+			mockFunc: func(ctx context.Context, name string, homeID int) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -132,14 +133,14 @@ func TestRoomHandler_GetByID(t *testing.T) {
 	tests := []struct {
 		name           string
 		roomID         string
-		mockFunc       func(roomID int) (*models.Room, error)
+		mockFunc       func(ctx context.Context, roomID int) (*models.Room, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			roomID: "1",
-			mockFunc: func(roomID int) (*models.Room, error) {
+			mockFunc: func(ctx context.Context, roomID int) (*models.Room, error) {
 				require.Equal(t, 1, roomID)
 				return &models.Room{ID: 1, Name: "Kitchen"}, nil
 			},
@@ -156,7 +157,7 @@ func TestRoomHandler_GetByID(t *testing.T) {
 		{
 			name:   "Service Error",
 			roomID: "1",
-			mockFunc: func(roomID int) (*models.Room, error) {
+			mockFunc: func(ctx context.Context, roomID int) (*models.Room, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -187,14 +188,14 @@ func TestRoomHandler_GetByHomeID(t *testing.T) {
 	tests := []struct {
 		name           string
 		homeID         string
-		mockFunc       func(homeID int) (*[]models.Room, error)
+		mockFunc       func(ctx context.Context, homeID int) (*[]models.Room, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			homeID: "1",
-			mockFunc: func(homeID int) (*[]models.Room, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*[]models.Room, error) {
 				require.Equal(t, 1, homeID)
 				rooms := []models.Room{{ID: 1, Name: "Kitchen"}, {ID: 2, Name: "Bedroom"}}
 				return &rooms, nil
@@ -212,7 +213,7 @@ func TestRoomHandler_GetByHomeID(t *testing.T) {
 		{
 			name:   "Service Error",
 			homeID: "1",
-			mockFunc: func(homeID int) (*[]models.Room, error) {
+			mockFunc: func(ctx context.Context, homeID int) (*[]models.Room, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -243,14 +244,14 @@ func TestRoomHandler_Delete(t *testing.T) {
 	tests := []struct {
 		name           string
 		roomID         string
-		mockFunc       func(roomID int) error
+		mockFunc       func(ctx context.Context, roomID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			roomID: "1",
-			mockFunc: func(roomID int) error {
+			mockFunc: func(ctx context.Context, roomID int) error {
 				require.Equal(t, 1, roomID)
 				return nil
 			},
@@ -267,7 +268,7 @@ func TestRoomHandler_Delete(t *testing.T) {
 		{
 			name:   "Service Error",
 			roomID: "1",
-			mockFunc: func(roomID int) error {
+			mockFunc: func(ctx context.Context, roomID int) error {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -293,3 +294,4 @@ func TestRoomHandler_Delete(t *testing.T) {
 		})
 	}
 }
+

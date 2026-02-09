@@ -47,7 +47,7 @@ func (h *OCRHandler) ProcessImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.svc.ProcessImage(req.ImageURL, req.Language)
+	result, err := h.svc.ProcessImage(r.Context(), req.ImageURL, req.Language)
 	if err != nil {
 		utils.JSONError(w, "OCR processing failed: "+err.Error(), http.StatusInternalServerError)
 		return

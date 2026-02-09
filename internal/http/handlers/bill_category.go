@@ -45,7 +45,7 @@ func (h *BillCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateCategory(homeID, req.Name, req.Color); err != nil {
+	if err := h.svc.CreateCategory(r.Context(), homeID, req.Name, req.Color); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -73,7 +73,7 @@ func (h *BillCategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	categories, err := h.svc.GetCategories(homeID)
+	categories, err := h.svc.GetCategories(r.Context(), homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -109,7 +109,7 @@ func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.DeleteCategory(categoryID, homeID); err != nil {
+	if err := h.svc.DeleteCategory(r.Context(), categoryID, homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -148,7 +148,7 @@ func (h *BillCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedCategory, err := h.svc.UpdateCategory(categoryID, input.Name, input.Color)
+	updatedCategory, err := h.svc.UpdateCategory(r.Context(), categoryID, input.Name, input.Color)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return

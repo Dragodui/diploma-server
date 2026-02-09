@@ -21,44 +21,44 @@ import (
 
 // Mock service
 type mockBillService struct {
-	CreateBillFunc       func(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
-	GetBillByIDFunc      func(billID int) (*models.Bill, error)
-	GetBillsByHomeIDFunc func(homeID int) ([]models.Bill, error)
-	DeleteFunc           func(billID int) error
-	MarkBillPayedFunc    func(billID int) error
+	CreateBillFunc       func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
+	GetBillByIDFunc      func(ctx context.Context, billID int) (*models.Bill, error)
+	GetBillsByHomeIDFunc func(ctx context.Context, homeID int) ([]models.Bill, error)
+	DeleteFunc           func(ctx context.Context, billID int) error
+	MarkBillPayedFunc    func(ctx context.Context, billID int) error
 }
 
-func (m *mockBillService) CreateBill(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+func (m *mockBillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
 	if m.CreateBillFunc != nil {
-		return m.CreateBillFunc(billType, billCategoryID, totalAmount, start, end, ocrData, homeID, userID)
+		return m.CreateBillFunc(ctx, billType, billCategoryID, totalAmount, start, end, ocrData, homeID, userID)
 	}
 	return nil
 }
 
-func (m *mockBillService) GetBillByID(billID int) (*models.Bill, error) {
+func (m *mockBillService) GetBillByID(ctx context.Context, billID int) (*models.Bill, error) {
 	if m.GetBillByIDFunc != nil {
-		return m.GetBillByIDFunc(billID)
+		return m.GetBillByIDFunc(ctx, billID)
 	}
 	return nil, nil
 }
 
-func (m *mockBillService) GetBillsByHomeID(homeId int) ([]models.Bill, error) {
+func (m *mockBillService) GetBillsByHomeID(ctx context.Context, homeId int) ([]models.Bill, error) {
 	if m.GetBillsByHomeIDFunc != nil {
-		return m.GetBillsByHomeIDFunc(homeId)
+		return m.GetBillsByHomeIDFunc(ctx, homeId)
 	}
 	return nil, nil
 }
 
-func (m *mockBillService) Delete(billID int) error {
+func (m *mockBillService) Delete(ctx context.Context, billID int) error {
 	if m.DeleteFunc != nil {
-		return m.DeleteFunc(billID)
+		return m.DeleteFunc(ctx, billID)
 	}
 	return nil
 }
 
-func (m *mockBillService) MarkBillPayed(billID int) error {
+func (m *mockBillService) MarkBillPayed(ctx context.Context, billID int) error {
 	if m.MarkBillPayedFunc != nil {
-		return m.MarkBillPayedFunc(billID)
+		return m.MarkBillPayedFunc(ctx, billID)
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func TestBillHandler_Create(t *testing.T) {
 		name           string
 		body           interface{}
 		userID         int
-		mockFunc       func(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
+		mockFunc       func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -102,7 +102,7 @@ func TestBillHandler_Create(t *testing.T) {
 			name:   "Success",
 			body:   validBillRequest,
 			userID: 123,
-			mockFunc: func(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
 				assert.Equal(t, "electricity", billType)
 				assert.Nil(t, billCategoryID)
 				assert.Equal(t, 100.50, totalAmount)
@@ -133,7 +133,7 @@ func TestBillHandler_Create(t *testing.T) {
 			name:   "Service Error",
 			body:   validBillRequest,
 			userID: 123,
-			mockFunc: func(billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -176,14 +176,14 @@ func TestBillHandler_GetByID(t *testing.T) {
 	tests := []struct {
 		name           string
 		billID         string
-		mockFunc       func(billID int) (*models.Bill, error)
+		mockFunc       func(ctx context.Context, billID int) (*models.Bill, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			billID: "1",
-			mockFunc: func(billID int) (*models.Bill, error) {
+			mockFunc: func(ctx context.Context, billID int) (*models.Bill, error) {
 				require.Equal(t, 1, billID)
 				return &models.Bill{ID: 1, Type: "electricity", TotalAmount: 100.50}, nil
 			},
@@ -200,7 +200,7 @@ func TestBillHandler_GetByID(t *testing.T) {
 		{
 			name:   "Service Error",
 			billID: "1",
-			mockFunc: func(billID int) (*models.Bill, error) {
+			mockFunc: func(ctx context.Context, billID int) (*models.Bill, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -231,14 +231,14 @@ func TestBillHandler_Delete(t *testing.T) {
 	tests := []struct {
 		name           string
 		billID         string
-		mockFunc       func(billID int) error
+		mockFunc       func(ctx context.Context, billID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			billID: "1",
-			mockFunc: func(billID int) error {
+			mockFunc: func(ctx context.Context, billID int) error {
 				require.Equal(t, 1, billID)
 				return nil
 			},
@@ -255,7 +255,7 @@ func TestBillHandler_Delete(t *testing.T) {
 		{
 			name:   "Service Error",
 			billID: "1",
-			mockFunc: func(billID int) error {
+			mockFunc: func(ctx context.Context, billID int) error {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -286,14 +286,14 @@ func TestBillHandler_MarkPayed(t *testing.T) {
 	tests := []struct {
 		name           string
 		billID         string
-		mockFunc       func(billID int) error
+		mockFunc       func(ctx context.Context, billID int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
 			billID: "1",
-			mockFunc: func(billID int) error {
+			mockFunc: func(ctx context.Context, billID int) error {
 				require.Equal(t, 1, billID)
 				return nil
 			},
@@ -310,7 +310,7 @@ func TestBillHandler_MarkPayed(t *testing.T) {
 		{
 			name:   "Service Error",
 			billID: "1",
-			mockFunc: func(billID int) error {
+			mockFunc: func(ctx context.Context, billID int) error {
 				return errors.New("update failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -336,3 +336,4 @@ func TestBillHandler_MarkPayed(t *testing.T) {
 		})
 	}
 }
+

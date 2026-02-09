@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -10,19 +11,19 @@ import (
 
 type ShoppingRepository interface {
 	// categories
-	CreateCategory(c *models.ShoppingCategory) error
-	FindAllCategories(homeID int) (*[]models.ShoppingCategory, error)
-	FindCategoryByID(id int) (*models.ShoppingCategory, error)
-	DeleteCategory(id int) error
-	EditCategory(category *models.ShoppingCategory, updates map[string]interface{}) error
+	CreateCategory(ctx context.Context, c *models.ShoppingCategory) error
+	FindAllCategories(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error)
+	FindCategoryByID(ctx context.Context, id int) (*models.ShoppingCategory, error)
+	DeleteCategory(ctx context.Context, id int) error
+	EditCategory(ctx context.Context, category *models.ShoppingCategory, updates map[string]interface{}) error
 
 	// items
-	CreateItem(i *models.ShoppingItem) error
-	FindItemByID(id int) (*models.ShoppingItem, error)
-	FindItemsByCategoryID(id int) ([]models.ShoppingItem, error)
-	DeleteItem(id int) error
-	MarkIsBought(id int) error
-	EditItem(item *models.ShoppingItem, updates map[string]interface{}) error
+	CreateItem(ctx context.Context, i *models.ShoppingItem) error
+	FindItemByID(ctx context.Context, id int) (*models.ShoppingItem, error)
+	FindItemsByCategoryID(ctx context.Context, id int) ([]models.ShoppingItem, error)
+	DeleteItem(ctx context.Context, id int) error
+	MarkIsBought(ctx context.Context, id int) error
+	EditItem(ctx context.Context, item *models.ShoppingItem, updates map[string]interface{}) error
 }
 
 type shoppingRepo struct {
@@ -34,23 +35,23 @@ func NewShoppingRepository(db *gorm.DB) ShoppingRepository {
 }
 
 // categories
-func (r *shoppingRepo) CreateCategory(c *models.ShoppingCategory) error {
-	return r.db.Create(c).Error
+func (r *shoppingRepo) CreateCategory(ctx context.Context, c *models.ShoppingCategory) error {
+	return r.db.WithContext(ctx).Create(c).Error
 }
 
-func (r *shoppingRepo) FindAllCategories(homeID int) (*[]models.ShoppingCategory, error) {
+func (r *shoppingRepo) FindAllCategories(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error) {
 	var categories []models.ShoppingCategory
 
-	if err := r.db.Where("home_id=?", homeID).Find(&categories).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("home_id=?", homeID).Find(&categories).Error; err != nil {
 		return nil, err
 	}
 
 	return &categories, nil
 }
 
-func (r *shoppingRepo) FindCategoryByID(id int) (*models.ShoppingCategory, error) {
+func (r *shoppingRepo) FindCategoryByID(ctx context.Context, id int) (*models.ShoppingCategory, error) {
 	var category models.ShoppingCategory
-	if err := r.db.Preload("Items").First(&category, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Items").First(&category, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -60,26 +61,26 @@ func (r *shoppingRepo) FindCategoryByID(id int) (*models.ShoppingCategory, error
 	return &category, nil
 }
 
-func (r *shoppingRepo) EditCategory(category *models.ShoppingCategory, updates map[string]interface{}) error {
-	return r.db.Model(category).Updates(updates).Error
+func (r *shoppingRepo) EditCategory(ctx context.Context, category *models.ShoppingCategory, updates map[string]interface{}) error {
+	return r.db.WithContext(ctx).Model(category).Updates(updates).Error
 }
 
-func (r *shoppingRepo) DeleteCategory(id int) error {
+func (r *shoppingRepo) DeleteCategory(ctx context.Context, id int) error {
 	// Delete items first
-	if err := r.db.Where("category_id = ?", id).Delete(&models.ShoppingItem{}).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("category_id = ?", id).Delete(&models.ShoppingItem{}).Error; err != nil {
 		return err
 	}
-	return r.db.Delete(&models.ShoppingCategory{}, id).Error
+	return r.db.WithContext(ctx).Delete(&models.ShoppingCategory{}, id).Error
 }
 
 // items
-func (r *shoppingRepo) CreateItem(i *models.ShoppingItem) error {
-	return r.db.Create(i).Error
+func (r *shoppingRepo) CreateItem(ctx context.Context, i *models.ShoppingItem) error {
+	return r.db.WithContext(ctx).Create(i).Error
 }
 
-func (r *shoppingRepo) FindItemsByCategoryID(id int) ([]models.ShoppingItem, error) {
+func (r *shoppingRepo) FindItemsByCategoryID(ctx context.Context, id int) ([]models.ShoppingItem, error) {
 	var items []models.ShoppingItem
-	if err := r.db.Where("category_id = ?", id).First(&items).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("category_id = ?", id).First(&items).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -89,9 +90,9 @@ func (r *shoppingRepo) FindItemsByCategoryID(id int) ([]models.ShoppingItem, err
 	return items, nil
 }
 
-func (r *shoppingRepo) FindItemByID(id int) (*models.ShoppingItem, error) {
+func (r *shoppingRepo) FindItemByID(ctx context.Context, id int) (*models.ShoppingItem, error) {
 	var item models.ShoppingItem
-	if err := r.db.First(&item, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&item, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -101,14 +102,14 @@ func (r *shoppingRepo) FindItemByID(id int) (*models.ShoppingItem, error) {
 	return &item, nil
 }
 
-func (r *shoppingRepo) DeleteItem(id int) error {
-	return r.db.Delete(&models.ShoppingItem{}, id).Error
+func (r *shoppingRepo) DeleteItem(ctx context.Context, id int) error {
+	return r.db.WithContext(ctx).Delete(&models.ShoppingItem{}, id).Error
 }
 
-func (r *shoppingRepo) MarkIsBought(id int) error {
+func (r *shoppingRepo) MarkIsBought(ctx context.Context, id int) error {
 	var item models.ShoppingItem
 
-	if err := r.db.First(&item, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&item, id).Error; err != nil {
 		return err
 	}
 
@@ -116,13 +117,14 @@ func (r *shoppingRepo) MarkIsBought(id int) error {
 	now := time.Now()
 	item.BoughtDate = &now
 
-	if err := r.db.Save(&item).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(&item).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *shoppingRepo) EditItem(item *models.ShoppingItem, updates map[string]interface{}) error {
-	return r.db.Model(item).Updates(updates).Error
+func (r *shoppingRepo) EditItem(ctx context.Context, item *models.ShoppingItem, updates map[string]interface{}) error {
+	return r.db.WithContext(ctx).Model(item).Updates(updates).Error
 }
+

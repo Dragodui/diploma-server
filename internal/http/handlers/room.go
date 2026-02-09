@@ -39,7 +39,7 @@ func (h *RoomHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateRoom(req.Name, req.HomeID); err != nil {
+	if err := h.svc.CreateRoom(r.Context(), req.Name, req.HomeID); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -68,7 +68,7 @@ func (h *RoomHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	room, err := h.svc.GetRoomByID(roomID)
+	room, err := h.svc.GetRoomByID(r.Context(), roomID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -98,7 +98,7 @@ func (h *RoomHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
 	}
-	rooms, err := h.svc.GetRoomsByHomeID(homeID)
+	rooms, err := h.svc.GetRoomsByHomeID(r.Context(), homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -130,7 +130,7 @@ func (h *RoomHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.svc.DeleteRoom(roomID)
+	err = h.svc.DeleteRoom(r.Context(), roomID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return

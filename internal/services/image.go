@@ -23,9 +23,9 @@ type ImageService struct {
 }
 
 type IImageService interface {
-	Upload(file multipart.File, header *multipart.FileHeader) (string, error)
-	GetPresignedURL(key string, expiration time.Duration) (string, error)
-	Delete(imageURL string) error
+	Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error)
+	GetPresignedURL(ctx context.Context, key string, expiration time.Duration) (string, error)
+	Delete(ctx context.Context, imageURL string) error
 }
 
 func NewImageService(bucketName, region string) (*ImageService, error) {
@@ -51,9 +51,7 @@ func NewImageService(bucketName, region string) (*ImageService, error) {
 		region:     region,
 	}, nil
 }
-func (s *ImageService) Upload(file multipart.File, header *multipart.FileHeader) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+func (s *ImageService) Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 	ext := filepath.Ext(header.Filename)
 	newName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
@@ -86,10 +84,7 @@ func (s *ImageService) Upload(file multipart.File, header *multipart.FileHeader)
 	return publicURL, nil
 }
 
-func (s *ImageService) Delete(imageURL string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
+func (s *ImageService) Delete(ctx context.Context, imageURL string) error {
 	key := filepath.Base(imageURL)
 
 	_, err := s.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
@@ -104,10 +99,10 @@ func (s *ImageService) Delete(imageURL string) error {
 	return nil
 }
 
-func (s *ImageService) GetPresignedURL(key string, expiration time.Duration) (string, error) {
+func (s *ImageService) GetPresignedURL(ctx context.Context, key string, expiration time.Duration) (string, error) {
 	presignClient := s3.NewPresignClient(s.s3Client)
 
-	request, err := presignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
+	request, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(key),
 	}, func(opts *s3.PresignOptions) {
@@ -119,3 +114,4 @@ func (s *ImageService) GetPresignedURL(key string, expiration time.Duration) (st
 
 	return request.URL, nil
 }
+

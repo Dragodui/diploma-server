@@ -31,7 +31,7 @@ func NewNotificationHandler(svc services.INotificationService) *NotificationHand
 func (h *NotificationHandler) GetByUserID(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 
-	notifications, err := h.svc.GetByUserID(userID)
+	notifications, err := h.svc.GetByUserID(r.Context(), userID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -64,7 +64,7 @@ func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.svc.MarkAsRead(notificationID, userID); err != nil {
+	if err := h.svc.MarkAsRead(r.Context(), notificationID, userID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -95,7 +95,7 @@ func (h *NotificationHandler) GetByHomeID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	notifications, err := h.svc.GetByHomeID(homeID)
+	notifications, err := h.svc.GetByHomeID(r.Context(), homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -129,7 +129,7 @@ func (h *NotificationHandler) MarkAsReadForHome(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := h.svc.MarkAsReadForHomeNotification(notificationID, userID); err != nil {
+	if err := h.svc.MarkAsReadForHomeNotification(r.Context(), notificationID, userID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
