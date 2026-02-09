@@ -1,9 +1,11 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
@@ -48,12 +50,23 @@ func (s *ShoppingService) CreateCategory(name string, icon *string, color string
 	if err := utils.DeleteFromCache(key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
-	return s.repo.CreateCategory(&models.ShoppingCategory{
+	category := &models.ShoppingCategory{
 		Name:   name,
 		Icon:   icon,
 		Color:  color,
 		HomeID: homeID,
+	}
+	if err := s.repo.CreateCategory(category); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleShoppingCategory,
+		Action: event.ActionCreated,
+		Data:   category,
 	})
+
+	return nil
 }
 
 func (s *ShoppingService) FindAllCategoriesForHome(homeID int) (*[]models.ShoppingCategory, error) {
@@ -115,7 +128,17 @@ func (s *ShoppingService) DeleteCategory(categoryID, homeID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", categoryKey, err)
 	}
 
-	return s.repo.DeleteCategory(categoryID)
+	if err := s.repo.DeleteCategory(categoryID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleShoppingCategory,
+		Action: event.ActionDeleted,
+		Data:   map[string]int{"id": categoryID},
+	})
+
+	return nil
 }
 
 func (s *ShoppingService) EditCategory(categoryID, homeID int, name, icon, color *string) error {
@@ -148,8 +171,17 @@ func (s *ShoppingService) EditCategory(categoryID, homeID int, name, icon, color
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", categoryKey, err)
 	}
 
-	return s.repo.EditCategory(category, updates)
+	if err := s.repo.EditCategory(category, updates); err != nil {
+		return err
+	}
 
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleShoppingCategory,
+		Action: event.ActionUpdated,
+		Data:   category,
+	})
+
+	return nil
 }
 
 // items
@@ -160,13 +192,24 @@ func (s *ShoppingService) CreateItem(categoryID int, userID int, name string, im
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.CreateItem(&models.ShoppingItem{
+	item := &models.ShoppingItem{
 		CategoryID: categoryID,
 		Name:       name,
 		Image:      image,
 		Link:       link,
 		UploadedBy: userID,
+	}
+	if err := s.repo.CreateItem(item); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleShoppingItem,
+		Action: event.ActionCreated,
+		Data:   item,
 	})
+
+	return nil
 }
 
 func (s *ShoppingService) FindItemsByCategoryID(categoryID int) ([]models.ShoppingItem, error) {
@@ -190,7 +233,17 @@ func (s *ShoppingService) DeleteItem(itemID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.DeleteItem(itemID)
+	if err := s.repo.DeleteItem(itemID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleShoppingItem,
+		Action: event.ActionDeleted,
+		Data:   item,
+	})
+
+	return nil
 }
 
 func (s *ShoppingService) MarkIsBought(itemID int) error {
@@ -206,7 +259,17 @@ func (s *ShoppingService) MarkIsBought(itemID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.MarkIsBought(itemID)
+	if err := s.repo.MarkIsBought(itemID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleShoppingItem,
+		Action: event.ActionUpdated,
+		Data:   item,
+	})
+
+	return nil
 }
 
 func (s *ShoppingService) EditItem(itemID int, name, image, link *string, isBought *bool, boughtAt *time.Time) error {
@@ -246,5 +309,15 @@ func (s *ShoppingService) EditItem(itemID int, name, image, link *string, isBoug
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.EditItem(item, updates)
+	if err := s.repo.EditItem(item, updates); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleShoppingItem,
+		Action: event.ActionUpdated,
+		Data:   item,
+	})
+
+	return nil
 }

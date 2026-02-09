@@ -44,8 +44,8 @@ func (s *BillCategoryService) CreateCategory(homeID int, name, color string) err
 	}
 
 	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
-		Module: "BILL_CATEGORY",
-		Action: "CREATED",
+		Module: event.ModuleBillCategory,
+		Action: event.ActionCreated,
 		Data:   category,
 	})
 
@@ -97,8 +97,8 @@ func (s *BillCategoryService) UpdateCategory(categoryID int, name, color *string
 	}
 
 	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
-		Module: "BILL_CATEGORY",
-		Action: "UPDATED",
+		Module: event.ModuleBillCategory,
+		Action: event.ActionUpdated,
 		Data:   newCategory,
 	})
 
@@ -111,5 +111,15 @@ func (s *BillCategoryService) DeleteCategory(id int, homeID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.Delete(id)
+	if err := s.repo.Delete(id); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleBillCategory,
+		Action: event.ActionDeleted,
+		Data:   map[string]int{"id": id},
+	})
+
+	return nil
 }

@@ -1,6 +1,9 @@
 package services
 
 import (
+	"context"
+
+	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
@@ -36,11 +39,22 @@ func (s *NotificationService) Create(from *int, to int, description string) erro
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.Create(&models.Notification{
+	notification := &models.Notification{
 		From:        from,
 		To:          to,
 		Description: description,
+	}
+	if err := s.repo.Create(notification); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleNotification,
+		Action: event.ActionCreated,
+		Data:   notification,
 	})
+
+	return nil
 }
 
 func (s *NotificationService) GetByUserID(userID int) ([]models.Notification, error) {
@@ -68,7 +82,17 @@ func (s *NotificationService) MarkAsRead(notificationID, userID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.MarkAsRead(notificationID)
+	if err := s.repo.MarkAsRead(notificationID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleNotification,
+		Action: event.ActionMarkRead,
+		Data:   map[string]int{"id": notificationID},
+	})
+
+	return nil
 }
 
 func (s *NotificationService) CreateHomeNotification(from *int, homeID int, description string) error {
@@ -77,11 +101,22 @@ func (s *NotificationService) CreateHomeNotification(from *int, homeID int, desc
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.CreateHomeNotification(&models.HomeNotification{
+	notification := &models.HomeNotification{
 		From:        from,
 		HomeID:      homeID,
 		Description: description,
+	}
+	if err := s.repo.CreateHomeNotification(notification); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHomeNotification,
+		Action: event.ActionCreated,
+		Data:   notification,
 	})
+
+	return nil
 }
 
 func (s *NotificationService) GetByHomeID(homeID int) ([]models.HomeNotification, error) {
@@ -109,5 +144,15 @@ func (s *NotificationService) MarkAsReadForHomeNotification(notificationID, home
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.MarkAsReadForHomeNotification(notificationID)
+	if err := s.repo.MarkAsReadForHomeNotification(notificationID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHomeNotification,
+		Action: event.ActionMarkRead,
+		Data:   map[string]int{"id": notificationID},
+	})
+
+	return nil
 }

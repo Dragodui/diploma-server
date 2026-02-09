@@ -1,8 +1,10 @@
 package services
 
 import (
+	"context"
 	"errors"
 
+	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
@@ -45,7 +47,17 @@ func (s *HomeService) CreateHome(name string, userID int) error {
 		return err
 	}
 
-	return s.repo.AddMember(home.ID, userID, "admin")
+	if err := s.repo.AddMember(home.ID, userID, "admin"); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHome,
+		Action: event.ActionCreated,
+		Data:   home,
+	})
+
+	return nil
 }
 
 func (s *HomeService) RegenerateInviteCode(homeID int) error {
@@ -59,7 +71,17 @@ func (s *HomeService) RegenerateInviteCode(homeID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.RegenerateCode(inviteCode, homeID)
+	if err := s.repo.RegenerateCode(inviteCode, homeID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHome,
+		Action: event.ActionUpdated,
+		Data:   map[string]int{"homeID": homeID},
+	})
+
+	return nil
 }
 
 func (s *HomeService) JoinHomeByCode(code string, userID int) error {
@@ -81,7 +103,17 @@ func (s *HomeService) JoinHomeByCode(code string, userID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.AddMember(home.ID, userID, "member")
+	if err := s.repo.AddMember(home.ID, userID, "member"); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHome,
+		Action: event.ActionMemberJoined,
+		Data:   map[string]int{"homeID": home.ID, "userID": userID},
+	})
+
+	return nil
 }
 
 func (s *HomeService) GetHomeByID(id int) (*models.Home, error) {
@@ -116,6 +148,13 @@ func (s *HomeService) DeleteHome(id int) error {
 	if err := utils.DeleteFromCache(key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHome,
+		Action: event.ActionDeleted,
+		Data:   map[string]int{"id": id},
+	})
+
 	return nil
 }
 
@@ -125,7 +164,17 @@ func (s *HomeService) LeaveHome(homeID int, userID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.DeleteMember(homeID, userID)
+	if err := s.repo.DeleteMember(homeID, userID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHome,
+		Action: event.ActionMemberLeft,
+		Data:   map[string]int{"homeID": homeID, "userID": userID},
+	})
+
+	return nil
 }
 
 func (s *HomeService) RemoveMember(homeID int, userID int, currentUserID int) error {
@@ -138,7 +187,17 @@ func (s *HomeService) RemoveMember(homeID int, userID int, currentUserID int) er
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	return s.repo.DeleteMember(homeID, userID)
+	if err := s.repo.DeleteMember(homeID, userID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHome,
+		Action: event.ActionMemberRemoved,
+		Data:   map[string]int{"homeID": homeID, "userID": userID},
+	})
+
+	return nil
 }
 
 func (s *HomeService) GetUserHome(userID int) (*models.Home, error) {

@@ -1,6 +1,9 @@
 package services
 
 import (
+	"context"
+
+	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
@@ -31,12 +34,20 @@ func (s *RoomService) CreateRoom(name string, homeID int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	if err := s.repo.Create(&models.Room{
+	room := &models.Room{
 		Name:   name,
 		HomeID: homeID,
-	}); err != nil {
+	}
+	if err := s.repo.Create(room); err != nil {
 		return err
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleRoom,
+		Action: event.ActionCreated,
+		Data:   room,
+	})
+
 	return nil
 }
 
@@ -99,6 +110,12 @@ func (s *RoomService) DeleteRoom(roomID int) error {
 	if err := s.repo.Delete(roomID); err != nil {
 		return err
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleRoom,
+		Action: event.ActionDeleted,
+		Data:   room,
+	})
 
 	return nil
 }

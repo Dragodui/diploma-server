@@ -1,10 +1,12 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
@@ -43,16 +45,23 @@ func (s *TaskService) CreateTask(homeID int, roomID *int, name, description, sch
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
 	}
 
-	if err := s.repo.Create(&models.Task{
+	task := &models.Task{
 		Name:         name,
 		Description:  description,
 		HomeID:       homeID,
 		RoomID:       roomID,
 		ScheduleType: scheduleType,
 		DueDate:      dueDate,
-	}); err != nil {
+	}
+	if err := s.repo.Create(task); err != nil {
 		return err
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionCreated,
+		Data:   task,
+	})
 
 	return nil
 }
@@ -80,6 +89,12 @@ func (s *TaskService) CreateTaskWithAssignment(homeID int, roomID *int, name, de
 	if err := s.repo.AssignUser(task.ID, userID, time.Now()); err != nil {
 		return err
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionCreated,
+		Data:   task,
+	})
 
 	return nil
 }
@@ -154,6 +169,12 @@ func (s *TaskService) DeleteTask(taskID int) error {
 		logger.Info.Printf("Failed to delete redis cache for home %d: %v", task.HomeID, err)
 	}
 
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionDeleted,
+		Data:   task,
+	})
+
 	return nil
 }
 
@@ -173,6 +194,12 @@ func (s *TaskService) AssignUser(taskID, userID, homeID int, date time.Time) err
 	if err := s.repo.AssignUser(taskID, userID, date); err != nil {
 		return err
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionAssigned,
+		Data:   map[string]int{"taskID": taskID, "userID": userID},
+	})
 
 	return nil
 }
@@ -255,6 +282,12 @@ func (s *TaskService) MarkAssignmentCompleted(assignmentID int) error {
 		return err
 	}
 
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionCompleted,
+		Data:   assignment,
+	})
+
 	return nil
 }
 
@@ -291,6 +324,12 @@ func (s *TaskService) MarkAssignmentUncompleted(assignmentID int) error {
 	if err := s.repo.MarkUncompleted(assignmentID); err != nil {
 		return err
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionUncompleted,
+		Data:   assignment,
+	})
 
 	return nil
 }
@@ -335,7 +374,17 @@ func (s *TaskService) MarkTaskCompletedForUser(taskID, userID, homeID int) error
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
 	}
 
-	return s.repo.MarkCompleted(assignment.ID)
+	if err := s.repo.MarkCompleted(assignment.ID); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionCompleted,
+		Data:   assignment,
+	})
+
+	return nil
 }
 
 func (s *TaskService) DeleteAssignment(assignmentID int) error {
@@ -365,6 +414,12 @@ func (s *TaskService) DeleteAssignment(assignmentID int) error {
 		return err
 	}
 
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionDeleted,
+		Data:   map[string]int{"assignmentID": assignmentID},
+	})
+
 	return nil
 }
 
@@ -392,6 +447,12 @@ func (s *TaskService) ReassignRoom(taskID, roomID int) error {
 	if err := s.repo.ReassignRoom(taskID, roomID); err != nil {
 		return err
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleTask,
+		Action: event.ActionUpdated,
+		Data:   task,
+	})
 
 	return nil
 }
