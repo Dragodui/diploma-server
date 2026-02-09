@@ -32,6 +32,7 @@ func SetupRoutes(
 	notificationHandler *handlers.NotificationHandler,
 	userHandler *handlers.UserHandler,
 	ocrHandler *handlers.OCRHandler,
+	smartHomeHandler *handlers.SmartHomeHandler,
 
 	// home repo for middleware
 	homeRepo repository.HomeRepository,
@@ -194,6 +195,24 @@ func SetupRoutes(
 
 						r.With(middleware.RequireMember(homeRepo)).Post("/{poll_id}/vote", pollHandler.Vote)
 						r.With(middleware.RequireMember(homeRepo)).Delete("/{poll_id}/vote", pollHandler.Unvote)
+					})
+
+					// Smart Home (Home Assistant integration)
+					r.Route("/smarthome", func(r chi.Router) {
+						r.With(middleware.RequireAdmin(homeRepo)).Post("/connect", smartHomeHandler.Connect)
+						r.With(middleware.RequireAdmin(homeRepo)).Delete("/disconnect", smartHomeHandler.Disconnect)
+						r.With(middleware.RequireMember(homeRepo)).Get("/status", smartHomeHandler.Status)
+						r.With(middleware.RequireMember(homeRepo)).Get("/discover", smartHomeHandler.Discover)
+						r.With(middleware.RequireMember(homeRepo)).Get("/states", smartHomeHandler.GetAllStates)
+
+						r.Route("/devices", func(r chi.Router) {
+							r.With(middleware.RequireMember(homeRepo)).Post("/", smartHomeHandler.AddDevice)
+							r.With(middleware.RequireMember(homeRepo)).Get("/", smartHomeHandler.GetDevices)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{device_id}", smartHomeHandler.GetDevice)
+							r.With(middleware.RequireAdmin(homeRepo)).Put("/{device_id}", smartHomeHandler.UpdateDevice)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{device_id}", smartHomeHandler.DeleteDevice)
+							r.With(middleware.RequireMember(homeRepo)).Post("/{device_id}/control", smartHomeHandler.ControlDevice)
+						})
 					})
 				})
 			})
