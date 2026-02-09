@@ -4,11 +4,13 @@ import (
 	"github.com/Dragodui/diploma-server/internal/models"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type IBillCategoryRepository interface {
 	Create(category *models.BillCategory) error
 	GetByHomeID(homeID int) ([]models.BillCategory, error)
+	Update(category *models.BillCategory, updates map[string]interface{}) (*models.BillCategory, error)
 	Delete(id int) error
 	GetByID(id int) (*models.BillCategory, error)
 }
@@ -42,4 +44,12 @@ func (r *BillCategoryRepository) GetByID(id int) (*models.BillCategory, error) {
 		return nil, err
 	}
 	return &category, nil
+}
+
+func (r *BillCategoryRepository) Update(category *models.BillCategory, updates map[string]interface{}) (*models.BillCategory, error) {
+	err := r.db.Model(category).Clauses(clause.Returning{}).Updates(updates).Error
+	if err != nil {
+		return nil, err
+	}
+	return category, nil
 }

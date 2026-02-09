@@ -95,7 +95,7 @@ func NewServer() *Server {
 	roomSvc := services.NewRoomService(roomRepo, cache)
 	taskSvc := services.NewTaskService(taskRepo, cache)
 	billSvc := services.NewBillService(billRepo, cache)
-	billCategorySvc := services.NewBillCategoryService(billCategoryRepo)
+	billCategorySvc := services.NewBillCategoryService(billCategoryRepo, cache)
 	shoppingSvc := services.NewShoppingService(shoppingRepo, cache)
 	pollSvc := services.NewPollService(pollRepo, cache)
 	notificationSvc := services.NewNotificationService(notificationRepo, cache)
@@ -125,7 +125,7 @@ func NewServer() *Server {
 	smartHomeHandler := handlers.NewSmartHomeHandler(smartHomeSvc)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, cache, homeRepo)
 
 	return &Server{router: router, port: cfg.Port}
 }

@@ -1,6 +1,9 @@
 package services
 
 import (
+	"context"
+
+	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/redis/go-redis/v9"
@@ -27,26 +30,44 @@ func (s *UserService) GetUserByID(userID int) (*models.User, error) {
 
 func (s *UserService) UpdateUser(userID int, name string) error {
 	user, err := s.repo.FindByID(userID)
-
 	if err != nil {
 		return err
 	}
-	updates := map[string]interface{}{}
 
+	updates := map[string]interface{}{}
 	updates["name"] = name
 
-	return s.repo.Update(user, updates)
+	if err := s.repo.Update(user, updates); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleUser,
+		Action: event.ActionUpdated,
+		Data:   user,
+	})
+
+	return nil
 }
 
 func (s *UserService) UpdateUserAvatar(userID int, imagePath string) error {
 	user, err := s.repo.FindByID(userID)
-
 	if err != nil {
 		return err
 	}
-	updates := map[string]interface{}{}
 
+	updates := map[string]interface{}{}
 	updates["avatar"] = imagePath
 
-	return s.repo.Update(user, updates)
+	if err := s.repo.Update(user, updates); err != nil {
+		return err
+	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleUser,
+		Action: event.ActionUpdated,
+		Data:   user,
+	})
+
+	return nil
 }

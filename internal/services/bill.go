@@ -1,8 +1,10 @@
 package services
 
 import (
+	"context"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
@@ -45,8 +47,17 @@ func (s *BillService) CreateBill(billType string, billCategoryID *int, totalAmou
 		CreatedAt:      time.Now(),
 	}
 
-	return s.repo.Create(bill)
+	if err := s.repo.Create(bill); err != nil {
+		return err
+	}
 
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleBill,
+		Action: event.ActionCreated,
+		Data:   bill,
+	})
+
+	return nil
 }
 
 func (s *BillService) GetBillByID(id int) (*models.Bill, error) {
@@ -75,6 +86,12 @@ func (s *BillService) Delete(id int) error {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleBill,
+		Action: event.ActionDeleted,
+		Data:   map[string]int{"id": id},
+	})
+
 	return nil
 }
 
@@ -100,6 +117,12 @@ func (s *BillService) MarkBillPayed(id int) error {
 	if err := utils.WriteToCache(key, bill, s.cache); err != nil {
 		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
 	}
+
+	event.SendEvent(context.Background(), s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleBill,
+		Action: event.ActionMarkedPayed,
+		Data:   bill,
+	})
 
 	return nil
 }

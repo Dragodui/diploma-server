@@ -103,7 +103,13 @@ func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.DeleteCategory(categoryID); err != nil {
+	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
+	if err != nil {
+		utils.JSONError(w, "Invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.DeleteCategory(categoryID, homeID); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -111,5 +117,46 @@ func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"status":  true,
 		"message": "Category deleted successfully",
+	})
+}
+
+// Update godoc
+// @Summary Update a bill category
+// @Description Update a bill category by ID
+// @Tags BillCategory
+// @Produce json
+// @Param home_id path int true "Home ID"
+// @Param category_id path int true "Category ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /homes/{home_id}/bill-categories/{category_id} [update]
+func (h *BillCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
+	categoryID, err := strconv.Atoi(chi.URLParam(r, "category_id"))
+	if err != nil {
+		utils.JSONError(w, "Invalid category ID", http.StatusBadRequest)
+		return
+	}
+
+	var input struct {
+		Name  *string `json:"name"`
+		Color *string `json:"color"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.JSONError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	updatedCategory, err := h.svc.UpdateCategory(categoryID, input.Name, input.Color)
+	if err != nil {
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status":  true,
+		"message": "Category deleted successfully",
+		"data":    updatedCategory,
 	})
 }
