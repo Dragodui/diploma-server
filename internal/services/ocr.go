@@ -136,7 +136,7 @@ func validateImageURL(urlStr string) error {
 
 // downloadImage downloads image from URL and saves to temp file
 func downloadImage(ctx context.Context, urlStr string) (string, error) {
-	// SECURITY: Validate URL to prevent SSRF attacks
+	// Validate URL to prevent SSRF attacks
 	if err := validateImageURL(urlStr); err != nil {
 		return "", fmt.Errorf("URL validation failed: %w", err)
 	}
@@ -201,7 +201,7 @@ func downloadImage(ctx context.Context, urlStr string) (string, error) {
 	}
 	defer outFile.Close()
 
-	// SECURITY: Limit download size to prevent DoS attacks
+	// Limit download size to prevent DoS attacks
 	// Use LimitReader to enforce max size even if Content-Length is missing/wrong
 	limitedReader := io.LimitReader(resp.Body, maxImageDownloadSize+1)
 

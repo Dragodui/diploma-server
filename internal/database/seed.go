@@ -216,7 +216,7 @@ func SeedDatabase(db *gorm.DB) error {
 	log.Println("  - admin@example.com (Admin)")
 	log.Println("  - john@example.com")
 	log.Println("  - jane@example.com")
-	log.Println("Note: Default password for test users is set in seed.go (DO NOT use in production)")
+	log.Println("Default password for test users is set in seed.go (DO NOT use in production)")
 
 	return nil
 }

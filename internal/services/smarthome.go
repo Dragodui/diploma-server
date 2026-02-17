@@ -8,6 +8,7 @@ import (
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services/homeassistant"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -63,6 +64,12 @@ func (s *SmartHomeService) getHAClient(ctx context.Context, homeID int) (*homeas
 // Config management
 
 func (s *SmartHomeService) ConnectHA(ctx context.Context, homeID int, url, token string) error {
+	// Validate URL to prevent SSRF attacks
+	// Block localhost, private IPs, AWS metadata, etc.
+	if err := utils.ValidateExternalURL(url); err != nil {
+		return fmt.Errorf("invalid Home Assistant URL: %w", err)
+	}
+
 	// Test Connection first
 	client := homeassistant.NewHAClient(url, token)
 	if err := client.CheckConnection(ctx); err != nil {

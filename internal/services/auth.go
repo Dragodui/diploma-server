@@ -103,7 +103,7 @@ func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (strin
 		u = &models.User{
 			Email:         user.Email,
 			Name:          user.Name,
-			PasswordHash:  "", // No password for OAuth users
+			PasswordHash:  "",   // No password for OAuth users
 			EmailVerified: true, // OAuth users are already verified
 			Avatar:        user.AvatarURL,
 		}
@@ -136,7 +136,7 @@ func (s *AuthService) GoogleSignIn(ctx context.Context, email, name, avatar stri
 		u = &models.User{
 			Email:         email,
 			Name:          name,
-			PasswordHash:  "", // No password for OAuth users
+			PasswordHash:  "",   // No password for OAuth users
 			EmailVerified: true, // OAuth users are already verified
 			Avatar:        avatar,
 		}
@@ -161,7 +161,7 @@ func (s *AuthService) GoogleSignIn(ctx context.Context, email, name, avatar stri
 
 func (s *AuthService) SendVerificationEmail(ctx context.Context, email string) error {
 	tok, err := utils.GenToken(32)
-	if (err != nil) {
+	if err != nil {
 		return err
 	}
 	exp := time.Now().Add(24 * time.Hour)
@@ -195,8 +195,6 @@ func (s *AuthService) SendResetPassword(ctx context.Context, email string) error
 	// Send reset email
 	link := fmt.Sprintf(s.clientURL+"/reset-password?token=%s", tok)
 	body := fmt.Sprintf("Reset password: <a href=\"%s\">%s</a>", link, link)
-
-
 	_ = s.mail.Send(email, "Reset password", body)
 
 	return nil
@@ -223,4 +221,3 @@ func (s *AuthService) GetUserByVerifyToken(ctx context.Context, token string) (*
 func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	return s.repo.FindByEmail(ctx, email)
 }
-
