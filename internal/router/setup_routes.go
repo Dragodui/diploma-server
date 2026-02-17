@@ -74,6 +74,8 @@ func SetupRoutes(
 	r.Use(middleware.RequestResponseLogger)
 	// Global rate limiter - 120 requests per minute
 	r.Use(middleware.RateLimitMiddleware(rateLimiter))
+	// Request body size limit - prevents DoS via huge payloads
+	r.Use(middleware.BodySizeLimit)
 	// CORS middleware
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{cfg.ClientURL},
