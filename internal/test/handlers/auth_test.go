@@ -21,7 +21,7 @@ import (
 type mockAuthService struct {
 	RegisterFunc              func(ctx context.Context, email, password, name string) error
 	LoginFunc                 func(ctx context.Context, email, password string) (string, *models.User, error)
-	HandleCallbackFunc        func(ctx context.Context, user goth.User) (string, error)
+	HandleCallbackFunc        func(ctx context.Context, user goth.User) (string, string, error)
 	SendVerificationEmailFunc func(ctx context.Context, email string) error
 	VerifyEmailFunc           func(ctx context.Context, token string) error
 	SendResetPasswordFunc     func(ctx context.Context, email string) error
@@ -53,11 +53,11 @@ func (m *mockAuthService) Login(ctx context.Context, email, password string) (st
 	return "", nil, nil
 }
 
-func (m *mockAuthService) HandleCallback(ctx context.Context, user goth.User) (string, error) {
+func (m *mockAuthService) HandleCallback(ctx context.Context, user goth.User) (string, string, error) {
 	if m.HandleCallbackFunc != nil {
 		return m.HandleCallbackFunc(ctx, user)
 	}
-	return "", nil
+	return "", "", nil
 }
 
 func (m *mockAuthService) SendVerificationEmail(ctx context.Context, email string) error {
@@ -442,44 +442,93 @@ func TestAuthHandler_ResetPassword(t *testing.T) {
 
 func TestAuthHandler_RegenerateVerify(t *testing.T) {
 	tests := []struct {
-		name           string
-		email          string
-		sendFunc       func(ctx context.Context, email string) error
-		expectedStatus int
+		name               string
+		queryParams        string
+		getByTokenFunc     func(ctx context.Context, token string) (*models.User, error)
+		sendFunc           func(ctx context.Context, email string) error
+		expectedStatus     int
+		expectedBodyPart   string
 	}{
 		{
-			name:  "Success",
-			email: "test@example.com",
+			name:        "Success with Token (Preferred)",
+			queryParams: "token=valid-token-123",
+			getByTokenFunc: func(ctx context.Context, token string) (*models.User, error) {
+				require.Equal(t, "valid-token-123", token)
+				return &models.User{Email: "token@example.com"}, nil
+			},
+			sendFunc: func(ctx context.Context, email string) error {
+				require.Equal(t, "token@example.com", email)
+				return nil
+			},
+			expectedStatus:   http.StatusOK,
+			expectedBodyPart: "Verification email sent",
+		},
+		{
+			name:        "Success with Email",
+			queryParams: "email=test@example.com",
 			sendFunc: func(ctx context.Context, email string) error {
 				require.Equal(t, "test@example.com", email)
 				return nil
 			},
-			expectedStatus: http.StatusOK,
+			expectedStatus:   http.StatusOK,
+			expectedBodyPart: "Verification email sent",
 		},
 		{
-			name:  "Failed to Send",
-			email: "test@example.com",
-			sendFunc: func(ctx context.Context, email string) error {
-				return errors.New("mail error")
+			name:        "Token Preferred over Email",
+			queryParams: "token=valid-token&email=should-not-use@example.com",
+			getByTokenFunc: func(ctx context.Context, token string) (*models.User, error) {
+				return &models.User{Email: "token-user@example.com"}, nil
 			},
-			expectedStatus: http.StatusInternalServerError,
+			sendFunc: func(ctx context.Context, email string) error {
+				// Should use email from token, not query param
+				require.Equal(t, "token-user@example.com", email)
+				return nil
+			},
+			expectedStatus:   http.StatusOK,
+			expectedBodyPart: "Verification email sent",
+		},
+		{
+			name:             "Missing Both Token and Email",
+			queryParams:      "",
+			expectedStatus:   http.StatusBadRequest,
+			expectedBodyPart: "Email or token required",
+		},
+		{
+			name:        "Invalid Token",
+			queryParams: "token=invalid-token",
+			getByTokenFunc: func(ctx context.Context, token string) (*models.User, error) {
+				return nil, errors.New("token not found")
+			},
+			expectedStatus:   http.StatusBadRequest,
+			expectedBodyPart: "Invalid or expired token",
+		},
+		{
+			name:        "Failed to Send Email",
+			queryParams: "email=test@example.com",
+			sendFunc: func(ctx context.Context, email string) error {
+				return errors.New("mail server error")
+			},
+			expectedStatus:   http.StatusInternalServerError,
+			expectedBodyPart: "Failed to send verification email",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &mockAuthService{
+				GetUserByVerifyTokenFunc:  tt.getByTokenFunc,
 				SendVerificationEmailFunc: tt.sendFunc,
 			}
 
 			h := setupAuthHandler(svc)
 
-			req := httptest.NewRequest(http.MethodGet, "/auth/verify/regenerate?email="+tt.email, nil)
+			req := httptest.NewRequest(http.MethodGet, "/auth/verify/regenerate?"+tt.queryParams, nil)
 			rr := httptest.NewRecorder()
 
 			h.RegenerateVerify(rr, req)
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
+			assert.Contains(t, rr.Body.String(), tt.expectedBodyPart)
 		})
 	}
 }

@@ -30,4 +30,4 @@ jobs:
       run: go build -v ./cmd/server
 
     - name: Test
-      run: go test -v ./internal/test/handlers
+      run: go test -v ./internal/test/handlers ./internal/test/middleware ./internal/test/services
