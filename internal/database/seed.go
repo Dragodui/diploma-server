@@ -10,6 +10,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// SeedDatabase populates the database with test data for development purposes
+// WARNING: This should NEVER be used in production environments
+// Test users use weak passwords (password123) and should only be used for local development
 func SeedDatabase(db *gorm.DB) error {
 	// Check if data already exists
 	var userCount int64
@@ -210,9 +213,10 @@ func SeedDatabase(db *gorm.DB) error {
 
 	log.Println("Database seeded successfully!")
 	log.Println("Test users created:")
-	log.Println("  - admin@example.com / password123 (Admin)")
-	log.Println("  - john@example.com / password123")
-	log.Println("  - jane@example.com / password123")
+	log.Println("  - admin@example.com (Admin)")
+	log.Println("  - john@example.com")
+	log.Println("  - jane@example.com")
+	log.Println("Note: Default password for test users is set in seed.go (DO NOT use in production)")
 
 	return nil
 }

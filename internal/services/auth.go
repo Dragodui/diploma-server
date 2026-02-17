@@ -16,6 +16,9 @@ import (
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
+// dummyPasswordHash is a pre-computed bcrypt hash used for timing attack mitigation
+const dummyPasswordHash = "$2a$12$6EbCFrJc5PL8YvKp.qZYF.nQq3qY5jLvN8xX9X5jZrN5XqY5jZrN5"
+
 type AuthService struct {
 	repo      repository.UserRepository
 	jwtSecret []byte
@@ -69,12 +72,18 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		return "", nil, err
 	}
 
-	if user == nil {
-		return "", nil, ErrInvalidCredentials
+	// Timing attack mitigation: always perform password comparison
+	// Use dummy hash if user not found to ensure constant-time response
+	hashToCompare := dummyPasswordHash
+	if user != nil {
+		hashToCompare = user.PasswordHash
 	}
 
-	isValidPassword := security.ComparePasswords(user.PasswordHash, password)
-	if !isValidPassword {
+	// Always execute bcrypt comparison regardless of whether user exists
+	isValidPassword := security.ComparePasswords(hashToCompare, password)
+
+	// Check both conditions: user must exist AND password must be valid
+	if user == nil || !isValidPassword {
 		return "", nil, ErrInvalidCredentials
 	}
 
