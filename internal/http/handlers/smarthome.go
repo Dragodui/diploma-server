@@ -52,7 +52,7 @@ func (h *SmartHomeHandler) Connect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.ConnectHA(r.Context(), homeID, req.URL, req.Token); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to connect Home Assistant", http.StatusBadRequest)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *SmartHomeHandler) Disconnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.DisconnectHA(r.Context(), homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to disconnect Home Assistant", http.StatusInternalServerError)
 		return
 	}
 
@@ -109,7 +109,7 @@ func (h *SmartHomeHandler) Status(w http.ResponseWriter, r *http.Request) {
 
 	config, err := h.svc.GetHAConfig(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve status", http.StatusInternalServerError)
 		return
 	}
 
@@ -128,7 +128,6 @@ func (h *SmartHomeHandler) Status(w http.ResponseWriter, r *http.Request) {
 		"url":        config.URL,
 		"is_active":  config.IsActive,
 		"created_at": config.CreatedAt,
-		"error":      errorToString(connErr),
 	})
 }
 
@@ -151,7 +150,7 @@ func (h *SmartHomeHandler) Discover(w http.ResponseWriter, r *http.Request) {
 
 	devices, err := h.svc.DiscoverDevices(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to discover devices", http.StatusInternalServerError)
 		return
 	}
 
@@ -194,7 +193,7 @@ func (h *SmartHomeHandler) AddDevice(w http.ResponseWriter, r *http.Request) {
 
 	deviceType := homeassistant.GetEntityDomain(req.EntityID)
 	if err := h.svc.AddDevice(r.Context(), homeID, req.EntityID, req.Name, deviceType, req.RoomID, req.Icon); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to add device", http.StatusBadRequest)
 		return
 	}
 
@@ -223,7 +222,7 @@ func (h *SmartHomeHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 
 	devices, err := h.svc.GetDevices(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve devices", http.StatusInternalServerError)
 		return
 	}
 
@@ -260,7 +259,7 @@ func (h *SmartHomeHandler) GetDevice(w http.ResponseWriter, r *http.Request) {
 
 	device, err := h.svc.GetDeviceByID(r.Context(), deviceID, homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve device", http.StatusInternalServerError)
 		return
 	}
 	if device == nil {
@@ -269,13 +268,12 @@ func (h *SmartHomeHandler) GetDevice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get current state from HA
-	state, stateErr := h.svc.GetDeviceState(r.Context(), homeID, device.EntityID)
+	state, _ := h.svc.GetDeviceState(r.Context(), homeID, device.EntityID)
 
 	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"status": true,
 		"device": device,
 		"state":  state,
-		"error":  errorToString(stateErr),
 	})
 }
 
@@ -319,7 +317,7 @@ func (h *SmartHomeHandler) UpdateDevice(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.svc.UpdateDevice(r.Context(), deviceID, homeID, req.Name, req.RoomID, req.Icon); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to update device", http.StatusBadRequest)
 		return
 	}
 
@@ -348,7 +346,7 @@ func (h *SmartHomeHandler) DeleteDevice(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.svc.RemoveDevice(r.Context(), deviceID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to remove device", http.StatusInternalServerError)
 		return
 	}
 
@@ -399,7 +397,7 @@ func (h *SmartHomeHandler) ControlDevice(w http.ResponseWriter, r *http.Request)
 	// Get device to get entity_id
 	device, err := h.svc.GetDeviceByID(r.Context(), deviceID, homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve device", http.StatusInternalServerError)
 		return
 	}
 	if device == nil {
@@ -408,7 +406,7 @@ func (h *SmartHomeHandler) ControlDevice(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.svc.ControlDevice(r.Context(), homeID, device.EntityID, req.Service, req.Data); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to control device", http.StatusInternalServerError)
 		return
 	}
 
@@ -437,7 +435,7 @@ func (h *SmartHomeHandler) GetAllStates(w http.ResponseWriter, r *http.Request) 
 
 	states, err := h.svc.GetAllStates(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve device states", http.StatusInternalServerError)
 		return
 	}
 
@@ -467,7 +465,7 @@ func (h *SmartHomeHandler) GetDevicesByRoom(w http.ResponseWriter, r *http.Reque
 
 	devices, err := h.svc.GetDevicesByRoom(r.Context(), roomID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve devices", http.StatusInternalServerError)
 		return
 	}
 
@@ -475,12 +473,4 @@ func (h *SmartHomeHandler) GetDevicesByRoom(w http.ResponseWriter, r *http.Reque
 		"status":  true,
 		"devices": devices,
 	})
-}
-
-// Helper function
-func errorToString(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
 }

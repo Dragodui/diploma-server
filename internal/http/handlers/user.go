@@ -37,7 +37,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.svc.GetUserByID(r.Context(), userID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve user", http.StatusInternalServerError)
 	}
 
 	if user == nil {
@@ -90,14 +90,14 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	if name != "" {
 		if err := h.svc.UpdateUser(r.Context(), userID, name); err != nil {
-			utils.JSONError(w, "Failed to update name: "+err.Error(), http.StatusInternalServerError)
+			utils.SafeError(w, err, "Failed to update name", http.StatusInternalServerError)
 			return
 		}
 	}
 
 	if avatarURL != "" {
 		if err := h.svc.UpdateUserAvatar(r.Context(), userID, avatarURL); err != nil {
-			utils.JSONError(w, "Failed to update avatar: "+err.Error(), http.StatusInternalServerError)
+			utils.SafeError(w, err, "Failed to update avatar", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -107,12 +107,12 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 		imagePath, err := h.imageSvc.Upload(r.Context(), file, fileHeader)
 		if err != nil {
-			utils.JSONError(w, "Failed to upload avatar: "+err.Error(), http.StatusInternalServerError)
+			utils.SafeError(w, err, "Failed to upload avatar", http.StatusInternalServerError)
 			return
 		}
 
 		if err := h.svc.UpdateUserAvatar(r.Context(), userID, imagePath); err != nil {
-			utils.JSONError(w, "Failed to update avatar: "+err.Error(), http.StatusInternalServerError)
+			utils.SafeError(w, err, "Failed to update avatar", http.StatusInternalServerError)
 			return
 		}
 	}

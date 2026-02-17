@@ -122,9 +122,12 @@ func SetupRoutes(
 			r.Get("/{provider}", authHandler.SignInWithProvider)
 			r.Get("/{provider}/callback", authHandler.CallbackHandler)
 
-			// Email verification - moderate limit
+			// Email verification - no limit for verify (one-time use token)
 			r.Get("/verify", authHandler.VerifyEmail)
-			r.Get("/verify/regenerate", authHandler.RegenerateVerify)
+
+			// Email verification regenerate - strict limit: 3 requests per 5 minutes (prevents spam)
+			verifyRegenerateLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 3, 0.01) // 3 tokens, refill 0.01/sec = 0.6/min
+			r.With(verifyRegenerateLimit).Get("/verify/regenerate", authHandler.RegenerateVerify)
 
 			// Password reset - very strict: 3 requests per 5 minutes
 			resetStrictLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 3, 0.01) // 3 tokens, refill 0.01/sec = 0.6/min

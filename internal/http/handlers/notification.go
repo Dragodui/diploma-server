@@ -33,7 +33,7 @@ func (h *NotificationHandler) GetByUserID(w http.ResponseWriter, r *http.Request
 
 	notifications, err := h.svc.GetByUserID(r.Context(), userID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve notifications", http.StatusInternalServerError)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.svc.MarkAsRead(r.Context(), notificationID, userID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to mark notification as read", http.StatusInternalServerError)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *NotificationHandler) GetByHomeID(w http.ResponseWriter, r *http.Request
 
 	notifications, err := h.svc.GetByHomeID(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve notifications", http.StatusInternalServerError)
 		return
 	}
 
@@ -130,7 +130,7 @@ func (h *NotificationHandler) MarkAsReadForHome(w http.ResponseWriter, r *http.R
 	}
 
 	if err := h.svc.MarkAsReadForHomeNotification(r.Context(), notificationID, userID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to mark notification as read", http.StatusInternalServerError)
 		return
 	}
 
