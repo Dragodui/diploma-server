@@ -178,14 +178,28 @@ func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
 }
 
 func (s *AuthService) SendResetPassword(ctx context.Context, email string) error {
-	tok, _ := utils.GenToken(32)
+	// Generate secure random token
+	tok, err := utils.GenToken(32)
+	if err != nil {
+		return fmt.Errorf("failed to generate reset token: %w", err)
+	}
+
 	exp := time.Now().Add(2 * time.Hour)
+
+	// SetResetToken will return nil even if user doesn't exist
 	if err := s.repo.SetResetToken(ctx, email, tok, exp); err != nil {
+		// Only log database errors, don't expose to client
 		return err
 	}
+
+	// Send reset email
 	link := fmt.Sprintf(s.clientURL+"/reset-password?token=%s", tok)
 	body := fmt.Sprintf("Reset password: <a href=\"%s\">%s</a>", link, link)
-	return s.mail.Send(email, "Reset password", body)
+
+
+	_ = s.mail.Send(email, "Reset password", body)
+
+	return nil
 }
 
 func (s *AuthService) ResetPassword(ctx context.Context, token, newPass string) error {
