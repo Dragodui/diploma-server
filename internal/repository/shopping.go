@@ -80,10 +80,8 @@ func (r *shoppingRepo) CreateItem(ctx context.Context, i *models.ShoppingItem) e
 
 func (r *shoppingRepo) FindItemsByCategoryID(ctx context.Context, id int) ([]models.ShoppingItem, error) {
 	var items []models.ShoppingItem
-	if err := r.db.WithContext(ctx).Where("category_id = ?", id).First(&items).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
+	// Use Find() instead of First() to get all items, not just one
+	if err := r.db.WithContext(ctx).Where("category_id = ?", id).Find(&items).Error; err != nil {
 		return nil, err
 	}
 
