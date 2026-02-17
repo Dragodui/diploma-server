@@ -81,6 +81,8 @@ func SetupRoutes(
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,
 	}))
+	// Security headers middleware
+	r.Use(middleware.SecurityHeaders)
 
 	// Public healthcheck
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -93,11 +95,17 @@ func SetupRoutes(
 		wsHandler.HandleWS(w, r, cache)
 	})
 
-	// Prometheus
-	r.Handle("/metrics", promhttp.Handler())
+	// Protected admin endpoints (Prometheus metrics and Swagger docs)
+	// Requires Basic Authentication
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.BasicAuth(cfg.AdminUsername, cfg.AdminPassword))
 
-	// Swagger UI
-	r.Get("/swagger/*", httpSwagger.WrapHandler)
+		// Prometheus metrics - requires auth
+		r.Handle("/metrics", promhttp.Handler())
+
+		// Swagger UI - requires auth
+		r.Get("/swagger/*", httpSwagger.WrapHandler)
+	})
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {

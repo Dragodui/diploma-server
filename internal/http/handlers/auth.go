@@ -72,7 +72,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	err := h.svc.Register(r.Context(), input.Email, input.Password, input.Name)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Registration failed", http.StatusBadRequest)
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.svc.GetUserByEmail(r.Context(), input.Email)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusUnauthorized)
+		utils.SafeError(w, err, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 

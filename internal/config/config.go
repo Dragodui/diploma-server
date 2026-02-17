@@ -36,6 +36,10 @@ type Config struct {
 	AWSS3Bucket        string
 	AWSAccessKeyID     string
 	AWSSecretAccessKey string
+
+	// ADMIN (for /metrics and /swagger)
+	AdminUsername string
+	AdminPassword string
 }
 
 func Load() *Config {
@@ -84,6 +88,11 @@ func Load() *Config {
 		AWSSecretAccessKey: getEnvRequired("AWS_SECRET_ACCESS_KEY"),
 		AWSS3Bucket:        getEnvRequired("AWS_S3_BUCKET"),
 		AWSRegion:          getEnvRequired("AWS_REGION"),
+
+		// Admin credentials for /metrics and /swagger
+		// Defaults for development - CHANGE IN PRODUCTION!
+		AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
+		AdminPassword: getEnv("ADMIN_PASSWORD", "changeme"),
 	}
 
 	return cfg
