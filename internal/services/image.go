@@ -2,9 +2,11 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"mime/multipart"
+	"net/http"
 	"path/filepath"
 	"time"
 
@@ -53,6 +55,22 @@ func NewImageService(bucketName, region string) (*ImageService, error) {
 }
 func (s *ImageService) Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 	ext := filepath.Ext(header.Filename)
+
+	// not allowing executable files
+	if ext == ".php" || ext == ".exe" || ext == ".sh" {
+		return "", errors.New("forbidden")
+	}
+
+	
+	allowed, err := validateImageFile(file)
+	if err != nil {
+		return "", err
+	}
+
+	if !allowed {
+		return "", errors.New("forbidden")
+	}
+
 	newName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
 	contentType := header.Header.Get("Content-Type")
@@ -115,3 +133,29 @@ func (s *ImageService) GetPresignedURL(ctx context.Context, key string, expirati
 	return request.URL, nil
 }
 
+var allowedTypes = map[string]string{
+	"image/jpeg": ".jpg",
+	"image/png":  ".png",
+	"image/gif":  ".gif",
+	"image/webp": ".webp",
+}
+
+func validateImageFile(file multipart.File) (bool, error) {
+	// read first 512 bytes to define a type
+	buffer := make([]byte, 512)
+
+	if _, err := file.Read(buffer); err != nil {
+		return false, err
+	}
+	// return pointer to file begin
+	file.Seek(0, 0)
+
+	detectedType := http.DetectContentType(buffer)
+
+	_, allowed := allowedTypes[detectedType]
+	if !allowed {
+		return false, errors.New(fmt.Sprintf("unsupported file type: %s", detectedType))
+	}
+
+	return true, nil
+}
