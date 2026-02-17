@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -20,10 +21,10 @@ type ISmartHomeService interface {
 	// Device management
 	AddDevice(ctx context.Context, homeID int, entityID, name string, deviceType string, roomID *int, icon *string) error
 	RemoveDevice(ctx context.Context, deviceID int) error
-	UpdateDevice(ctx context.Context, deviceID int, name string, roomID *int, icon *string) error
+	UpdateDevice(ctx context.Context, deviceID, homeID int, name string, roomID *int, icon *string) error
 	GetDevices(ctx context.Context, homeID int) ([]models.SmartDevice, error)
 	GetDevicesByRoom(ctx context.Context, roomID int) ([]models.SmartDevice, error)
-	GetDeviceByID(ctx context.Context, deviceID int) (*models.SmartDevice, error)
+	GetDeviceByID(ctx context.Context, deviceID, homeID int) (*models.SmartDevice, error)
 
 	// Device control & state
 	GetDeviceState(ctx context.Context, homeID int, entityID string) (*homeassistant.HAState, error)
@@ -157,8 +158,8 @@ func (s *SmartHomeService) RemoveDevice(ctx context.Context, deviceID int) error
 	return s.repo.DeleteDevice(ctx, deviceID)
 }
 
-func (s *SmartHomeService) UpdateDevice(ctx context.Context, deviceID int, name string, roomID *int, icon *string) error {
-	device, err := s.repo.GetDeviceByID(ctx, deviceID)
+func (s *SmartHomeService) UpdateDevice(ctx context.Context, deviceID, homeID int, name string, roomID *int, icon *string) error {
+	device, err := s.GetDeviceByID(ctx, deviceID, homeID)
 	if err != nil {
 		return err
 	}
@@ -181,8 +182,17 @@ func (s *SmartHomeService) GetDevicesByRoom(ctx context.Context, roomID int) ([]
 	return s.repo.GetDevicesByRoomID(ctx, roomID)
 }
 
-func (s *SmartHomeService) GetDeviceByID(ctx context.Context, deviceID int) (*models.SmartDevice, error) {
-	return s.repo.GetDeviceByID(ctx, deviceID)
+func (s *SmartHomeService) GetDeviceByID(ctx context.Context, deviceID, homeID int) (*models.SmartDevice, error) {
+	device, err := s.repo.GetDeviceByID(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if device.HomeID != homeID {
+		return nil, errors.New("device is not from your home")
+	}
+
+	return device, nil
 }
 
 // Device control & state

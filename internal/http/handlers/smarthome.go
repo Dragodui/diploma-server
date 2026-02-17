@@ -258,7 +258,7 @@ func (h *SmartHomeHandler) GetDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	device, err := h.svc.GetDeviceByID(r.Context(), deviceID)
+	device, err := h.svc.GetDeviceByID(r.Context(), deviceID, homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -292,6 +292,14 @@ func (h *SmartHomeHandler) GetDevice(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/smarthome/devices/{device_id} [put]
 func (h *SmartHomeHandler) UpdateDevice(w http.ResponseWriter, r *http.Request) {
+
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "Invalid home ID", http.StatusBadRequest)
+		return
+	}
+
 	deviceIDStr := chi.URLParam(r, "device_id")
 	deviceID, err := strconv.Atoi(deviceIDStr)
 	if err != nil {
@@ -310,7 +318,7 @@ func (h *SmartHomeHandler) UpdateDevice(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.svc.UpdateDevice(r.Context(), deviceID, req.Name, req.RoomID, req.Icon); err != nil {
+	if err := h.svc.UpdateDevice(r.Context(), deviceID, homeID, req.Name, req.RoomID, req.Icon); err != nil {
 		utils.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -389,7 +397,7 @@ func (h *SmartHomeHandler) ControlDevice(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get device to get entity_id
-	device, err := h.svc.GetDeviceByID(r.Context(), deviceID)
+	device, err := h.svc.GetDeviceByID(r.Context(), deviceID, homeID)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
