@@ -31,7 +31,7 @@ type AuthService struct {
 type IAuthService interface {
 	Register(ctx context.Context, email, password, name string) error
 	Login(ctx context.Context, email, password string) (string, *models.User, error)
-	HandleCallback(ctx context.Context, user goth.User) (string, error)
+	HandleCallback(ctx context.Context, user goth.User) (token string, redirectURL string, err error)
 	GoogleSignIn(ctx context.Context, email, name, avatar string) (string, *models.User, error)
 	SendVerificationEmail(ctx context.Context, email string) error
 	VerifyEmail(ctx context.Context, token string) error
@@ -96,7 +96,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 	return token, user, nil
 }
 
-func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (string, error) {
+func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (string, string, error) {
 	u, err := s.repo.FindByEmail(ctx, user.Email)
 	if err != nil || u == nil {
 		// User does not exist, create a new one
@@ -108,25 +108,24 @@ func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (strin
 			Avatar:        user.AvatarURL,
 		}
 		if err := s.repo.Create(ctx, u); err != nil {
-			return "", err
+			return "", "", err
 		}
 		// Fetch the created user to get the ID
 		u, err = s.repo.FindByEmail(ctx, user.Email)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
 	token, err := security.GenerateToken(u.ID, user.Email, s.jwtSecret, s.ttl)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	// Generate address for redirect for client
-	clientURL := s.clientURL + "/oauth-success"
-	redirectURL := fmt.Sprintf("%s?token=%s", clientURL, token)
+	// Return token separately to be set as HTTP-only cookie
+	redirectURL := s.clientURL + "/oauth-success"
 
-	return redirectURL, nil
+	return token, redirectURL, nil
 }
 
 // GoogleSignIn handles Google Sign-In from mobile apps using user info from Google

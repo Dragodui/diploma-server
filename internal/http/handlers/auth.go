@@ -170,11 +170,21 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	redirectURL, err := h.svc.HandleCallback(r.Context(), user)
 
+	// SECURITY FIX: Get token and redirect URL separately
+	// Token is no longer exposed in URL to prevent:
+	// - Browser history leakage
+	// - Server log exposure
+	// - Referrer header leakage
+	token, redirectURL, err := h.svc.HandleCallback(r.Context(), user)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	// Set token in HTTP-only secure cookie instead of URL parameter
+	// TODO: Set secure=true in production (requires HTTPS)
+	utils.SetAuthCookie(w, token, false)
 
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
