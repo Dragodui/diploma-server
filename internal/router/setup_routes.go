@@ -77,7 +77,7 @@ func SetupRoutes(
 	// CORS middleware
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{cfg.ClientURL},
-		AllowedMethods:   []string{"GET", "POST", "DELETE", "PATCH"},
+		AllowedMethods:   []string{"GET", "POST", "DELETE", "PATCH", "PUT"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,
 	}))
