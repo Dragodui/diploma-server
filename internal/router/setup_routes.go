@@ -84,7 +84,7 @@ func SetupRoutes(
 		json.NewEncoder(w).Encode("OK")
 	})
 
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
 		wsHandler.HandleWS(w, r, cache)
 	})
 
