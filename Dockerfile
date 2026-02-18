@@ -22,7 +22,7 @@ COPY . .
 RUN go build -ldflags="-w -s" -o main ./cmd/server
 
 # Stage 2: Final image
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
@@ -30,8 +30,8 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr-eng \
     tesseract-ocr-ukr \
     tesseract-ocr-pol \
-    libleptonica6 \
     libtesseract5 \
+    libleptonica7 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
