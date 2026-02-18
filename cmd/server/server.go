@@ -75,7 +75,7 @@ func NewServer() (*Server, error) {
 		return nil, err
 	}
 
-	cacheClient := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword)
+	cacheClient := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword, cfg.RedisTLS)
 
 	// Mailer
 	mailer := &utils.SMTPMailer{

@@ -23,6 +23,7 @@ type Config struct {
 	// REDIS
 	RedisADDR     string
 	RedisPassword string
+	RedisTLS      bool
 
 	// SMTP
 	SMTPHost string
@@ -40,18 +41,24 @@ type Config struct {
 
 func Load() *Config {
 	// Load .env file explicitly from the mounted volume path
-	if err := godotenv.Load("/app/.env"); err != nil {
-		log.Println("Error loading .env file:", err.Error())
-		log.Fatal(".env file is not exist or load incorrectly")
+	if os.Getenv("MODE") == "dev" {
+		if err := godotenv.Load("/app/.env"); err != nil {
+			log.Println("Error loading .env file:", err.Error())
+			log.Fatal(".env file is not exist or load incorrectly")
+		}
 	}
-
-	mode := os.Getenv("MODE")
 
 	// Determine Redis keys based on environment mode
 	redisAddrKey := "REDIS_ADDR"
 
-	if mode == "dev" {
+	if os.Getenv("MODE") == "dev" {
 		redisAddrKey = "REDIS_ADDR_DEV"
+	}
+
+	redisTLS := true
+	redisTLSStr := os.Getenv("REDIS_TLS")
+	if redisTLSStr != "true" {
+		redisTLS = false
 	}
 
 	// Parse necessary integer fields
@@ -73,6 +80,7 @@ func Load() *Config {
 
 		RedisADDR:     getEnvRequired(redisAddrKey),
 		RedisPassword: getEnvRequired("REDIS_PASSWORD"),
+		RedisTLS:      redisTLS,
 
 		SMTPHost: getEnvRequired("SMTP_HOST"),
 		SMTPPort: smtpPort,

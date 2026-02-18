@@ -4,26 +4,25 @@ import (
 	"context"
 	"crypto/tls"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-func NewRedisClient(addr, password string) *redis.Client {
+func NewRedisClient(addr, password string, useTLS bool) *redis.Client {
 
 	if addr == "" {
 		log.Fatal("REDIS_ADDR environment variable is not set")
 	}
 	var tlsConfig *tls.Config
 
-	if strings.Contains(addr, "amazonaws.com") {
+	if useTLS {
 		tlsConfig = &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}
 		log.Println("Redis TLS enabled (AWS ElastiCache detected)")
 	}
-	
+
 	client := redis.NewClient(&redis.Options{
 		Addr:      addr,
 		Password:  password,
