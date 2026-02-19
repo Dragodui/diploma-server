@@ -25,12 +25,15 @@ type Config struct {
 	RedisPassword string
 	RedisTLS      bool
 
-	// SMTP
+	// SMTP (legacy, kept for local dev)
 	SMTPHost string
 	SMTPPort int
 	SMTPUser string
 	SMTPPass string
 	SMTPFrom string
+
+	// Brevo API
+	BrevoAPIKey string
 
 	// AWS
 	AWSRegion          string
@@ -61,12 +64,8 @@ func Load() *Config {
 		redisTLS = false
 	}
 
-	// Parse necessary integer fields
-	smtpPortStr := os.Getenv("SMTP_PORT")
-	smtpPort, err := strconv.Atoi(smtpPortStr)
-	if err != nil {
-		log.Fatalf("Error parsing SMTP_PORT '%s': %v", smtpPortStr, err)
-	}
+	// Parse optional SMTP port (not required when using Brevo API)
+	smtpPort, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
 
 	// Initialize configuration struct using determined keys
 	cfg := &Config{
@@ -82,11 +81,13 @@ func Load() *Config {
 		RedisPassword: getEnvRequired("REDIS_PASSWORD"),
 		RedisTLS:      redisTLS,
 
-		SMTPHost: getEnvRequired("SMTP_HOST"),
+		SMTPHost: getEnv("SMTP_HOST", ""),
 		SMTPPort: smtpPort,
-		SMTPUser: getEnvRequired("SMTP_USER"),
-		SMTPPass: getEnvRequired("SMTP_PASSWORD"),
-		SMTPFrom: getEnvRequired("SMTP_FROM"),
+		SMTPUser: getEnv("SMTP_USER", ""),
+		SMTPPass: getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom: getEnv("SMTP_FROM", ""),
+
+		BrevoAPIKey: getEnvRequired("BREVO_API_KEY"),
 
 		AWSAccessKeyID:     getEnvRequired("AWS_ACCESS_KEY"),
 		AWSSecretAccessKey: getEnvRequired("AWS_SECRET_ACCESS_KEY"),

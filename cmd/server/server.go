@@ -78,12 +78,9 @@ func NewServer() (*Server, error) {
 	cacheClient := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword, cfg.RedisTLS)
 
 	// Mailer
-	mailer := &utils.SMTPMailer{
-		Host:     cfg.SMTPHost,
-		Port:     cfg.SMTPPort,
-		Username: cfg.SMTPUser,
-		Password: cfg.SMTPPass,
-		From:     cfg.SMTPFrom,
+	mailer := &utils.BrevoMailer{
+		APIKey: cfg.BrevoAPIKey,
+		From:   cfg.SMTPFrom,
 	}
 
 	// OAuth
