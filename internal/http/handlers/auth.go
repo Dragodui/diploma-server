@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -42,6 +43,7 @@ func (h *AuthHandler) RegenerateVerify(w http.ResponseWriter, r *http.Request) {
 
 	// }
 	if err := h.svc.SendVerificationEmail(r.Context(), email); err != nil {
+		log.Printf("ERROR: SendVerificationEmail for %s: %v", email, err)
 		utils.JSONError(w, "Failed to send verification email", http.StatusInternalServerError)
 		return
 	}
@@ -77,6 +79,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.SendVerificationEmail(r.Context(), input.Email); err != nil {
+		log.Printf("ERROR: SendVerificationEmail for %s: %v", input.Email, err)
 		utils.JSONError(w, "Failed to send verification email", http.StatusInternalServerError)
 		return
 	}
