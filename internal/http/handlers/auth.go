@@ -13,11 +13,12 @@ import (
 )
 
 type AuthHandler struct {
-	svc services.IAuthService
+	svc       services.IAuthService
+	clientURL string
 }
 
-func NewAuthHandler(svc services.IAuthService) *AuthHandler {
-	return &AuthHandler{svc}
+func NewAuthHandler(svc services.IAuthService, clientURL string) *AuthHandler {
+	return &AuthHandler{svc: svc, clientURL: clientURL}
 }
 
 // RegenerateVerify godoc
@@ -194,10 +195,10 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	err := h.svc.VerifyEmail(r.Context(), token)
 	if err != nil {
-		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)
+		http.Redirect(w, r, h.clientURL+"/verify?status=error", http.StatusFound)
 		return
 	}
-	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Email verified"})
+	http.Redirect(w, r, h.clientURL+"/verify?status=success", http.StatusFound)
 }
 
 // ForgotPassword godoc

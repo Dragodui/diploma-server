@@ -100,7 +100,7 @@ func NewServer() (*Server, error) {
 	smartHomeRepo := repository.NewSmartHomeRepository(db)
 
 	// services
-	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cacheClient, 24*time.Hour, cfg.ClientURL, mailer)
+	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cacheClient, 24*time.Hour, cfg.ClientURL, cfg.ServerURL, mailer)
 	homeSvc := services.NewHomeService(homeRepo, cacheClient)
 	roomSvc := services.NewRoomService(roomRepo, cacheClient)
 	taskSvc := services.NewTaskService(taskRepo, cacheClient)
@@ -120,7 +120,7 @@ func NewServer() (*Server, error) {
 	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient)
 
 	// handlers
-	authHandler := handlers.NewAuthHandler(authSvc)
+	authHandler := handlers.NewAuthHandler(authSvc, cfg.ClientURL)
 	homeHandler := handlers.NewHomeHandler(homeSvc)
 	roomHandler := handlers.NewRoomHandler(roomSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)

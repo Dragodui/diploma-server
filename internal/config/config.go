@@ -19,6 +19,7 @@ type Config struct {
 	ClientSecret string
 	CallbackURL  string
 	ClientURL    string
+	ServerURL    string
 
 	// REDIS
 	RedisADDR     string
@@ -76,6 +77,7 @@ func Load() *Config {
 		ClientSecret: getEnvRequired("GOOGLE_CLIENT_SECRET"),
 		CallbackURL:  getEnvRequired("CLIENT_CALLBACK_URL"),
 		ClientURL:    getEnvRequired("CLIENT_URL"),
+		ServerURL:    getEnvRequired("SERVER_URL"),
 
 		RedisADDR:     getEnvRequired(redisAddrKey),
 		RedisPassword: getEnvRequired("REDIS_PASSWORD"),

@@ -22,6 +22,7 @@ type AuthService struct {
 	cache     *redis.Client
 	ttl       time.Duration
 	clientURL string
+	serverURL string
 	mail      utils.Mailer
 }
 
@@ -38,8 +39,8 @@ type IAuthService interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 }
 
-func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL string, mail utils.Mailer) *AuthService {
-	return &AuthService{repo: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, mail: mail}
+func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL, serverURL string, mail utils.Mailer) *AuthService {
+	return &AuthService{repo: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, serverURL: serverURL, mail: mail}
 }
 
 func (s *AuthService) Register(ctx context.Context, email, password, name string) error {
@@ -160,7 +161,7 @@ func (s *AuthService) SendVerificationEmail(ctx context.Context, email string) e
 	if err := s.repo.SetVerifyToken(ctx, email, tok, exp); err != nil {
 		return err
 	}
-	link := fmt.Sprintf(s.clientURL+"/verify?token=%s", tok)
+	link := fmt.Sprintf(s.serverURL+"/api/auth/verify?token=%s", tok)
 	body := fmt.Sprintf("Verify email: <a href=\"%s\">%s</a>", link, link)
 	return s.mail.Send(email, "Verify your email", body)
 }

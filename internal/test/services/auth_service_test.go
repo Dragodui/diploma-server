@@ -170,7 +170,7 @@ func TestAuthService_Register(t *testing.T) {
 			}
 			mailer := &mockMailer{}
 
-			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
+			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", "http://localhost:8000", mailer)
 
 			err := svc.Register(context.Background(), tt.email, tt.password, tt.userName)
 
@@ -237,7 +237,7 @@ func TestAuthService_Login(t *testing.T) {
 			}
 			mailer := &mockMailer{}
 
-			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
+			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", "http://localhost:8000", mailer)
 
 			token, user, err := svc.Login(context.Background(), tt.email, tt.password)
 
@@ -287,7 +287,7 @@ func TestAuthService_VerifyEmail(t *testing.T) {
 			}
 			mailer := &mockMailer{}
 
-			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
+			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", "http://localhost:8000", mailer)
 
 			err := svc.VerifyEmail(context.Background(), tt.token)
 
@@ -356,7 +356,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 			}
 			mailer := &mockMailer{}
 
-			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
+			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", "http://localhost:8000", mailer)
 
 			err := svc.ResetPassword(context.Background(), tt.token, tt.newPassword)
 
@@ -405,7 +405,7 @@ func TestAuthService_GetUserByEmail(t *testing.T) {
 			}
 			mailer := &mockMailer{}
 
-			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", mailer)
+			svc := services.NewAuthService(repo, testSecret, nil, time.Hour, "http://localhost", "http://localhost:8000", mailer)
 
 			user, err := svc.GetUserByEmail(context.Background(), tt.email)
 
