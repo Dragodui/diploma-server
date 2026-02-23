@@ -75,15 +75,12 @@ func NewServer() (*Server, error) {
 		return nil, err
 	}
 
-	cacheClient := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword)
+	cacheClient := cache.NewRedisClient(cfg.RedisADDR, cfg.RedisPassword, cfg.RedisTLS)
 
 	// Mailer
-	mailer := &utils.SMTPMailer{
-		Host:     cfg.SMTPHost,
-		Port:     cfg.SMTPPort,
-		Username: cfg.SMTPUser,
-		Password: cfg.SMTPPass,
-		From:     cfg.SMTPFrom,
+	mailer := &utils.BrevoMailer{
+		APIKey: cfg.BrevoAPIKey,
+		From:   cfg.SMTPFrom,
 	}
 
 	// OAuth
@@ -103,7 +100,7 @@ func NewServer() (*Server, error) {
 	smartHomeRepo := repository.NewSmartHomeRepository(db)
 
 	// services
-	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cacheClient, 24*time.Hour, cfg.ClientURL, mailer)
+	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cacheClient, 24*time.Hour, cfg.ClientURL, cfg.ServerURL, mailer)
 	homeSvc := services.NewHomeService(homeRepo, cacheClient)
 	roomSvc := services.NewRoomService(roomRepo, cacheClient)
 	taskSvc := services.NewTaskService(taskRepo, cacheClient)
@@ -123,7 +120,7 @@ func NewServer() (*Server, error) {
 	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient)
 
 	// handlers
-	authHandler := handlers.NewAuthHandler(authSvc)
+	authHandler := handlers.NewAuthHandler(authSvc, cfg.ClientURL)
 	homeHandler := handlers.NewHomeHandler(homeSvc)
 	roomHandler := handlers.NewRoomHandler(roomSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)

@@ -1,35 +1,40 @@
-FROM golang:1.25
+FROM golang:1.25 AS builder
+
+RUN apt-get update && apt-get install -y \
+    libtesseract-dev \
+    libleptonica-dev \
+    tesseract-ocr \
+    tesseract-ocr-rus \
+    tesseract-ocr-eng \
+    tesseract-ocr-ukr \
+    tesseract-ocr-pol \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
 COPY . .
 
-# Build the binary
-# -ldflags="-w -s" reduces binary size by stripping debug information
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o main ./cmd/server
+RUN go build -ldflags="-w -s" -o main ./cmd/server
 
-# Final stage
-FROM alpine:latest
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-rus \
+    tesseract-ocr-eng \
+    tesseract-ocr-ukr \
+    tesseract-ocr-pol \
+    libtesseract5 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install ca-certificates for HTTPS
-RUN apk --no-cache add ca-certificates
-
-# Copy binary from builder
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libleptonica.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /app/main .
-# We expect .env.prod to be passed as .env or mounted, but here we copy it if it exists in build context
-# However, usually envs are injected via docker-compose or k8s.
-# For this setup, we'll assume .env is mounted or we copy a default if needed.
-# The user asked for .env.prod.
 
-# Expose port
 EXPOSE 8000
-
-# Run the binary
 CMD ["./main"]

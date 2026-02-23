@@ -19,17 +19,22 @@ type Config struct {
 	ClientSecret string
 	CallbackURL  string
 	ClientURL    string
+	ServerURL    string
 
 	// REDIS
 	RedisADDR     string
 	RedisPassword string
+	RedisTLS      bool
 
-	// SMTP
+	// SMTP (legacy, kept for local dev)
 	SMTPHost string
 	SMTPPort int
 	SMTPUser string
 	SMTPPass string
 	SMTPFrom string
+
+	// Brevo API
+	BrevoAPIKey string
 
 	// AWS
 	AWSRegion          string
@@ -44,26 +49,28 @@ type Config struct {
 
 func Load() *Config {
 	// Load .env file explicitly from the mounted volume path
-	if err := godotenv.Load("/app/.env"); err != nil {
-		log.Println("Error loading .env file:", err.Error())
-		log.Fatal(".env file is not exist or load incorrectly")
+	if os.Getenv("MODE") == "dev" {
+		if err := godotenv.Load("/app/.env"); err != nil {
+			log.Println("Error loading .env file:", err.Error())
+			log.Fatal(".env file is not exist or load incorrectly")
+		}
 	}
-
-	mode := os.Getenv("MODE")
 
 	// Determine Redis keys based on environment mode
 	redisAddrKey := "REDIS_ADDR"
 
-	if mode == "dev" {
+	if os.Getenv("MODE") == "dev" {
 		redisAddrKey = "REDIS_ADDR_DEV"
 	}
 
-	// Parse necessary integer fields
-	smtpPortStr := os.Getenv("SMTP_PORT")
-	smtpPort, err := strconv.Atoi(smtpPortStr)
-	if err != nil {
-		log.Fatalf("Error parsing SMTP_PORT '%s': %v", smtpPortStr, err)
+	redisTLS := true
+	redisTLSStr := os.Getenv("REDIS_TLS")
+	if redisTLSStr != "true" {
+		redisTLS = false
 	}
+
+	// Parse optional SMTP port (not required when using Brevo API)
+	smtpPort, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
 
 	// Initialize configuration struct using determined keys
 	cfg := &Config{
@@ -74,15 +81,19 @@ func Load() *Config {
 		ClientSecret: getEnvRequired("GOOGLE_CLIENT_SECRET"),
 		CallbackURL:  getEnvRequired("CLIENT_CALLBACK_URL"),
 		ClientURL:    getEnvRequired("CLIENT_URL"),
+		ServerURL:    getEnvRequired("SERVER_URL"),
 
 		RedisADDR:     getEnvRequired(redisAddrKey),
 		RedisPassword: getEnvRequired("REDIS_PASSWORD"),
+		RedisTLS:      redisTLS,
 
-		SMTPHost: getEnvRequired("SMTP_HOST"),
+		SMTPHost: getEnv("SMTP_HOST", ""),
 		SMTPPort: smtpPort,
-		SMTPUser: getEnvRequired("SMTP_USER"),
-		SMTPPass: getEnvRequired("SMTP_PASSWORD"),
-		SMTPFrom: getEnvRequired("SMTP_FROM"),
+		SMTPUser: getEnv("SMTP_USER", ""),
+		SMTPPass: getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom: getEnv("SMTP_FROM", ""),
+
+		BrevoAPIKey: getEnvRequired("BREVO_API_KEY"),
 
 		AWSAccessKeyID:     getEnvRequired("AWS_ACCESS_KEY"),
 		AWSSecretAccessKey: getEnvRequired("AWS_SECRET_ACCESS_KEY"),

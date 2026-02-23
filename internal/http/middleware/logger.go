@@ -27,6 +27,10 @@ func RequestResponseLogger(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(rec, r)
 
+		if r.URL.Path == "/" {
+			return
+		}
+
 		duration := time.Since(start).Milliseconds()
 		logger.Info.Printf(
 			"%s %s -> %d (%dms)",
