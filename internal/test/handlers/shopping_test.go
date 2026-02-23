@@ -326,7 +326,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 					return nil, errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "service error",
+				expectedBody:   "Failed to retrieve categories",
 			},
 		}
 
@@ -393,7 +393,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 					return nil, errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "service error",
+				expectedBody:   "Failed to retrieve category",
 			},
 		}
 
@@ -479,7 +479,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 					return errors.New("edit failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "edit failed",
+				expectedBody:   "Failed to update category",
 			},
 		}
 
@@ -555,7 +555,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 					return errors.New("delete failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "delete failed",
+				expectedBody:   "Failed to delete category",
 			},
 		}
 
@@ -617,7 +617,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 					return errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "service error",
+				expectedBody:   "Failed to create item",
 			},
 		}
 
@@ -677,7 +677,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 					return nil, errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "service error",
+				expectedBody:   "Failed to retrieve item",
 			},
 		}
 
@@ -732,7 +732,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 					return nil, errors.New("service error")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "service error",
+				expectedBody:   "Failed to retrieve items",
 			},
 		}
 
@@ -802,7 +802,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 					return errors.New("edit failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "edit failed",
+				expectedBody:   "Failed to update item",
 			},
 		}
 
@@ -863,7 +863,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 					return errors.New("delete failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "delete failed",
+				expectedBody:   "Failed to delete item",
 			},
 		}
 
@@ -918,7 +918,7 @@ func TestShoppingHandler_Items(t *testing.T) {
 					return errors.New("mark failed")
 				},
 				expectedStatus: http.StatusInternalServerError,
-				expectedBody:   "mark failed",
+				expectedBody:   "Failed to mark item as bought",
 			},
 		}
 

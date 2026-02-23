@@ -67,11 +67,7 @@ func (s *AuthService) Register(ctx context.Context, email, password, name string
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (string, *models.User, error) {
-	user, err := s.repo.FindByEmail(ctx, email)
-
-	if err != nil {
-		return "", nil, err
-	}
+	user, _ := s.repo.FindByEmail(ctx, email)
 
 	// Timing attack mitigation: always perform password comparison
 	// Use dummy hash if user not found to ensure constant-time response

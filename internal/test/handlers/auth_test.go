@@ -167,7 +167,7 @@ func TestAuthHandler_Register(t *testing.T) {
 				return errors.New("user already exists")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "user already exists",
+			expectedBody:   "Registration failed",
 		},
 		{
 			name: "Send Verification Failed",
@@ -251,7 +251,7 @@ func TestAuthHandler_Login(t *testing.T) {
 				return nil, errors.New("user not found")
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "user not found",
+			expectedBody:   "Invalid credentials",
 		},
 		{
 			name: "Email Not Verified",

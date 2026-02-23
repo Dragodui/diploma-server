@@ -204,7 +204,7 @@ func TestBillHandler_GetByID(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve bill",
 		},
 	}
 
@@ -259,7 +259,7 @@ func TestBillHandler_Delete(t *testing.T) {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "delete failed",
+			expectedBody:   "Failed to delete bill",
 		},
 	}
 
@@ -314,7 +314,7 @@ func TestBillHandler_MarkPayed(t *testing.T) {
 				return errors.New("update failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "update failed",
+			expectedBody:   "Failed to mark bill as paid",
 		},
 	}
 

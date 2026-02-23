@@ -286,8 +286,8 @@ func TestAuthService_Login_JWTTokenValid(t *testing.T) {
 	// Check claims
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	require.True(t, ok)
-	assert.Equal(t, float64(42), claims["user_id"])
-	assert.Equal(t, "test@example.com", claims["email"])
+	assert.Equal(t, float64(42), claims["uid"])
+	assert.Equal(t, "test@example.com", claims["sub"])
 }
 
 // HandleCallback Tests (OAuth)
@@ -298,9 +298,14 @@ func TestAuthService_HandleCallback_NewUser(t *testing.T) {
 		AvatarURL: "https://example.com/avatar.jpg",
 	}
 
+	callCount := 0
 	repo := &mockUserRepo{
 		FindByEmailFunc: func(ctx context.Context, email string) (*models.User, error) {
-			return nil, errors.New("not found")
+			callCount++
+			if callCount == 1 {
+				return nil, errors.New("not found")
+			}
+			return &models.User{ID: 1, Email: email, Name: "OAuth User", EmailVerified: true}, nil
 		},
 		CreateFunc: func(ctx context.Context, u *models.User) error {
 			require.Equal(t, "oauth@example.com", u.Email)
@@ -317,7 +322,7 @@ func TestAuthService_HandleCallback_NewUser(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
-	assert.Equal(t, "http://localhost:3000/auth/callback", redirectURL)
+	assert.Equal(t, "http://localhost:3000/oauth-success", redirectURL)
 }
 
 func TestAuthService_HandleCallback_ExistingUser(t *testing.T) {
@@ -350,14 +355,19 @@ func TestAuthService_HandleCallback_ExistingUser(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
-	assert.Equal(t, "http://localhost:3000/auth/callback", redirectURL)
+	assert.Equal(t, "http://localhost:3000/oauth-success", redirectURL)
 }
 
 // GoogleSignIn Tests
 func TestAuthService_GoogleSignIn_NewUser(t *testing.T) {
+	callCount := 0
 	repo := &mockUserRepo{
 		FindByEmailFunc: func(ctx context.Context, email string) (*models.User, error) {
-			return nil, errors.New("not found")
+			callCount++
+			if callCount == 1 {
+				return nil, errors.New("not found")
+			}
+			return &models.User{ID: 10, Email: email, Name: "Google User", EmailVerified: true, Avatar: "https://example.com/avatar.jpg"}, nil
 		},
 		CreateFunc: func(ctx context.Context, u *models.User) error {
 			require.Equal(t, "google@example.com", u.Email)

@@ -210,7 +210,7 @@ func TestPollHandler_Create(t *testing.T) {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to create poll",
 		},
 	}
 
@@ -273,7 +273,7 @@ func TestPollHandler_GetAllByHomeID(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve polls",
 		},
 	}
 
@@ -342,7 +342,7 @@ func TestPollHandler_GetByID(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve poll",
 		},
 	}
 
@@ -411,7 +411,7 @@ func TestPollHandler_Close(t *testing.T) {
 				return errors.New("close failed")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "close failed",
+			expectedBody:   "Failed to close poll",
 		},
 	}
 
@@ -480,7 +480,7 @@ func TestPollHandler_Delete(t *testing.T) {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "delete failed",
+			expectedBody:   "Failed to delete poll",
 		},
 	}
 
@@ -566,7 +566,7 @@ func TestPollHandler_Vote(t *testing.T) {
 				return errors.New("vote failed")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "vote failed",
+			expectedBody:   "Failed to submit vote",
 		},
 	}
 

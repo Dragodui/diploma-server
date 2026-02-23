@@ -115,7 +115,7 @@ func TestNotificationHandler_GetByUserID(t *testing.T) {
 				return nil, errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "database error",
+			expectedBody:   "Failed to retrieve notifications",
 		},
 	}
 
@@ -176,7 +176,7 @@ func TestNotificationHandler_MarkAsRead(t *testing.T) {
 				return errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "database error",
+			expectedBody:   "Failed to mark notification as read",
 		},
 	}
 
@@ -234,7 +234,7 @@ func TestNotificationHandler_GetByHomeID(t *testing.T) {
 				return nil, errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "database error",
+			expectedBody:   "Failed to retrieve notifications",
 		},
 	}
 
@@ -297,7 +297,7 @@ func TestNotificationHandler_MarkAsReadForHome(t *testing.T) {
 				return errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "database error",
+			expectedBody:   "Failed to mark notification as read",
 		},
 	}
 

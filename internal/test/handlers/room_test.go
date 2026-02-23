@@ -161,7 +161,7 @@ func TestRoomHandler_GetByID(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve room",
 		},
 	}
 
@@ -217,7 +217,7 @@ func TestRoomHandler_GetByHomeID(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve rooms",
 		},
 	}
 
@@ -272,7 +272,7 @@ func TestRoomHandler_Delete(t *testing.T) {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "delete failed",
+			expectedBody:   "Failed to delete room",
 		},
 	}
 

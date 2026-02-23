@@ -140,7 +140,7 @@ func TestUserHandler_GetMe(t *testing.T) {
 				return nil, errors.New("database error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "database error",
+			expectedBody:   "Failed to retrieve user",
 		},
 	}
 

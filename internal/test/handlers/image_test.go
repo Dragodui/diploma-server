@@ -118,7 +118,7 @@ func TestImageHandler_UploadImage(t *testing.T) {
 				return "", errors.New("S3 upload failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "S3 upload failed",
+			expectedBody:   "Failed to upload image",
 		},
 	}
 

@@ -429,7 +429,7 @@ func TestHomeHandler_Delete(t *testing.T) {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "delete failed",
+			expectedBody:   "Error delete home",
 		},
 		{
 			name:     "Unauthorized - Not Admin",
@@ -499,7 +499,7 @@ func TestHomeHandler_Leave(t *testing.T) {
 				return errors.New("leave failed")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "leave failed",
+			expectedBody:   "Error leave home",
 		},
 		{
 			name:           "Unauthorized",
@@ -562,7 +562,7 @@ func TestHomeHandler_RemoveMember(t *testing.T) {
 				return errors.New("remove failed")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "remove failed",
+			expectedBody:   "Error remove member",
 		},
 		{
 			name:           "Unauthorized",

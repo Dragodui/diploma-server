@@ -256,7 +256,7 @@ func TestTaskHandler_GetByID(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve task",
 		},
 	}
 
@@ -315,7 +315,7 @@ func TestTaskHandler_GetTasksByHomeID(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve tasks",
 		},
 	}
 
@@ -370,7 +370,7 @@ func TestTaskHandler_DeleteTask(t *testing.T) {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "delete failed",
+			expectedBody:   "Failed to delete task",
 		},
 	}
 
@@ -490,7 +490,7 @@ func TestTaskHandler_GetAssignmentsForUser(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve assignments",
 		},
 	}
 
@@ -545,7 +545,7 @@ func TestTaskHandler_GetClosestAssignmentForUser(t *testing.T) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   "Failed to retrieve assignment",
 		},
 	}
 
@@ -600,7 +600,7 @@ func TestTaskHandler_MarkAssignmentCompleted(t *testing.T) {
 				return errors.New("mark failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "mark failed",
+			expectedBody:   "Failed to mark assignment as completed",
 		},
 	}
 
@@ -659,7 +659,7 @@ func TestTaskHandler_DeleteAssignment(t *testing.T) {
 				return errors.New("delete failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "delete failed",
+			expectedBody:   "Failed to delete assignment",
 		},
 	}
 
@@ -715,7 +715,7 @@ func TestTaskHandler_ReassignRoom(t *testing.T) {
 				return errors.New("reassign failed")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "reassign failed",
+			expectedBody:   "Failed to reassign room",
 		},
 	}
 
