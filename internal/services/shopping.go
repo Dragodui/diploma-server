@@ -100,12 +100,12 @@ func (s *ShoppingService) FindCategoryByID(ctx context.Context, categoryID, home
 
 	category, err := s.repo.FindCategoryByID(ctx, categoryID)
 
-	if category.HomeID != homeID {
-		return nil, errCategoryNotBelongsToHome
-	}
-
 	if err != nil {
 		return nil, err
+	}
+
+	if category.HomeID != homeID {
+		return nil, errCategoryNotBelongsToHome
 	}
 
 	if err := utils.WriteToCache(ctx, key, category, s.cache); err != nil {
