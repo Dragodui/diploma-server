@@ -3,8 +3,10 @@ package services
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
+	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services"
@@ -12,6 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	logger.Init(os.DevNull)
+	os.Exit(m.Run())
+}
 
 // Mock HomeRepository
 type mockHomeRepo struct {
