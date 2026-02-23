@@ -71,7 +71,7 @@ func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	task, err := h.svc.GetTaskByID(r.Context(), taskID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve task", http.StatusInternalServerError)
 		return
 	}
 
@@ -101,7 +101,7 @@ func (h *TaskHandler) GetTasksByHomeID(w http.ResponseWriter, r *http.Request) {
 	}
 	tasks, err := h.svc.GetTasksByHomeID(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve tasks", http.StatusInternalServerError)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.svc.DeleteTask(r.Context(), taskID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to delete task", http.StatusInternalServerError)
 		return
 	}
 
@@ -191,7 +191,7 @@ func (h *TaskHandler) GetAssignmentsForUser(w http.ResponseWriter, r *http.Reque
 	}
 	assignments, err := h.svc.GetAssignmentsForUser(r.Context(), userID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve assignments", http.StatusInternalServerError)
 		return
 	}
 
@@ -223,7 +223,7 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 
 	assignment, err := h.svc.GetClosestAssignmentForUser(r.Context(), userID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve assignment", http.StatusInternalServerError)
 		return
 	}
 
@@ -262,7 +262,7 @@ func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.svc.MarkAssignmentCompleted(r.Context(), assignmentRequest.AssignmentID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to mark assignment as completed", http.StatusInternalServerError)
 		return
 	}
 
@@ -292,7 +292,7 @@ func (h *TaskHandler) MarkAssignmentUncompleted(w http.ResponseWriter, r *http.R
 	}
 
 	if err := h.svc.MarkAssignmentUncompleted(r.Context(), assignmentRequest.AssignmentID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to mark assignment as uncompleted", http.StatusInternalServerError)
 		return
 	}
 
@@ -334,7 +334,7 @@ func (h *TaskHandler) MarkTaskCompleted(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.svc.MarkTaskCompletedForUser(r.Context(), taskID, userID, homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to complete task", http.StatusInternalServerError)
 		return
 	}
 
@@ -364,7 +364,7 @@ func (h *TaskHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.DeleteAssignment(r.Context(), assignmentID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to delete assignment", http.StatusInternalServerError)
 		return
 	}
 
@@ -394,7 +394,7 @@ func (h *TaskHandler) ReassignRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.ReassignRoom(r.Context(), req.TaskID, req.RoomID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to reassign room", http.StatusBadRequest)
 		return
 	}
 

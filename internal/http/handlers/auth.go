@@ -23,31 +23,42 @@ func NewAuthHandler(svc services.IAuthService, clientURL string) *AuthHandler {
 
 // RegenerateVerify godoc
 // @Summary      Regenerate verification email
-// @Description  Resends the verification email to the user
+// @Description  Resends the verification email to the user using token (preferred) or email
 // @Tags         auth
 // @Accept       json
 // @Produce      json
-// @Param        email query string true "User Email"
+// @Param        token query string false "Old Verification Token"
+// @Param        email query string false "User Email"
 // @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /auth/verify/regenerate [get]
 func (h *AuthHandler) RegenerateVerify(w http.ResponseWriter, r *http.Request) {
-	// oldToken := chi.URLParam(r, "old_token")
+	oldToken := r.URL.Query().Get("token")
 	email := r.URL.Query().Get("email")
-	// if oldToken != "" {
-	// 	user, err := h.svc.GetUserByVerifyToken(oldToken)
-	// 	if err != nil {
-	// 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// 	email = user.Email
 
-	// }
-	if err := h.svc.SendVerificationEmail(r.Context(), email); err != nil {
-		log.Printf("ERROR: SendVerificationEmail for %s: %v", email, err)
-		utils.JSONError(w, "Failed to send verification email", http.StatusInternalServerError)
+	// Prefer token-based regeneration (more secure - prevents spam)
+	if oldToken != "" {
+		user, err := h.svc.GetUserByVerifyToken(r.Context(), oldToken)
+		if err != nil {
+			utils.SafeError(w, err, "Invalid or expired token", http.StatusBadRequest)
+			return
+		}
+		email = user.Email
+	} else if email == "" {
+		utils.JSONError(w, "Email or token required", http.StatusBadRequest)
 		return
 	}
+
+	if err := h.svc.SendVerificationEmail(r.Context(), email); err != nil {
+		utils.SafeError(w, err, "Failed to send verification email", http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status":  true,
+		"message": "Verification email sent",
+	})
 }
 
 // Register godoc
@@ -75,7 +86,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	err := h.svc.Register(r.Context(), input.Email, input.Password, input.Name)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Registration failed", http.StatusBadRequest)
 		return
 	}
 
@@ -117,7 +128,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.svc.GetUserByEmail(r.Context(), input.Email)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusUnauthorized)
+		utils.SafeError(w, err, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
@@ -171,14 +182,24 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	r.URL.RawQuery = q.Encode()
 	user, err := gothic.CompleteUserAuth(w, r)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "OAuth authentication failed", http.StatusInternalServerError)
 		return
 	}
-	redirectURL, err := h.svc.HandleCallback(r.Context(), user)
 
+	// SECURITY FIX: Get token and redirect URL separately
+	// Token is no longer exposed in URL to prevent:
+	// - Browser history leakage
+	// - Server log exposure
+	// - Referrer header leakage
+	token, redirectURL, err := h.svc.HandleCallback(r.Context(), user)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to complete authentication", http.StatusInternalServerError)
+		return
 	}
+
+	// Set token in HTTP-only secure cookie instead of URL parameter
+	// TODO: Set secure=true in production (requires HTTPS)
+	utils.SetAuthCookie(w, token, false)
 
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
@@ -264,7 +285,7 @@ func (h *AuthHandler) GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	token, user, err := h.svc.GoogleSignIn(r.Context(), input.Email, input.Name, input.Avatar)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Google sign-in failed", http.StatusInternalServerError)
 		return
 	}
 

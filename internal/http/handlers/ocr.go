@@ -38,18 +38,18 @@ func (h *OCRHandler) ProcessImage(w http.ResponseWriter, r *http.Request) {
 	var req models.OCRRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.JSONError(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest)
+		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	if err := h.validate.Struct(req); err != nil {
-		utils.JSONError(w, "Validation error: "+err.Error(), http.StatusBadRequest)
+		utils.JSONValidationErrors(w, err)
 		return
 	}
 
 	result, err := h.svc.ProcessImage(r.Context(), req.ImageURL, req.Language)
 	if err != nil {
-		utils.JSONError(w, "OCR processing failed: "+err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "OCR processing failed", http.StatusInternalServerError)
 		return
 	}
 

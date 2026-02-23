@@ -80,7 +80,7 @@ func (h *HomeHandler) RegenerateInviteCode(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := h.svc.RegenerateInviteCode(r.Context(), homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to regenerate invite code", http.StatusBadRequest)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.JoinHomeByCode(r.Context(), req.Code, userID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to join home", http.StatusBadRequest)
 		return
 	}
 
@@ -152,7 +152,8 @@ func (h HomeHandler) GetUserHome(w http.ResponseWriter, r *http.Request) {
 
 	home, err := h.svc.GetUserHome(r.Context(), userID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+
+		utils.SafeError(w, err, "Error get user home", http.StatusBadRequest)
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *HomeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 	home, err := h.svc.GetHomeByID(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Error get home by ID", http.StatusInternalServerError)
 		return
 	}
 	if home == nil {
@@ -220,7 +221,7 @@ func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.DeleteHome(r.Context(), homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Error delete home", http.StatusInternalServerError)
 		return
 	}
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
@@ -266,7 +267,7 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.LeaveHome(r.Context(), homeID, userID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Error leave home", http.StatusBadRequest)
 		return
 	}
 
@@ -320,7 +321,7 @@ func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.RemoveMember(r.Context(), homeID, userID, currentUserID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Error remove member", http.StatusBadRequest)
 		return
 	}
 

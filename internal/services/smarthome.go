@@ -2,11 +2,13 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services/homeassistant"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -20,10 +22,10 @@ type ISmartHomeService interface {
 	// Device management
 	AddDevice(ctx context.Context, homeID int, entityID, name string, deviceType string, roomID *int, icon *string) error
 	RemoveDevice(ctx context.Context, deviceID int) error
-	UpdateDevice(ctx context.Context, deviceID int, name string, roomID *int, icon *string) error
+	UpdateDevice(ctx context.Context, deviceID, homeID int, name string, roomID *int, icon *string) error
 	GetDevices(ctx context.Context, homeID int) ([]models.SmartDevice, error)
 	GetDevicesByRoom(ctx context.Context, roomID int) ([]models.SmartDevice, error)
-	GetDeviceByID(ctx context.Context, deviceID int) (*models.SmartDevice, error)
+	GetDeviceByID(ctx context.Context, deviceID, homeID int) (*models.SmartDevice, error)
 
 	// Device control & state
 	GetDeviceState(ctx context.Context, homeID int, entityID string) (*homeassistant.HAState, error)
@@ -62,6 +64,12 @@ func (s *SmartHomeService) getHAClient(ctx context.Context, homeID int) (*homeas
 // Config management
 
 func (s *SmartHomeService) ConnectHA(ctx context.Context, homeID int, url, token string) error {
+	// Validate URL to prevent SSRF attacks
+	// Block localhost, private IPs, AWS metadata, etc.
+	if err := utils.ValidateExternalURL(url); err != nil {
+		return fmt.Errorf("invalid Home Assistant URL: %w", err)
+	}
+
 	// Test Connection first
 	client := homeassistant.NewHAClient(url, token)
 	if err := client.CheckConnection(ctx); err != nil {
@@ -157,8 +165,8 @@ func (s *SmartHomeService) RemoveDevice(ctx context.Context, deviceID int) error
 	return s.repo.DeleteDevice(ctx, deviceID)
 }
 
-func (s *SmartHomeService) UpdateDevice(ctx context.Context, deviceID int, name string, roomID *int, icon *string) error {
-	device, err := s.repo.GetDeviceByID(ctx, deviceID)
+func (s *SmartHomeService) UpdateDevice(ctx context.Context, deviceID, homeID int, name string, roomID *int, icon *string) error {
+	device, err := s.GetDeviceByID(ctx, deviceID, homeID)
 	if err != nil {
 		return err
 	}
@@ -181,8 +189,17 @@ func (s *SmartHomeService) GetDevicesByRoom(ctx context.Context, roomID int) ([]
 	return s.repo.GetDevicesByRoomID(ctx, roomID)
 }
 
-func (s *SmartHomeService) GetDeviceByID(ctx context.Context, deviceID int) (*models.SmartDevice, error) {
-	return s.repo.GetDeviceByID(ctx, deviceID)
+func (s *SmartHomeService) GetDeviceByID(ctx context.Context, deviceID, homeID int) (*models.SmartDevice, error) {
+	device, err := s.repo.GetDeviceByID(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if device.HomeID != homeID {
+		return nil, errors.New("device is not from your home")
+	}
+
+	return device, nil
 }
 
 // Device control & state

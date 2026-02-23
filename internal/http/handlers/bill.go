@@ -42,7 +42,7 @@ func (h *BillHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 
 	bills, err := h.svc.GetBillsByHomeID(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve bills", http.StatusInternalServerError)
 		return
 	}
 
@@ -119,7 +119,7 @@ func (h *BillHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 	bill, err := h.svc.GetBillByID(r.Context(), billID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve bill", http.StatusInternalServerError)
 		return
 	}
 	utils.JSON(w, http.StatusOK, map[string]interface{}{
@@ -149,7 +149,7 @@ func (h *BillHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.Delete(r.Context(), billID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to delete bill", http.StatusInternalServerError)
 		return
 	}
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Deleted successfully"})
@@ -177,7 +177,7 @@ func (h *BillHandler) MarkPayed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.MarkBillPayed(r.Context(), billID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to mark bill as paid", http.StatusInternalServerError)
 		return
 	}
 

@@ -52,7 +52,7 @@ func (h *PollHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Create(r.Context(), homeID, req.Question, req.Type, req.Options, req.AllowRevote, req.EndsAt); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to create poll", http.StatusBadRequest)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (h *PollHandler) GetAllByHomeID(w http.ResponseWriter, r *http.Request) {
 
 	polls, err := h.svc.GetAllPollsByHomeID(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve polls", http.StatusInternalServerError)
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *PollHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	poll, err := h.svc.GetPollByID(r.Context(), pollID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve poll", http.StatusInternalServerError)
 		return
 	}
 	if poll == nil {
@@ -149,7 +149,7 @@ func (h *PollHandler) Close(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.ClosePoll(r.Context(), pollID, homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to close poll", http.StatusBadRequest)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *PollHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Delete(r.Context(), pollID, homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to delete poll", http.StatusBadRequest)
 		return
 	}
 
@@ -227,7 +227,7 @@ func (h *PollHandler) Vote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Vote(r.Context(), userID, req.OptionID, homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to submit vote", http.StatusBadRequest)
 		return
 	}
 
@@ -269,7 +269,7 @@ func (h *PollHandler) Unvote(w http.ResponseWriter, r *http.Request) {
 			utils.JSONError(w, "Revoting is not allowed for this poll", http.StatusForbidden)
 			return
 		}
-		utils.JSONError(w, err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Failed to remove vote", http.StatusBadRequest)
 		return
 	}
 

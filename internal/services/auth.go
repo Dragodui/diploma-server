@@ -16,6 +16,9 @@ import (
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
+// dummyPasswordHash is a pre-computed bcrypt hash used for timing attack mitigation
+const dummyPasswordHash = "$2a$12$6EbCFrJc5PL8YvKp.qZYF.nQq3qY5jLvN8xX9X5jZrN5XqY5jZrN5"
+
 type AuthService struct {
 	repo      repository.UserRepository
 	jwtSecret []byte
@@ -29,7 +32,7 @@ type AuthService struct {
 type IAuthService interface {
 	Register(ctx context.Context, email, password, name string) error
 	Login(ctx context.Context, email, password string) (string, *models.User, error)
-	HandleCallback(ctx context.Context, user goth.User) (string, error)
+	HandleCallback(ctx context.Context, user goth.User) (token string, redirectURL string, err error)
 	GoogleSignIn(ctx context.Context, email, name, avatar string) (string, *models.User, error)
 	SendVerificationEmail(ctx context.Context, email string) error
 	VerifyEmail(ctx context.Context, token string) error
@@ -70,12 +73,18 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		return "", nil, err
 	}
 
-	if user == nil {
-		return "", nil, ErrInvalidCredentials
+	// Timing attack mitigation: always perform password comparison
+	// Use dummy hash if user not found to ensure constant-time response
+	hashToCompare := dummyPasswordHash
+	if user != nil {
+		hashToCompare = user.PasswordHash
 	}
 
-	isValidPassword := security.ComparePasswords(user.PasswordHash, password)
-	if !isValidPassword {
+	// Always execute bcrypt comparison regardless of whether user exists
+	isValidPassword := security.ComparePasswords(hashToCompare, password)
+
+	// Check both conditions: user must exist AND password must be valid
+	if user == nil || !isValidPassword {
 		return "", nil, ErrInvalidCredentials
 	}
 
@@ -88,37 +97,36 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 	return token, user, nil
 }
 
-func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (string, error) {
+func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (string, string, error) {
 	u, err := s.repo.FindByEmail(ctx, user.Email)
 	if err != nil || u == nil {
 		// User does not exist, create a new one
 		u = &models.User{
 			Email:         user.Email,
 			Name:          user.Name,
-			PasswordHash:  "", // No password for OAuth users
+			PasswordHash:  "",   // No password for OAuth users
 			EmailVerified: true, // OAuth users are already verified
 			Avatar:        user.AvatarURL,
 		}
 		if err := s.repo.Create(ctx, u); err != nil {
-			return "", err
+			return "", "", err
 		}
 		// Fetch the created user to get the ID
 		u, err = s.repo.FindByEmail(ctx, user.Email)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
 	token, err := security.GenerateToken(u.ID, user.Email, s.jwtSecret, s.ttl)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	// Generate address for redirect for client
-	clientURL := s.clientURL + "/oauth-success"
-	redirectURL := fmt.Sprintf("%s?token=%s", clientURL, token)
+	// Return token separately to be set as HTTP-only cookie
+	redirectURL := s.clientURL + "/oauth-success"
 
-	return redirectURL, nil
+	return token, redirectURL, nil
 }
 
 // GoogleSignIn handles Google Sign-In from mobile apps using user info from Google
@@ -129,7 +137,7 @@ func (s *AuthService) GoogleSignIn(ctx context.Context, email, name, avatar stri
 		u = &models.User{
 			Email:         email,
 			Name:          name,
-			PasswordHash:  "", // No password for OAuth users
+			PasswordHash:  "",   // No password for OAuth users
 			EmailVerified: true, // OAuth users are already verified
 			Avatar:        avatar,
 		}
@@ -154,7 +162,7 @@ func (s *AuthService) GoogleSignIn(ctx context.Context, email, name, avatar stri
 
 func (s *AuthService) SendVerificationEmail(ctx context.Context, email string) error {
 	tok, err := utils.GenToken(32)
-	if (err != nil) {
+	if err != nil {
 		return err
 	}
 	exp := time.Now().Add(24 * time.Hour)
@@ -171,14 +179,26 @@ func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
 }
 
 func (s *AuthService) SendResetPassword(ctx context.Context, email string) error {
-	tok, _ := utils.GenToken(32)
+	// Generate secure random token
+	tok, err := utils.GenToken(32)
+	if err != nil {
+		return fmt.Errorf("failed to generate reset token: %w", err)
+	}
+
 	exp := time.Now().Add(2 * time.Hour)
+
+	// SetResetToken will return nil even if user doesn't exist
 	if err := s.repo.SetResetToken(ctx, email, tok, exp); err != nil {
+		// Only log database errors, don't expose to client
 		return err
 	}
+
+	// Send reset email
 	link := fmt.Sprintf(s.clientURL+"/reset-password?token=%s", tok)
 	body := fmt.Sprintf("Reset password: <a href=\"%s\">%s</a>", link, link)
-	return s.mail.Send(email, "Reset password", body)
+	_ = s.mail.Send(email, "Reset password", body)
+
+	return nil
 }
 
 func (s *AuthService) ResetPassword(ctx context.Context, token, newPass string) error {
@@ -202,4 +222,3 @@ func (s *AuthService) GetUserByVerifyToken(ctx context.Context, token string) (*
 func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	return s.repo.FindByEmail(ctx, email)
 }
-

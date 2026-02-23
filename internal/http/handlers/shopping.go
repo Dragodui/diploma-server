@@ -80,7 +80,7 @@ func (h *ShoppingHandler) GetAllCategories(w http.ResponseWriter, r *http.Reques
 	categories, err := h.svc.FindAllCategoriesForHome(r.Context(), homeID)
 
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve categories", http.StatusInternalServerError)
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *ShoppingHandler) GetCategoryByID(w http.ResponseWriter, r *http.Request
 
 	category, err := h.svc.FindCategoryByID(r.Context(), categoryID, homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve category", http.StatusInternalServerError)
 		return
 	}
 
@@ -157,7 +157,7 @@ func (h *ShoppingHandler) DeleteCategory(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.svc.DeleteCategory(r.Context(), categoryID, homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to delete category", http.StatusInternalServerError)
 		return
 	}
 
@@ -202,7 +202,7 @@ func (h *ShoppingHandler) EditCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.EditCategory(r.Context(), categoryID, homeID, req.Name, req.Icon, req.Color); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to update category", http.StatusInternalServerError)
 		return
 	}
 
@@ -240,7 +240,7 @@ func (h *ShoppingHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 
 	if err := h.svc.CreateItem(r.Context(), req.CategoryID, userID, req.Name, req.Image, req.Link); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to create item", http.StatusInternalServerError)
 		return
 	}
 
@@ -270,7 +270,7 @@ func (h *ShoppingHandler) GetItemByID(w http.ResponseWriter, r *http.Request) {
 
 	item, err := h.svc.FindItemByID(r.Context(), itemID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve item", http.StatusInternalServerError)
 		return
 	}
 
@@ -302,7 +302,7 @@ func (h *ShoppingHandler) GetItemsByCategoryID(w http.ResponseWriter, r *http.Re
 
 	items, err := h.svc.FindItemsByCategoryID(r.Context(), categoryID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve items", http.StatusInternalServerError)
 		return
 	}
 
@@ -333,7 +333,7 @@ func (h *ShoppingHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.DeleteItem(r.Context(), itemID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to delete item", http.StatusInternalServerError)
 		return
 	}
 
@@ -362,7 +362,7 @@ func (h *ShoppingHandler) MarkIsBought(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.MarkIsBought(r.Context(), itemID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to mark item as bought", http.StatusInternalServerError)
 		return
 	}
 
@@ -399,7 +399,7 @@ func (h *ShoppingHandler) EditItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.EditItem(r.Context(), itemID, req.Name, req.Image, req.Link, req.IsBought, req.BoughtAt); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to update item", http.StatusInternalServerError)
 		return
 	}
 

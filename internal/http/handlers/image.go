@@ -31,13 +31,13 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20) // 10mb file limit
 
 	if err != nil {
-		utils.JSONError(w, "Error uploading image: "+err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "Error uploading image", http.StatusBadRequest)
 		return
 	}
 
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		utils.JSONError(w, "File required: "+err.Error(), http.StatusBadRequest)
+		utils.SafeError(w, err, "File required", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
@@ -45,7 +45,7 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	publicPath, err := h.svc.Upload(r.Context(), file, header)
 
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to upload image", http.StatusInternalServerError)
 		return
 	}
 

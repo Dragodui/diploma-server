@@ -70,7 +70,7 @@ func (h *RoomHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	room, err := h.svc.GetRoomByID(r.Context(), roomID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve room", http.StatusInternalServerError)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (h *RoomHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 	}
 	rooms, err := h.svc.GetRoomsByHomeID(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve rooms", http.StatusInternalServerError)
 		return
 	}
 
@@ -132,7 +132,7 @@ func (h *RoomHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err = h.svc.DeleteRoom(r.Context(), roomID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to delete room", http.StatusInternalServerError)
 		return
 	}
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -99,12 +100,23 @@ func (r *userRepo) GetByResetToken(ctx context.Context, token string) (*models.U
 }
 
 func (r *userRepo) SetResetToken(ctx context.Context, email, token string, expiresAt time.Time) error {
-	return r.db.WithContext(ctx).Model(&models.User{}).
+	result := r.db.WithContext(ctx).Model(&models.User{}).
 		Where("email = ?", email).
 		Updates(map[string]interface{}{
 			"reset_token":      token,
 			"reset_expires_at": expiresAt,
-		}).Error
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// We check RowsAffected to know if user exists
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
 }
 
 func (r *userRepo) UpdatePassword(ctx context.Context, userID int, newHash string) error {
@@ -119,4 +131,3 @@ func (r *userRepo) UpdatePassword(ctx context.Context, userID int, newHash strin
 func (r *userRepo) Update(ctx context.Context, user *models.User, updates map[string]interface{}) error {
 	return r.db.WithContext(ctx).Model(user).Updates(updates).Error
 }
-

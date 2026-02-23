@@ -46,7 +46,7 @@ func (h *BillCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.CreateCategory(r.Context(), homeID, req.Name, req.Color); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to create category", http.StatusInternalServerError)
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *BillCategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	categories, err := h.svc.GetCategories(r.Context(), homeID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to retrieve categories", http.StatusInternalServerError)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.DeleteCategory(r.Context(), categoryID, homeID); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to delete category", http.StatusInternalServerError)
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *BillCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	updatedCategory, err := h.svc.UpdateCategory(r.Context(), categoryID, input.Name, input.Color)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		utils.SafeError(w, err, "Failed to update category", http.StatusInternalServerError)
 		return
 	}
 
