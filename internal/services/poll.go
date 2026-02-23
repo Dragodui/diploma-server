@@ -156,6 +156,10 @@ func (s *PollService) Vote(ctx context.Context, userID, optionID, homeID int) er
 		return err
 	}
 
+	if poll.Status == "closed" {
+		return errors.New("poll is closed")
+	}
+
 	// delete from cache
 	pollsKey := utils.GetPollKey(poll.ID)
 	pollsForHomeKey := utils.GetAllPollsForHomeKey(homeID)
