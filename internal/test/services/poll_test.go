@@ -298,6 +298,9 @@ func TestPollService_Vote_PollClosed(t *testing.T) {
 // Unvote Tests
 func TestPollService_Unvote_Success(t *testing.T) {
 	repo := &mockPollRepo{
+		FindPollByIDFunc: func(ctx context.Context, pollID int) (*models.Poll, error) {
+			return &models.Poll{ID: pollID, HomeID: 1, AllowRevote: true}, nil
+		},
 		UnvoteFunc: func(ctx context.Context, userID, pollID int) error {
 			require.Equal(t, 5, userID)
 			require.Equal(t, 1, pollID)
@@ -313,6 +316,9 @@ func TestPollService_Unvote_Success(t *testing.T) {
 
 func TestPollService_Unvote_RepositoryError(t *testing.T) {
 	repo := &mockPollRepo{
+		FindPollByIDFunc: func(ctx context.Context, pollID int) (*models.Poll, error) {
+			return &models.Poll{ID: pollID, HomeID: 1, AllowRevote: true}, nil
+		},
 		UnvoteFunc: func(ctx context.Context, userID, pollID int) error {
 			return errors.New("vote not found")
 		},
