@@ -281,7 +281,7 @@ func TestHomeService_GetUserHome_NotFound(t *testing.T) {
 	}
 
 	svc := setupHomeService(t, repo)
-	_, err := svc.GetUserHome(context.Background(), 5)
+	_, err := svc.GetUserHome(context.Background(), 999)
 
 	assert.Error(t, err)
 }

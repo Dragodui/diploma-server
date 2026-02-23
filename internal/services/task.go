@@ -259,6 +259,9 @@ func (s *TaskService) MarkAssignmentCompleted(ctx context.Context, assignmentID 
 	if err != nil {
 		return err
 	}
+	if assignment == nil {
+		return errors.New("assignment not found")
+	}
 
 	// delete user assignments from cache
 	userAssignmentsKey := utils.GetAssignmentsForUserKey(assignment.UserID)
@@ -301,6 +304,9 @@ func (s *TaskService) MarkAssignmentUncompleted(ctx context.Context, assignmentI
 	assignment, err := s.repo.FindAssignmentByID(ctx, assignmentID)
 	if err != nil {
 		return err
+	}
+	if assignment == nil {
+		return errors.New("assignment not found")
 	}
 
 	// delete user assignments from cache
@@ -398,6 +404,9 @@ func (s *TaskService) DeleteAssignment(ctx context.Context, assignmentID int) er
 	if err != nil {
 		return err
 	}
+	if user == nil {
+		return errors.New("assignment not found")
+	}
 
 	// delete user assignments from cache
 	userAssignmentsKey := utils.GetAssignmentsForUserKey(user.ID)
@@ -438,6 +447,9 @@ func (s *TaskService) ReassignRoom(ctx context.Context, taskID, roomID int) erro
 	task, err := s.repo.FindByID(ctx, taskID)
 	if err != nil {
 		return err
+	}
+	if task == nil {
+		return errors.New("task not found")
 	}
 	homeTasksKey := utils.GetTasksForHomeKey(task.HomeID)
 	if err := utils.DeleteFromCache(ctx, homeTasksKey, s.cache); err != nil {

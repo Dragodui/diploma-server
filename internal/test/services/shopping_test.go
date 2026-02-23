@@ -176,7 +176,7 @@ func TestShoppingService_FindAllCategoriesForHome_Empty(t *testing.T) {
 	}
 
 	svc := setupShoppingService(t, repo)
-	categories, err := svc.FindAllCategoriesForHome(context.Background(), 1)
+	categories, err := svc.FindAllCategoriesForHome(context.Background(), 999)
 
 	assert.NoError(t, err)
 	assert.Len(t, *categories, 0)
@@ -340,6 +340,9 @@ func TestShoppingService_FindItemByID_Success(t *testing.T) {
 // DeleteItem Tests
 func TestShoppingService_DeleteItem_Success(t *testing.T) {
 	repo := &mockShoppingRepo{
+		FindItemByIDFunc: func(ctx context.Context, id int) (*models.ShoppingItem, error) {
+			return &models.ShoppingItem{ID: id, CategoryID: 1}, nil
+		},
 		DeleteItemFunc: func(ctx context.Context, id int) error {
 			require.Equal(t, 1, id)
 			return nil
@@ -355,6 +358,9 @@ func TestShoppingService_DeleteItem_Success(t *testing.T) {
 // MarkIsBought Tests
 func TestShoppingService_MarkIsBought_Success(t *testing.T) {
 	repo := &mockShoppingRepo{
+		FindItemByIDFunc: func(ctx context.Context, id int) (*models.ShoppingItem, error) {
+			return &models.ShoppingItem{ID: id, CategoryID: 1}, nil
+		},
 		MarkIsBoughtFunc: func(ctx context.Context, id int) error {
 			require.Equal(t, 1, id)
 			return nil

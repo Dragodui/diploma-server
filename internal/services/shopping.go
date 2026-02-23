@@ -150,7 +150,7 @@ func (s *ShoppingService) EditCategory(ctx context.Context, categoryID, homeID i
 	updates := map[string]interface{}{}
 
 	if icon != nil {
-		updates["icon"] = icon
+		updates["icon"] = *icon
 	}
 	if name != nil {
 		updates["name"] = *name

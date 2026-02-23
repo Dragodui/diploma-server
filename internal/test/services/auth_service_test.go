@@ -215,7 +215,7 @@ func TestAuthService_Login(t *testing.T) {
 			findByEmail: func(ctx context.Context, email string) (*models.User, error) {
 				return nil, errors.New("not found")
 			},
-			expectedError: "not found",
+			expectedError: "invalid credentials",
 			expectToken:   false,
 		},
 		{

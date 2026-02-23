@@ -253,7 +253,7 @@ func TestTaskService_GetTasksByHomeID_Empty(t *testing.T) {
 	}
 
 	svc := setupTaskService(t, repo)
-	tasks, err := svc.GetTasksByHomeID(context.Background(), 1)
+	tasks, err := svc.GetTasksByHomeID(context.Background(), 999)
 
 	assert.NoError(t, err)
 	assert.Len(t, *tasks, 0)
@@ -262,6 +262,9 @@ func TestTaskService_GetTasksByHomeID_Empty(t *testing.T) {
 // DeleteTask Tests
 func TestTaskService_DeleteTask_Success(t *testing.T) {
 	repo := &mockTaskRepo{
+		FindByIDFunc: func(ctx context.Context, id int) (*models.Task, error) {
+			return &models.Task{ID: id, HomeID: 1}, nil
+		},
 		DeleteFunc: func(ctx context.Context, id int) error {
 			require.Equal(t, 10, id)
 			return nil
@@ -332,7 +335,7 @@ func TestTaskService_GetAssignmentsForUser_Empty(t *testing.T) {
 	}
 
 	svc := setupTaskService(t, repo)
-	assignments, err := svc.GetAssignmentsForUser(context.Background(), 5)
+	assignments, err := svc.GetAssignmentsForUser(context.Background(), 999)
 
 	assert.NoError(t, err)
 	assert.Len(t, *assignments, 0)
@@ -370,7 +373,7 @@ func TestTaskService_GetClosestAssignmentForUser_NotFound(t *testing.T) {
 	}
 
 	svc := setupTaskService(t, repo)
-	_, err := svc.GetClosestAssignmentForUser(context.Background(), 5)
+	_, err := svc.GetClosestAssignmentForUser(context.Background(), 999)
 
 	assert.Error(t, err)
 }
@@ -378,6 +381,9 @@ func TestTaskService_GetClosestAssignmentForUser_NotFound(t *testing.T) {
 // MarkAssignmentCompleted Tests
 func TestTaskService_MarkAssignmentCompleted_Success(t *testing.T) {
 	repo := &mockTaskRepo{
+		FindAssignmentByIDFunc: func(ctx context.Context, assignmentID int) (*models.TaskAssignment, error) {
+			return &models.TaskAssignment{ID: assignmentID, UserID: 5, TaskID: 1, Task: &models.Task{ID: 1, HomeID: 1}}, nil
+		},
 		MarkCompletedFunc: func(ctx context.Context, assignmentID int) error {
 			require.Equal(t, 10, assignmentID)
 			return nil
@@ -404,6 +410,9 @@ func TestTaskService_MarkAssignmentCompleted_NotFound(t *testing.T) {
 // MarkAssignmentUncompleted Tests
 func TestTaskService_MarkAssignmentUncompleted_Success(t *testing.T) {
 	repo := &mockTaskRepo{
+		FindAssignmentByIDFunc: func(ctx context.Context, assignmentID int) (*models.TaskAssignment, error) {
+			return &models.TaskAssignment{ID: assignmentID, UserID: 5, TaskID: 1, Task: &models.Task{ID: 1, HomeID: 1}}, nil
+		},
 		MarkUncompletedFunc: func(ctx context.Context, assignmentID int) error {
 			require.Equal(t, 10, assignmentID)
 			return nil
@@ -418,6 +427,9 @@ func TestTaskService_MarkAssignmentUncompleted_Success(t *testing.T) {
 // DeleteAssignment Tests
 func TestTaskService_DeleteAssignment_Success(t *testing.T) {
 	repo := &mockTaskRepo{
+		FindUserByAssignmentIDFunc: func(ctx context.Context, assignmentID int) (*models.User, error) {
+			return &models.User{ID: 5}, nil
+		},
 		DeleteAssignmentFunc: func(ctx context.Context, assignmentID int) error {
 			require.Equal(t, 10, assignmentID)
 			return nil
@@ -444,6 +456,9 @@ func TestTaskService_DeleteAssignment_NotFound(t *testing.T) {
 // ReassignRoom Tests
 func TestTaskService_ReassignRoom_Success(t *testing.T) {
 	repo := &mockTaskRepo{
+		FindByIDFunc: func(ctx context.Context, id int) (*models.Task, error) {
+			return &models.Task{ID: id, HomeID: 1}, nil
+		},
 		ReassignRoomFunc: func(ctx context.Context, taskID, roomID int) error {
 			require.Equal(t, 10, taskID)
 			require.Equal(t, 3, roomID)
