@@ -119,9 +119,10 @@ func setupAuthService(t *testing.T, repo repository.UserRepository) (*services.A
 	mailer := &mockMailer{}
 	jwtSecret := []byte("test-secret-key")
 	clientURL := "http://localhost:3000"
+	serverURL := "http://localhost:8000"
 	ttl := 24 * time.Hour
 
-	svc := services.NewAuthService(repo, jwtSecret, redisClient, ttl, clientURL, mailer)
+	svc := services.NewAuthService(repo, jwtSecret, redisClient, ttl, clientURL, serverURL, mailer)
 	return svc, mailer
 }
 
