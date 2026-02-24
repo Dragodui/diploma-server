@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/Dragodui/diploma-server/internal/config"
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
 )
@@ -17,6 +18,31 @@ type WSHandler struct {
 	Mu       sync.Mutex
 }
 
+func NewWSHandler(cfg *config.Config) *WSHandler {
+	return &WSHandler{
+		Upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				if cfg.Mode == "dev" { 
+					return true
+				}
+
+				// for mobile devices
+				origin := r.Header.Get("Origin")
+
+				if origin == "" {
+					return true 
+				}
+
+				if origin == cfg.ClientURL || origin == "http://"+cfg.ClientURL || origin == "https://"+cfg.ClientURL {
+					return true
+				}
+
+				return false
+			},
+		},
+		Clients: make(map[*websocket.Conn]bool),
+	}
+}
 func (h *WSHandler) HandleWS(w http.ResponseWriter, r *http.Request, cache *redis.Client) {
 	conn, _ := h.Upgrader.Upgrade(w, r, nil)
 

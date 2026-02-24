@@ -13,7 +13,6 @@ import (
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
-	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -46,23 +45,7 @@ func SetupRoutes(
 
 ) http.Handler {
 	// websockets handler for real time updates
-	wsHandler := &ws.WSHandler{
-		Upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				origin := r.Header.Get("Origin")
-				if origin == "" {
-					return false // Reject requests without origin
-				}
-
-				// Exact match only - prevents evil-clienturl.com bypass
-				if origin == cfg.ClientURL || origin == "http://"+cfg.ClientURL || origin == "https://"+cfg.ClientURL {
-					return true
-				}
-
-				return false
-			},
-		}, Clients: make(map[*websocket.Conn]bool),
-	}
+	wsHandler := ws.NewWSHandler(cfg)
 
 	// Rate limiter
 	rateLimiter := ratelimiter.NewIpRateLimiter()

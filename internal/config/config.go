@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	Mode string
 	// DB
 	DB_DSN string
 
@@ -77,6 +78,7 @@ func Load() *Config {
 
 	// Initialize configuration struct using determined keys
 	cfg := &Config{
+		Mode:         getEnv("MODE", "dev"),
 		DB_DSN:       getEnvRequired("DB_DSN"),
 		JWTSecret:    getEnvRequired("JWT_SECRET"),
 		Port:         getEnv("PORT", "8000"),
