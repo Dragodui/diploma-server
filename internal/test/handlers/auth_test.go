@@ -29,6 +29,15 @@ type mockAuthService struct {
 	GetUserByVerifyTokenFunc  func(ctx context.Context, token string) (*models.User, error)
 	GetUserByEmailFunc        func(ctx context.Context, email string) (*models.User, error)
 	GoogleSignInFunc          func(ctx context.Context, email, name, avatar string) (string, *models.User, error)
+	ChangePasswordFunc        func(ctx context.Context, userID int, currentPassword string, newPassword string) error
+}
+
+// ChangePassword implements services.IAuthService.
+func (m *mockAuthService) ChangePassword(ctx context.Context, userID int, currentPassword string, newPassword string) error {
+	if m.ChangePasswordFunc != nil {
+		return m.ChangePasswordFunc(ctx, userID, currentPassword, newPassword)
+	}
+	return nil
 }
 
 // GoogleSignIn implements services.IAuthService.
@@ -443,12 +452,12 @@ func TestAuthHandler_ResetPassword(t *testing.T) {
 
 func TestAuthHandler_RegenerateVerify(t *testing.T) {
 	tests := []struct {
-		name               string
-		queryParams        string
-		getByTokenFunc     func(ctx context.Context, token string) (*models.User, error)
-		sendFunc           func(ctx context.Context, email string) error
-		expectedStatus     int
-		expectedBodyPart   string
+		name             string
+		queryParams      string
+		getByTokenFunc   func(ctx context.Context, token string) (*models.User, error)
+		sendFunc         func(ctx context.Context, email string) error
+		expectedStatus   int
+		expectedBodyPart string
 	}{
 		{
 			name:        "Success with Token (Preferred)",
@@ -533,4 +542,3 @@ func TestAuthHandler_RegenerateVerify(t *testing.T) {
 		})
 	}
 }
-

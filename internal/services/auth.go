@@ -40,6 +40,7 @@ type IAuthService interface {
 	ResetPassword(ctx context.Context, token, newPass string) error
 	GetUserByVerifyToken(ctx context.Context, token string) (*models.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	ChangePassword(ctx context.Context, userID int, currentPassword, newPassword string) error
 }
 
 func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL, serverURL string, mail utils.Mailer) *AuthService {
@@ -217,4 +218,29 @@ func (s *AuthService) GetUserByVerifyToken(ctx context.Context, token string) (*
 
 func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	return s.repo.FindByEmail(ctx, email)
+}
+
+func (s *AuthService) ChangePassword(ctx context.Context, userID int, currentPassword, newPassword string) error {
+	user, err := s.repo.FindByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	if user.PasswordHash == "" {
+		return errors.New("cannot change password for OAuth account")
+	}
+
+	if !security.ComparePasswords(user.PasswordHash, currentPassword) {
+		return ErrInvalidCredentials
+	}
+
+	hash, err := security.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.UpdatePassword(ctx, userID, string(hash))
 }

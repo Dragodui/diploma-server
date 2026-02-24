@@ -142,6 +142,10 @@ func SetupRoutes(
 			// JWT authentication for all following routes
 			r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
 
+			// Change password (authenticated)
+			changePasswordLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083)
+			r.With(changePasswordLimit).Post("/auth/change-password", authHandler.ChangePassword)
+
 			// User routes
 			r.Post("/user", userHandler.GetMe)
 			r.Patch("/user", userHandler.Update)

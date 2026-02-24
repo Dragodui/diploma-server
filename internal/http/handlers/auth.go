@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
+	"github.com/Dragodui/diploma-server/internal/http/middleware"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -257,6 +259,55 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Password changed successfully"})
+}
+
+// ChangePassword godoc
+// @Summary      Change password
+// @Description  Change password for authenticated user (requires current password)
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        input body object true "Change Password Input" example({"current_password":"old","new_password":"new"})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /auth/change-password [post]
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var input struct {
+		CurrentPassword string `json:"current_password" validate:"required"`
+		NewPassword     string `json:"new_password" validate:"required,min=6"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := utils.Validate.Struct(input); err != nil {
+		utils.JSONValidationErrors(w, err)
+		return
+	}
+
+	if err := h.svc.ChangePassword(r.Context(), userID, input.CurrentPassword, input.NewPassword); err != nil {
+		if errors.Is(err, services.ErrInvalidCredentials) {
+			utils.JSONError(w, "Current password is incorrect", http.StatusBadRequest)
+			return
+		}
+		utils.SafeError(w, err, "Failed to change password", http.StatusBadRequest)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status":  true,
+		"message": "Password changed successfully",
+	})
 }
 
 // GoogleSignIn godoc
