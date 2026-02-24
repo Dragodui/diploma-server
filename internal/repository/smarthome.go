@@ -22,7 +22,7 @@ type SmartHomeRepository interface {
 	GetDevicesByRoomID(ctx context.Context, roomID int) ([]models.SmartDevice, error)
 	GetDeviceByEntityID(ctx context.Context, homeID int, entityID string) (*models.SmartDevice, error)
 	UpdateDevice(ctx context.Context, device *models.SmartDevice) error
-	DeleteDevice(ctx context.Context, id int) error
+	DeleteDevice(ctx context.Context, id int, homeID int) error
 }
 
 type smartHomeRepo struct {
@@ -106,7 +106,14 @@ func (r *smartHomeRepo) UpdateDevice(ctx context.Context, device *models.SmartDe
 	return r.db.WithContext(ctx).Save(device).Error
 }
 
-func (r *smartHomeRepo) DeleteDevice(ctx context.Context, id int) error {
-	return r.db.WithContext(ctx).Delete(&models.SmartDevice{}, id).Error
+func (r *smartHomeRepo) DeleteDevice(ctx context.Context, id int, homeID int) error {
+	result := r.db.WithContext(ctx).Where("id = ? AND home_id = ?", id, homeID).Delete(&models.SmartDevice{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 

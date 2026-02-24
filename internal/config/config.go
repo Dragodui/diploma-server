@@ -45,6 +45,9 @@ type Config struct {
 	// ADMIN (for /metrics and /swagger)
 	AdminUsername string
 	AdminPassword string
+
+	// Home Assistant token encryption key (32 bytes for AES-256)
+	HAEncryptionKey string
 }
 
 func Load() *Config {
@@ -104,6 +107,9 @@ func Load() *Config {
 		// Defaults for development - CHANGE IN PRODUCTION!
 		AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
 		AdminPassword: getEnv("ADMIN_PASSWORD", "changeme"),
+
+		// Home Assistant token encryption (must be exactly 32 characters for AES-256)
+		HAEncryptionKey: getEnvRequired("HA_ENCRYPTION_KEY"),
 	}
 
 	return cfg

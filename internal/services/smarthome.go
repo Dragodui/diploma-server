@@ -21,7 +21,7 @@ type ISmartHomeService interface {
 
 	// Device management
 	AddDevice(ctx context.Context, homeID int, entityID, name string, deviceType string, roomID *int, icon *string) error
-	RemoveDevice(ctx context.Context, deviceID int) error
+	RemoveDevice(ctx context.Context, deviceID int, homeID int) error
 	UpdateDevice(ctx context.Context, deviceID, homeID int, name string, roomID *int, icon *string) error
 	GetDevices(ctx context.Context, homeID int) ([]models.SmartDevice, error)
 	GetDevicesByRoom(ctx context.Context, roomID int) ([]models.SmartDevice, error)
@@ -37,12 +37,13 @@ type ISmartHomeService interface {
 }
 
 type SmartHomeService struct {
-	repo  repository.SmartHomeRepository
-	cache *redis.Client
+	repo          repository.SmartHomeRepository
+	cache         *redis.Client
+	encryptionKey []byte
 }
 
-func NewSmartHomeService(repo repository.SmartHomeRepository, cache *redis.Client) ISmartHomeService {
-	return &SmartHomeService{repo: repo, cache: cache}
+func NewSmartHomeService(repo repository.SmartHomeRepository, cache *redis.Client, encryptionKey string) ISmartHomeService {
+	return &SmartHomeService{repo: repo, cache: cache, encryptionKey: []byte(encryptionKey)}
 }
 
 // getHAClient creates a Home Assistant client for a given home
@@ -58,15 +59,21 @@ func (s *SmartHomeService) getHAClient(ctx context.Context, homeID int) (*homeas
 		return nil, fmt.Errorf("Home Assistant connection is inactive")
 	}
 
-	return homeassistant.NewHAClient(config.URL, config.Token), nil
+	// Decrypt token
+	token, err := utils.Decrypt(config.Token, s.encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt HA token: %w", err)
+	}
+
+	return homeassistant.NewHAClient(config.URL, token), nil
 }
 
 // Config management
 
 func (s *SmartHomeService) ConnectHA(ctx context.Context, homeID int, url, token string) error {
-	// Validate URL to prevent SSRF attacks
-	// Block localhost, private IPs, AWS metadata, etc.
-	if err := utils.ValidateExternalURL(url); err != nil {
+	// Validate URL: allow private IPs (HA runs on local network)
+	// but block loopback, cloud metadata endpoints
+	if err := utils.ValidateHomeAssistantURL(url); err != nil {
 		return fmt.Errorf("invalid Home Assistant URL: %w", err)
 	}
 
@@ -82,10 +89,16 @@ func (s *SmartHomeService) ConnectHA(ctx context.Context, homeID int, url, token
 		return err
 	}
 
+	// Encrypt token before storing
+	encryptedToken, err := utils.Encrypt(token, s.encryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt token: %w", err)
+	}
+
 	if existing != nil {
 		// Update existing config
 		existing.URL = url
-		existing.Token = token
+		existing.Token = encryptedToken
 		existing.IsActive = true
 		return s.repo.UpdateConfig(ctx, existing)
 	}
@@ -94,7 +107,7 @@ func (s *SmartHomeService) ConnectHA(ctx context.Context, homeID int, url, token
 	config := &models.HomeAssistantConfig{
 		HomeID:   homeID,
 		URL:      url,
-		Token:    token,
+		Token:    encryptedToken,
 		IsActive: true,
 	}
 	return s.repo.CreateConfig(ctx, config)
@@ -161,8 +174,8 @@ func (s *SmartHomeService) AddDevice(ctx context.Context, homeID int, entityID, 
 	return s.repo.CreateDevice(ctx, device)
 }
 
-func (s *SmartHomeService) RemoveDevice(ctx context.Context, deviceID int) error {
-	return s.repo.DeleteDevice(ctx, deviceID)
+func (s *SmartHomeService) RemoveDevice(ctx context.Context, deviceID int, homeID int) error {
+	return s.repo.DeleteDevice(ctx, deviceID, homeID)
 }
 
 func (s *SmartHomeService) UpdateDevice(ctx context.Context, deviceID, homeID int, name string, roomID *int, icon *string) error {

@@ -117,7 +117,7 @@ func NewServer() (*Server, error) {
 	}
 
 	ocrSvc := services.NewOCRService()
-	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient)
+	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient, cfg.HAEncryptionKey)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc, cfg.ClientURL)

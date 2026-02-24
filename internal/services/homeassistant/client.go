@@ -4,11 +4,21 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+)
+
+var (
+	// ErrHAUnauthorized is returned when HA returns 401 (invalid/expired token)
+	ErrHAUnauthorized = errors.New("Home Assistant authentication failed: invalid or expired token")
+	// ErrHANotFound is returned when HA returns 404 (entity not found)
+	ErrHANotFound = errors.New("entity not found in Home Assistant")
+	// ErrHAUnavailable is returned when HA is unreachable or returns 503
+	ErrHAUnavailable = errors.New("Home Assistant is unavailable")
 )
 
 // HAClient is a client for Home Assistant REST API
@@ -69,7 +79,7 @@ func (c *HAClient) doRequest(ctx context.Context, method, endpoint string, body 
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrHAUnavailable, err)
 	}
 	defer resp.Body.Close()
 
@@ -79,7 +89,16 @@ func (c *HAClient) doRequest(ctx context.Context, method, endpoint string, body 
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(respBody))
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return nil, ErrHAUnauthorized
+		case http.StatusNotFound:
+			return nil, ErrHANotFound
+		case http.StatusServiceUnavailable, http.StatusBadGateway, http.StatusGatewayTimeout:
+			return nil, ErrHAUnavailable
+		default:
+			return nil, fmt.Errorf("Home Assistant API error (status %d): %s", resp.StatusCode, string(respBody))
+		}
 	}
 
 	return respBody, nil

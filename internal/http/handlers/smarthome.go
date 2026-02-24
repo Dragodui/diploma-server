@@ -267,14 +267,19 @@ func (h *SmartHomeHandler) GetDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get current state from HA
-	state, _ := h.svc.GetDeviceState(r.Context(), homeID, device.EntityID)
+	// Get current state from HA (non-fatal: HA may be temporarily unreachable)
+	state, stateErr := h.svc.GetDeviceState(r.Context(), homeID, device.EntityID)
 
-	utils.JSON(w, http.StatusOK, map[string]interface{}{
+	response := map[string]interface{}{
 		"status": true,
 		"device": device,
 		"state":  state,
-	})
+	}
+	if stateErr != nil {
+		response["state_error"] = "Failed to fetch current state from Home Assistant"
+	}
+
+	utils.JSON(w, http.StatusOK, response)
 }
 
 // UpdateDevice godoc
@@ -338,6 +343,13 @@ func (h *SmartHomeHandler) UpdateDevice(w http.ResponseWriter, r *http.Request) 
 // @Success      200  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/smarthome/devices/{device_id} [delete]
 func (h *SmartHomeHandler) DeleteDevice(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "Invalid home ID", http.StatusBadRequest)
+		return
+	}
+
 	deviceIDStr := chi.URLParam(r, "device_id")
 	deviceID, err := strconv.Atoi(deviceIDStr)
 	if err != nil {
@@ -345,7 +357,7 @@ func (h *SmartHomeHandler) DeleteDevice(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.svc.RemoveDevice(r.Context(), deviceID); err != nil {
+	if err := h.svc.RemoveDevice(r.Context(), deviceID, homeID); err != nil {
 		utils.SafeError(w, err, "Failed to remove device", http.StatusInternalServerError)
 		return
 	}

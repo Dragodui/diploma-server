@@ -100,3 +100,65 @@ func isPrivateIP(ip net.IP) bool {
 	}
 	return false
 }
+
+// ValidateHomeAssistantURL validates a Home Assistant URL.
+// Allows private network IPs (since HA typically runs on local network)
+// but still blocks cloud metadata endpoints and loopback addresses.
+func ValidateHomeAssistantURL(urlStr string) error {
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	scheme := strings.ToLower(parsedURL.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("forbidden URL scheme: %s (only http/https allowed)", scheme)
+	}
+
+	hostname := parsedURL.Hostname()
+	if hostname == "" {
+		return errors.New("URL must have a hostname")
+	}
+
+	// Block loopback and cloud metadata endpoints (but allow private IPs)
+	lowercaseHost := strings.ToLower(hostname)
+	forbiddenHosts := []string{
+		"localhost",
+		"127.0.0.1",
+		"0.0.0.0",
+		"::1",
+		"[::1]",
+		"169.254.169.254",
+		"metadata.google.internal",
+		"metadata",
+		"168.63.129.16",
+	}
+
+	for _, forbidden := range forbiddenHosts {
+		if lowercaseHost == forbidden || strings.HasSuffix(lowercaseHost, "."+forbidden) {
+			return fmt.Errorf("forbidden hostname: %s", hostname)
+		}
+	}
+
+	// Resolve and block only link-local (cloud metadata) range
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return fmt.Errorf("failed to resolve hostname: %w", err)
+	}
+
+	if len(ips) == 0 {
+		return fmt.Errorf("hostname %s does not resolve to any IP", hostname)
+	}
+
+	linkLocal := &net.IPNet{
+		IP:   net.IPv4(169, 254, 0, 0),
+		Mask: net.IPv4Mask(255, 255, 0, 0),
+	}
+	for _, ip := range ips {
+		if linkLocal.Contains(ip) {
+			return fmt.Errorf("link-local IP address not allowed: %s resolves to %s", hostname, ip.String())
+		}
+	}
+
+	return nil
+}
