@@ -24,11 +24,11 @@ func RequireAdmin(homeRepo repository.HomeRepository) func(http.Handler) http.Ha
 			homeIDStr := chi.URLParam(r, "home_id")
 			if homeIDStr != "" {
 				if homeID, err := strconv.Atoi(homeIDStr); err == nil {
-					if ok, _ := homeRepo.IsMember(r.Context(), homeID, userID); ok {
+					if ok, _ := homeRepo.IsAdmin(r.Context(), homeID, userID); ok {
 						next.ServeHTTP(w, r)
 						return
 					}
-					utils.JSONError(w, "you are not a member", http.StatusUnauthorized)
+					utils.JSONError(w, "you are not an admin", http.StatusForbidden)
 					return
 				}
 			}

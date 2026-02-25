@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"strings"
+	"sync"
 
 	ratelimiter "github.com/Dragodui/diploma-server/internal/http/rate_limiter"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -27,17 +28,27 @@ func RateLimitMiddleware(limiter *ratelimiter.IPRateLimiter) func(http.Handler) 
 
 // StrictRateLimitMiddleware creates a stricter rate limiter for sensitive endpoints
 func StrictRateLimitMiddleware(limiter *ratelimiter.IPRateLimiter, maxRequests float64, refillRate float64) func(http.Handler) http.Handler {
+	var mu sync.RWMutex
 	strictLimiters := make(map[string]*ratelimiter.RateLimiter)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := getIP(r)
 
-			// Get or create strict limiter for this IP
+			// Fast path: read lock
+			mu.RLock()
 			strictLimiter, exists := strictLimiters[ip]
+			mu.RUnlock()
+
 			if !exists {
-				strictLimiter = ratelimiter.NewRateLimiter(maxRequests, refillRate)
-				strictLimiters[ip] = strictLimiter
+				// Slow path: write lock with double-check
+				mu.Lock()
+				strictLimiter, exists = strictLimiters[ip]
+				if !exists {
+					strictLimiter = ratelimiter.NewRateLimiter(maxRequests, refillRate)
+					strictLimiters[ip] = strictLimiter
+				}
+				mu.Unlock()
 			}
 
 			if !strictLimiter.Allow() {

@@ -17,10 +17,11 @@ import (
 type AuthHandler struct {
 	svc       services.IAuthService
 	clientURL string
+	isSecure  bool
 }
 
-func NewAuthHandler(svc services.IAuthService, clientURL string) *AuthHandler {
-	return &AuthHandler{svc: svc, clientURL: clientURL}
+func NewAuthHandler(svc services.IAuthService, clientURL string, isSecure bool) *AuthHandler {
+	return &AuthHandler{svc: svc, clientURL: clientURL, isSecure: isSecure}
 }
 
 // RegenerateVerify godoc
@@ -50,6 +51,17 @@ func (h *AuthHandler) RegenerateVerify(w http.ResponseWriter, r *http.Request) {
 	} else if email == "" {
 		utils.JSONError(w, "Email or token required", http.StatusBadRequest)
 		return
+	} else {
+		// Email path: verify the email belongs to an unverified user
+		user, err := h.svc.GetUserByEmail(r.Context(), email)
+		if err != nil || user.EmailVerified {
+			// Return success to prevent user enumeration
+			utils.JSON(w, http.StatusOK, map[string]interface{}{
+				"status":  true,
+				"message": "Verification email sent",
+			})
+			return
+		}
 	}
 
 	if err := h.svc.SendVerificationEmail(r.Context(), email); err != nil {
@@ -128,19 +140,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.svc.GetUserByEmail(r.Context(), input.Email)
-	if err != nil {
-		utils.SafeError(w, err, "Invalid credentials", http.StatusUnauthorized)
-		return
-	}
-
-	if !user.EmailVerified {
-		utils.JSONError(w, "Email is not verified", http.StatusUnauthorized)
-		return
-	}
-
 	token, user, err := h.svc.Login(r.Context(), input.Email, input.Password)
 	if err != nil {
+		if errors.Is(err, services.ErrEmailNotVerified) {
+			utils.JSONError(w, "Email is not verified", http.StatusUnauthorized)
+			return
+		}
 		utils.JSONError(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -200,8 +205,7 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set token in HTTP-only secure cookie instead of URL parameter
-	// TODO: Set secure=true in production (requires HTTPS)
-	utils.SetAuthCookie(w, token, false)
+	utils.SetAuthCookie(w, token, h.isSecure)
 
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
@@ -236,7 +240,7 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	h.svc.SendResetPassword(r.Context(), email)
-	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Reset link was sended to your email"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Reset link was sent to your email"})
 }
 
 // ResetPassword godoc
@@ -254,6 +258,10 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	// ?token=...&password=...
 	token := r.FormValue("token")
 	pass := r.FormValue("password")
+	if len(pass) < 8 {
+		utils.JSONError(w, "Password must be at least 8 characters", http.StatusBadRequest)
+		return
+	}
 	if err := h.svc.ResetPassword(r.Context(), token, pass); err != nil {
 		utils.JSONError(w, "Incorrect or expired token", http.StatusBadRequest)
 		return
@@ -310,6 +318,35 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Logout godoc
+// @Summary      Logout user
+// @Description  Invalidate the current JWT token
+// @Tags         auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /auth/logout [post]
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	auth := r.Header.Get("Authorization")
+	if len(auth) <= 7 {
+		utils.JSONError(w, "missing token", http.StatusUnauthorized)
+		return
+	}
+	tokenStr := auth[7:] // trim "Bearer "
+
+	if err := h.svc.Logout(r.Context(), tokenStr); err != nil {
+		utils.SafeError(w, err, "Logout failed", http.StatusBadRequest)
+		return
+	}
+
+	utils.ClearAuthCookie(w)
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status":  true,
+		"message": "Logged out successfully",
+	})
+}
+
 // GoogleSignIn godoc
 // @Summary      Sign in with Google (mobile)
 // @Description  Sign in or register with Google credentials from mobile app
@@ -334,7 +371,7 @@ func (h *AuthHandler) GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, user, err := h.svc.GoogleSignIn(r.Context(), input.Email, input.Name, input.Avatar)
+	token, user, err := h.svc.GoogleSignIn(r.Context(), input.AccessToken)
 	if err != nil {
 		utils.SafeError(w, err, "Google sign-in failed", http.StatusInternalServerError)
 		return

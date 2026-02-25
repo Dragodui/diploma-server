@@ -122,11 +122,14 @@ func SetupRoutes(
 			// Protected routes
 			r.Group(func(r chi.Router) {
 				// JWT authentication for all following routes
-				r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
+				r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret), cache))
 
 				// Change password (authenticated)
 				changePasswordLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083)
 				r.With(changePasswordLimit).Post("/auth/change-password", authHandler.ChangePassword)
+
+				// Logout (authenticated)
+				r.Post("/auth/logout", authHandler.Logout)
 
 				// User routes
 				r.Post("/user", userHandler.GetMe)

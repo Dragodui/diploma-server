@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -15,6 +17,7 @@ import (
 )
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
+var ErrEmailNotVerified = errors.New("email is not verified")
 
 // dummyPasswordHash is a pre-computed bcrypt hash used for timing attack mitigation
 const dummyPasswordHash = "$2a$12$6EbCFrJc5PL8YvKp.qZYF.nQq3qY5jLvN8xX9X5jZrN5XqY5jZrN5"
@@ -32,8 +35,10 @@ type AuthService struct {
 type IAuthService interface {
 	Register(ctx context.Context, email, password, name string) error
 	Login(ctx context.Context, email, password string) (string, *models.User, error)
+	Logout(ctx context.Context, tokenStr string) error
+	IsTokenBlacklisted(ctx context.Context, tokenStr string) bool
 	HandleCallback(ctx context.Context, user goth.User) (token string, redirectURL string, err error)
-	GoogleSignIn(ctx context.Context, email, name, avatar string) (string, *models.User, error)
+	GoogleSignIn(ctx context.Context, accessToken string) (string, *models.User, error)
 	SendVerificationEmail(ctx context.Context, email string) error
 	VerifyEmail(ctx context.Context, token string) error
 	SendResetPassword(ctx context.Context, email string) error
@@ -47,10 +52,31 @@ func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.
 	return &AuthService{repo: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, serverURL: serverURL, mail: mail}
 }
 
+const tokenBlacklistPrefix = "blacklist:"
+
+// Logout blacklists the given JWT token in Redis until it expires.
+func (s *AuthService) Logout(ctx context.Context, tokenStr string) error {
+	claims, err := security.ParseToken(tokenStr, s.jwtSecret)
+	if err != nil {
+		return errors.New("invalid token")
+	}
+	ttl := time.Until(claims.ExpiresAt.Time)
+	if ttl <= 0 {
+		return nil // already expired
+	}
+	return s.cache.Set(ctx, tokenBlacklistPrefix+tokenStr, "1", ttl).Err()
+}
+
+// IsTokenBlacklisted checks if the token has been revoked via logout.
+func (s *AuthService) IsTokenBlacklisted(ctx context.Context, tokenStr string) bool {
+	val, err := s.cache.Exists(ctx, tokenBlacklistPrefix+tokenStr).Result()
+	return err == nil && val > 0
+}
+
 func (s *AuthService) Register(ctx context.Context, email, password, name string) error {
 	existing, _ := s.repo.FindByEmail(ctx, email)
 	if existing != nil {
-		return errors.New("user already exists")
+		return errors.New("registration failed")
 	}
 
 	hash, err := security.HashPassword(password)
@@ -83,6 +109,11 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 	// Check both conditions: user must exist AND password must be valid
 	if user == nil || !isValidPassword {
 		return "", nil, ErrInvalidCredentials
+	}
+
+	// Check email verification after constant-time password check
+	if !user.EmailVerified {
+		return "", nil, ErrEmailNotVerified
 	}
 
 	token, err := security.GenerateToken(user.ID, email, s.jwtSecret, s.ttl)
@@ -132,23 +163,66 @@ func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (strin
 	return token, redirectURL, nil
 }
 
-// GoogleSignIn handles Google Sign-In from mobile apps using user info from Google
-func (s *AuthService) GoogleSignIn(ctx context.Context, email, name, avatar string) (string, *models.User, error) {
-	u, err := s.repo.FindByEmail(ctx, email)
+// googleUserInfo represents the response from Google's userinfo endpoint.
+type googleUserInfo struct {
+	Email   string `json:"email"`
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+}
+
+// verifyGoogleAccessToken verifies the access token with Google and returns user info.
+func verifyGoogleAccessToken(ctx context.Context, accessToken string) (*googleUserInfo, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/userinfo/v2/me", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify Google token: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("invalid Google access token")
+	}
+
+	var info googleUserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("failed to decode Google response: %w", err)
+	}
+
+	if info.Email == "" {
+		return nil, errors.New("Google account has no email")
+	}
+
+	return &info, nil
+}
+
+// GoogleSignIn handles Google Sign-In from mobile apps by verifying the access token with Google.
+func (s *AuthService) GoogleSignIn(ctx context.Context, accessToken string) (string, *models.User, error) {
+	// Verify the access token with Google to get trusted user info
+	gInfo, err := verifyGoogleAccessToken(ctx, accessToken)
+	if err != nil {
+		return "", nil, err
+	}
+
+	u, err := s.repo.FindByEmail(ctx, gInfo.Email)
 	if err != nil || u == nil {
 		// User does not exist, create a new one
 		u = &models.User{
-			Email:         email,
-			Name:          name,
+			Email:         gInfo.Email,
+			Name:          gInfo.Name,
 			PasswordHash:  "",   // No password for OAuth users
 			EmailVerified: true, // OAuth users are already verified
-			Avatar:        avatar,
+			Avatar:        gInfo.Picture,
 		}
 		if err := s.repo.Create(ctx, u); err != nil {
 			return "", nil, err
 		}
 		// Fetch the created user to get the ID
-		u, err = s.repo.FindByEmail(ctx, email)
+		u, err = s.repo.FindByEmail(ctx, gInfo.Email)
 		if err != nil {
 			return "", nil, err
 		}
@@ -157,7 +231,7 @@ func (s *AuthService) GoogleSignIn(ctx context.Context, email, name, avatar stri
 		}
 	}
 
-	token, err := security.GenerateToken(u.ID, email, s.jwtSecret, s.ttl)
+	token, err := security.GenerateToken(u.ID, gInfo.Email, s.jwtSecret, s.ttl)
 	if err != nil {
 		return "", nil, err
 	}
@@ -212,8 +286,11 @@ func (s *AuthService) ResetPassword(ctx context.Context, token, newPass string) 
 	if err != nil {
 		return err
 	}
-	hash, _ := security.HashPassword(newPass)
-	return s.repo.UpdatePassword(ctx, u.ID, string(hash))
+	hash, err := security.HashPassword(newPass)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+	return s.repo.UpdatePassword(ctx, u.ID, hash)
 }
 
 func (s *AuthService) GetUserByVerifyToken(ctx context.Context, token string) (*models.User, error) {

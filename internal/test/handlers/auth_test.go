@@ -12,6 +12,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/markbates/goth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,8 @@ import (
 type mockAuthService struct {
 	RegisterFunc              func(ctx context.Context, email, password, name string) error
 	LoginFunc                 func(ctx context.Context, email, password string) (string, *models.User, error)
+	LogoutFunc                func(ctx context.Context, tokenStr string) error
+	IsTokenBlacklistedFunc    func(ctx context.Context, tokenStr string) bool
 	HandleCallbackFunc        func(ctx context.Context, user goth.User) (string, string, error)
 	SendVerificationEmailFunc func(ctx context.Context, email string) error
 	VerifyEmailFunc           func(ctx context.Context, token string) error
@@ -28,8 +31,24 @@ type mockAuthService struct {
 	ResetPasswordFunc         func(ctx context.Context, token, newPass string) error
 	GetUserByVerifyTokenFunc  func(ctx context.Context, token string) (*models.User, error)
 	GetUserByEmailFunc        func(ctx context.Context, email string) (*models.User, error)
-	GoogleSignInFunc          func(ctx context.Context, email, name, avatar string) (string, *models.User, error)
+	GoogleSignInFunc          func(ctx context.Context, accessToken string) (string, *models.User, error)
 	ChangePasswordFunc        func(ctx context.Context, userID int, currentPassword string, newPassword string) error
+}
+
+// Logout implements services.IAuthService.
+func (m *mockAuthService) Logout(ctx context.Context, tokenStr string) error {
+	if m.LogoutFunc != nil {
+		return m.LogoutFunc(ctx, tokenStr)
+	}
+	return nil
+}
+
+// IsTokenBlacklisted implements services.IAuthService.
+func (m *mockAuthService) IsTokenBlacklisted(ctx context.Context, tokenStr string) bool {
+	if m.IsTokenBlacklistedFunc != nil {
+		return m.IsTokenBlacklistedFunc(ctx, tokenStr)
+	}
+	return false
 }
 
 // ChangePassword implements services.IAuthService.
@@ -41,9 +60,9 @@ func (m *mockAuthService) ChangePassword(ctx context.Context, userID int, curren
 }
 
 // GoogleSignIn implements services.IAuthService.
-func (m *mockAuthService) GoogleSignIn(ctx context.Context, email string, name string, avatar string) (string, *models.User, error) {
+func (m *mockAuthService) GoogleSignIn(ctx context.Context, accessToken string) (string, *models.User, error) {
 	if m.GoogleSignInFunc != nil {
-		return m.GoogleSignInFunc(ctx, email, name, avatar)
+		return m.GoogleSignInFunc(ctx, accessToken)
 	}
 	return "", nil, nil
 }
@@ -125,7 +144,7 @@ var (
 )
 
 func setupAuthHandler(svc *mockAuthService) *handlers.AuthHandler {
-	return handlers.NewAuthHandler(svc, "http://localhost:3000")
+	return handlers.NewAuthHandler(svc, "http://localhost:3000", false)
 }
 
 func TestAuthHandler_Register(t *testing.T) {
@@ -173,7 +192,7 @@ func TestAuthHandler_Register(t *testing.T) {
 			name: "User Already Exists",
 			body: validRegisterInput,
 			registerFunc: func(ctx context.Context, email, password, name string) error {
-				return errors.New("user already exists")
+				return errors.New("registration failed")
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Registration failed",
@@ -220,7 +239,6 @@ func TestAuthHandler_Login(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		getUserByEmail func(ctx context.Context, email string) (*models.User, error)
 		loginFunc      func(ctx context.Context, email, password string) (string, *models.User, error)
 		expectedStatus int
 		expectedBody   string
@@ -228,9 +246,6 @@ func TestAuthHandler_Login(t *testing.T) {
 		{
 			name: "Success",
 			body: validLoginInput,
-			getUserByEmail: func(ctx context.Context, email string) (*models.User, error) {
-				return &models.User{ID: 1, Email: email, EmailVerified: true}, nil
-			},
 			loginFunc: func(ctx context.Context, email, password string) (string, *models.User, error) {
 				require.Equal(t, "test@example.com", email)
 				require.Equal(t, "password123", password)
@@ -254,10 +269,10 @@ func TestAuthHandler_Login(t *testing.T) {
 			expectedBody:   "Password",
 		},
 		{
-			name: "User Not Found",
+			name: "Invalid Credentials",
 			body: validLoginInput,
-			getUserByEmail: func(ctx context.Context, email string) (*models.User, error) {
-				return nil, errors.New("user not found")
+			loginFunc: func(ctx context.Context, email, password string) (string, *models.User, error) {
+				return "", nil, services.ErrInvalidCredentials
 			},
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   "Invalid credentials",
@@ -265,31 +280,18 @@ func TestAuthHandler_Login(t *testing.T) {
 		{
 			name: "Email Not Verified",
 			body: validLoginInput,
-			getUserByEmail: func(ctx context.Context, email string) (*models.User, error) {
-				return &models.User{ID: 1, Email: email, EmailVerified: false}, nil
+			loginFunc: func(ctx context.Context, email, password string) (string, *models.User, error) {
+				return "", nil, services.ErrEmailNotVerified
 			},
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   "Email is not verified",
-		},
-		{
-			name: "Invalid Credentials",
-			body: validLoginInput,
-			getUserByEmail: func(ctx context.Context, email string) (*models.User, error) {
-				return &models.User{ID: 1, Email: email, EmailVerified: true}, nil
-			},
-			loginFunc: func(ctx context.Context, email, password string) (string, *models.User, error) {
-				return "", nil, errors.New("invalid credentials")
-			},
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "Invalid credentials",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &mockAuthService{
-				GetUserByEmailFunc: tt.getUserByEmail,
-				LoginFunc:          tt.loginFunc,
+				LoginFunc: tt.loginFunc,
 			}
 
 			h := setupAuthHandler(svc)
@@ -368,7 +370,7 @@ func TestAuthHandler_ForgotPassword(t *testing.T) {
 			name:           "Success",
 			email:          "test@example.com",
 			expectedStatus: http.StatusOK,
-			expectedBody:   "Reset link was sended",
+			expectedBody:   "Reset link was sent",
 		},
 	}
 

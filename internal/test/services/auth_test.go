@@ -367,61 +367,15 @@ func TestAuthService_HandleCallback_ExistingUser(t *testing.T) {
 }
 
 // GoogleSignIn Tests
-func TestAuthService_GoogleSignIn_NewUser(t *testing.T) {
-	callCount := 0
-	repo := &mockUserRepo{
-		FindByEmailFunc: func(ctx context.Context, email string) (*models.User, error) {
-			callCount++
-			if callCount == 1 {
-				return nil, errors.New("not found")
-			}
-			return &models.User{ID: 10, Email: email, Name: "Google User", EmailVerified: true, Avatar: "https://example.com/avatar.jpg"}, nil
-		},
-		CreateFunc: func(ctx context.Context, u *models.User) error {
-			require.Equal(t, "google@example.com", u.Email)
-			require.Equal(t, "Google User", u.Name)
-			require.Equal(t, "https://example.com/avatar.jpg", u.Avatar)
-			require.True(t, u.EmailVerified)
-			u.ID = 10
-			return nil
-		},
-	}
+func TestAuthService_GoogleSignIn_InvalidToken(t *testing.T) {
+	repo := &mockUserRepo{}
 
 	svc, _ := setupAuthService(t, repo)
-	token, user, err := svc.GoogleSignIn(context.Background(), "google@example.com", "Google User", "https://example.com/avatar.jpg")
-
-	assert.NoError(t, err)
-	assert.NotEmpty(t, token)
-	assert.Equal(t, "google@example.com", user.Email)
-	assert.Equal(t, "Google User", user.Name)
-	assert.Empty(t, user.PasswordHash) // password should be cleared
-}
-
-func TestAuthService_GoogleSignIn_ExistingUser(t *testing.T) {
-	existingUser := &models.User{
-		ID:            15,
-		Email:         "google@example.com",
-		Name:          "Old Name",
-		EmailVerified: true,
-	}
-
-	repo := &mockUserRepo{
-		FindByEmailFunc: func(ctx context.Context, email string) (*models.User, error) {
-			return existingUser, nil
-		},
-		UpdateFunc: func(ctx context.Context, user *models.User, updates map[string]interface{}) error {
-			assert.Equal(t, "New Name", updates["name"])
-			assert.Equal(t, "https://new-avatar.jpg", updates["avatar"])
-			return nil
-		},
-	}
-
-	svc, _ := setupAuthService(t, repo)
-	token, user, err := svc.GoogleSignIn(context.Background(), "google@example.com", "New Name", "https://new-avatar.jpg")
-
-	assert.NoError(t, err)
-	assert.NotEmpty(t, token)
-	assert.Equal(t, "google@example.com", user.Email)
+	// GoogleSignIn now requires a real Google access token and verifies it server-side.
+	// This test uses an invalid token to verify rejection.
+	_, _, err := svc.GoogleSignIn(context.Background(), "invalid-token")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid Google access token")
 }
 
 // VerifyEmail Tests
