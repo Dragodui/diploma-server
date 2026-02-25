@@ -457,6 +457,7 @@ func TestAuthHandler_RegenerateVerify(t *testing.T) {
 		name             string
 		queryParams      string
 		getByTokenFunc   func(ctx context.Context, token string) (*models.User, error)
+		getByEmailFunc   func(ctx context.Context, email string) (*models.User, error)
 		sendFunc         func(ctx context.Context, email string) error
 		expectedStatus   int
 		expectedBodyPart string
@@ -478,6 +479,9 @@ func TestAuthHandler_RegenerateVerify(t *testing.T) {
 		{
 			name:        "Success with Email",
 			queryParams: "email=test@example.com",
+			getByEmailFunc: func(ctx context.Context, email string) (*models.User, error) {
+				return &models.User{Email: "test@example.com", EmailVerified: false}, nil
+			},
 			sendFunc: func(ctx context.Context, email string) error {
 				require.Equal(t, "test@example.com", email)
 				return nil
@@ -517,6 +521,9 @@ func TestAuthHandler_RegenerateVerify(t *testing.T) {
 		{
 			name:        "Failed to Send Email",
 			queryParams: "email=test@example.com",
+			getByEmailFunc: func(ctx context.Context, email string) (*models.User, error) {
+				return &models.User{Email: "test@example.com", EmailVerified: false}, nil
+			},
 			sendFunc: func(ctx context.Context, email string) error {
 				return errors.New("mail server error")
 			},
@@ -529,6 +536,7 @@ func TestAuthHandler_RegenerateVerify(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &mockAuthService{
 				GetUserByVerifyTokenFunc:  tt.getByTokenFunc,
+				GetUserByEmailFunc:        tt.getByEmailFunc,
 				SendVerificationEmailFunc: tt.sendFunc,
 			}
 
