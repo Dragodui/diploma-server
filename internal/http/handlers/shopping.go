@@ -84,6 +84,13 @@ func (h *ShoppingHandler) GetAllCategories(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if categories == nil {
+		utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
+			"categories": []models.ShoppingCategory{},
+		})
+		return
+	}
+
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true,
 		"categories": *categories,
 	})
@@ -271,6 +278,10 @@ func (h *ShoppingHandler) GetItemByID(w http.ResponseWriter, r *http.Request) {
 	item, err := h.svc.FindItemByID(r.Context(), itemID)
 	if err != nil {
 		utils.SafeError(w, err, "Failed to retrieve item", http.StatusInternalServerError)
+		return
+	}
+	if item == nil {
+		utils.JSONError(w, "Item not found", http.StatusNotFound)
 		return
 	}
 

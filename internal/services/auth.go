@@ -96,7 +96,10 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 
 func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (string, string, error) {
 	u, err := s.repo.FindByEmail(ctx, user.Email)
-	if err != nil || u == nil {
+	if err != nil {
+		return "", "", err
+	}
+	if u == nil {
 		// User does not exist, create a new one
 		u = &models.User{
 			Email:         user.Email,
@@ -148,6 +151,9 @@ func (s *AuthService) GoogleSignIn(ctx context.Context, email, name, avatar stri
 		u, err = s.repo.FindByEmail(ctx, email)
 		if err != nil {
 			return "", nil, err
+		}
+		if u == nil {
+			return "", nil, errors.New("user not found after creation")
 		}
 	}
 

@@ -363,6 +363,9 @@ func (s *TaskService) MarkTaskCompletedForUser(ctx context.Context, taskID, user
 		if err != nil {
 			return err
 		}
+		if assignment == nil {
+			return errors.New("assignment not found after creation")
+		}
 	}
 
 	// Clear caches

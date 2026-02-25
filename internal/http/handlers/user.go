@@ -38,6 +38,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	user, err := h.svc.GetUserByID(r.Context(), userID)
 	if err != nil {
 		utils.SafeError(w, err, "Failed to retrieve user", http.StatusInternalServerError)
+		return
 	}
 
 	if user == nil {

@@ -71,11 +71,14 @@ func (s *BillService) GetBillByID(ctx context.Context, id int) (*models.Bill, er
 	}
 
 	bill, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	if bill == nil {
 		return nil, errors.New("bill not found")
 	}
 
-	return bill, err
+	return bill, nil
 }
 
 func (s *BillService) GetBillsByHomeID(ctx context.Context, homeID int) ([]models.Bill, error) {

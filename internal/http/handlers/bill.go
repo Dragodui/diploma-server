@@ -71,6 +71,7 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
 		utils.JSONError(w, "Invalid home id", http.StatusBadRequest)
+		return
 	}
 	if userID == 0 {
 		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)

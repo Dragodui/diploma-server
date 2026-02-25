@@ -229,7 +229,7 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 
 	var responseAssignment interface{} = assignment
 
-	if assignment.ID == 0 {
+	if assignment == nil || assignment.ID == 0 {
 		responseAssignment = nil
 	}
 
