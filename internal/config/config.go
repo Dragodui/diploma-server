@@ -53,12 +53,12 @@ type Config struct {
 
 func Load() *Config {
 	// Load .env file explicitly from the mounted volume path
-	if os.Getenv("MODE") == "dev" {
-		if err := godotenv.Load("/app/.env"); err != nil {
-			log.Println("Error loading .env file:", err.Error())
-			log.Fatal(".env file is not exist or load incorrectly")
-		}
-	}
+	// if os.Getenv("MODE") == "dev" {
+	// 	if err := godotenv.Load("/app/.env"); err != nil {
+	// 		log.Println("Error loading .env file:", err.Error())
+	// 		log.Fatal(".env file is not exist or load incorrectly")
+	// 	}
+	// }
 
 	redisTLS := true
 	redisTLSStr := os.Getenv("REDIS_TLS")
