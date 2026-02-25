@@ -60,13 +60,6 @@ func Load() *Config {
 		}
 	}
 
-	// Determine Redis keys based on environment mode
-	redisAddrKey := "REDIS_ADDR"
-
-	if os.Getenv("MODE") == "dev" {
-		redisAddrKey = "REDIS_ADDR_DEV"
-	}
-
 	redisTLS := true
 	redisTLSStr := os.Getenv("REDIS_TLS")
 	if redisTLSStr != "true" {
@@ -88,7 +81,7 @@ func Load() *Config {
 		ClientURL:    getEnvRequired("CLIENT_URL"),
 		ServerURL:    getEnvRequired("SERVER_URL"),
 
-		RedisADDR:     getEnvRequired(redisAddrKey),
+		RedisADDR:     getEnvRequired("REDIS_ADDR"),
 		RedisPassword: getEnvRequired("REDIS_PASSWORD"),
 		RedisTLS:      redisTLS,
 

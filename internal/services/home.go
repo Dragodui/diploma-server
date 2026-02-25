@@ -86,7 +86,7 @@ func (s *HomeService) RegenerateInviteCode(ctx context.Context, homeID int) erro
 
 func (s *HomeService) JoinHomeByCode(ctx context.Context, code string, userID int) error {
 	home, err := s.repo.FindByInviteCode(ctx, code)
-	if err != nil {
+	if err != nil || home == nil {
 		return errors.New("invalid invite code")
 	}
 
@@ -128,6 +128,9 @@ func (s *HomeService) GetHomeByID(ctx context.Context, id int) (*models.Home, er
 	home, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+	if home == nil {
+		return nil, errors.New("home not found")
 	}
 
 	// saves to cache
@@ -210,6 +213,9 @@ func (s *HomeService) GetUserHome(ctx context.Context, userID int) (*models.Home
 	home, err := s.repo.GetUserHome(ctx, userID)
 	if err != nil {
 		return nil, err
+	}
+	if home == nil {
+		return nil, errors.New("home not found")
 	}
 
 	if err := utils.WriteToCache(ctx, key, home, s.cache); err != nil {

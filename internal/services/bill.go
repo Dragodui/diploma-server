@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/event"
@@ -69,7 +70,12 @@ func (s *BillService) GetBillByID(ctx context.Context, id int) (*models.Bill, er
 		return cached, nil
 	}
 
-	return s.repo.FindByID(ctx, id)
+	bill, err := s.repo.FindByID(ctx, id)
+	if bill == nil {
+		return nil, errors.New("bill not found")
+	}
+
+	return bill, err
 }
 
 func (s *BillService) GetBillsByHomeID(ctx context.Context, homeID int) ([]models.Bill, error) {
@@ -112,6 +118,9 @@ func (s *BillService) MarkBillPayed(ctx context.Context, id int) error {
 	if err != nil {
 		return err
 	}
+	if bill == nil {
+		return errors.New("bill not found")
+	}
 
 	// write to cache
 	if err := utils.WriteToCache(ctx, key, bill, s.cache); err != nil {
@@ -126,4 +135,3 @@ func (s *BillService) MarkBillPayed(ctx context.Context, id int) error {
 
 	return nil
 }
-

@@ -103,6 +103,9 @@ func (s *ShoppingService) FindCategoryByID(ctx context.Context, categoryID, home
 	if err != nil {
 		return nil, err
 	}
+	if category == nil {
+		return nil, errors.New("category not found")
+	}
 
 	if category.HomeID != homeID {
 		return nil, errCategoryNotBelongsToHome
@@ -146,6 +149,9 @@ func (s *ShoppingService) EditCategory(ctx context.Context, categoryID, homeID i
 
 	if err != nil {
 		return err
+	}
+	if category == nil {
+		return errors.New("category not found")
 	}
 	updates := map[string]interface{}{}
 
@@ -226,6 +232,9 @@ func (s *ShoppingService) DeleteItem(ctx context.Context, itemID int) error {
 	if err != nil {
 		return err
 	}
+	if item == nil {
+		return errors.New("item not found")
+	}
 	categoryID := item.CategoryID
 
 	key := utils.GetCategoryKey(categoryID)
@@ -252,6 +261,9 @@ func (s *ShoppingService) MarkIsBought(ctx context.Context, itemID int) error {
 	if err != nil {
 		return err
 	}
+	if item == nil {
+		return errors.New("item not found")
+	}
 	categoryID := item.CategoryID
 
 	key := utils.GetCategoryKey(categoryID)
@@ -276,6 +288,9 @@ func (s *ShoppingService) EditItem(ctx context.Context, itemID int, name, image,
 	item, err := s.repo.FindItemByID(ctx, itemID)
 	if err != nil {
 		return err
+	}
+	if item == nil {
+		return errors.New("item not found")
 	}
 	updates := map[string]interface{}{}
 

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
@@ -12,7 +13,7 @@ import (
 )
 
 type RoomService struct {
-	repo repository.RoomRepository
+	repo  repository.RoomRepository
 	cache *redis.Client
 }
 
@@ -64,6 +65,9 @@ func (s *RoomService) GetRoomByID(ctx context.Context, roomID int) (*models.Room
 	if err != nil {
 		return nil, err
 	}
+	if room == nil {
+		return nil, errors.New("room not found")
+	}
 
 	if err := utils.WriteToCache(ctx, key, room, s.cache); err != nil {
 		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
@@ -98,6 +102,9 @@ func (s *RoomService) DeleteRoom(ctx context.Context, roomID int) error {
 	if err != nil {
 		return err
 	}
+	if room == nil {
+		return errors.New("room not found")
+	}
 	homeID := room.HomeID
 	roomsKey := utils.GetRoomsForHomeKey(homeID)
 	if err := utils.DeleteFromCache(ctx, roomKey, s.cache); err != nil {
@@ -119,4 +126,3 @@ func (s *RoomService) DeleteRoom(ctx context.Context, roomID int) error {
 
 	return nil
 }
-

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
@@ -15,7 +16,7 @@ type IBillCategoryService interface {
 	CreateCategory(ctx context.Context, homeID int, name, color string) error
 	GetCategories(ctx context.Context, homeID int) ([]models.BillCategory, error)
 	UpdateCategory(ctx context.Context, categoryID int, name, color *string) (*models.BillCategory, error)
-	DeleteCategory(ctx context.Context, id int, homeID int) error 
+	DeleteCategory(ctx context.Context, id int, homeID int) error
 }
 
 type BillCategoryService struct {
@@ -54,7 +55,7 @@ func (s *BillCategoryService) CreateCategory(ctx context.Context, homeID int, na
 
 func (s *BillCategoryService) GetCategories(ctx context.Context, homeID int) ([]models.BillCategory, error) {
 	key := utils.GetBillCategoriesKey(homeID)
-	
+
 	cached, err := utils.GetFromCache[[]models.BillCategory](ctx, key, s.cache)
 	if cached != nil && err == nil {
 		return *cached, nil
@@ -76,6 +77,9 @@ func (s *BillCategoryService) UpdateCategory(ctx context.Context, categoryID int
 	category, err := s.repo.GetByID(ctx, categoryID)
 	if err != nil {
 		return nil, err
+	}
+	if category == nil {
+		return nil, errors.New("category not found")
 	}
 
 	key := utils.GetBillCategoriesKey(category.HomeID)

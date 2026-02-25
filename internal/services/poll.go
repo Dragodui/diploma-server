@@ -155,6 +155,9 @@ func (s *PollService) Vote(ctx context.Context, userID, optionID, homeID int) er
 	if err != nil {
 		return err
 	}
+	if poll == nil {
+		return errors.New("poll not found")
+	}
 
 	if poll.Status == "closed" {
 		return errors.New("poll is closed")
@@ -193,6 +196,9 @@ func (s *PollService) Unvote(ctx context.Context, userID, pollID, homeID int) er
 	poll, err := s.repo.FindPollByID(ctx, pollID)
 	if err != nil {
 		return err
+	}
+	if poll == nil {
+		return errors.New("poll not found")
 	}
 
 	if !poll.AllowRevote {

@@ -207,6 +207,9 @@ func (s *SmartHomeService) GetDeviceByID(ctx context.Context, deviceID, homeID i
 	if err != nil {
 		return nil, err
 	}
+	if device == nil {
+		return nil, errors.New("device not found")
+	}
 
 	if device.HomeID != homeID {
 		return nil, errors.New("device is not from your home")

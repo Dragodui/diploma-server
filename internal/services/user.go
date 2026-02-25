@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -25,13 +26,26 @@ func NewUserService(repo repository.UserRepository, redis *redis.Client) *UserSe
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, userID int) (*models.User, error) {
-	return s.repo.FindByID(ctx, userID)
+	user, err := s.repo.FindByID(ctx, userID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	return user, err
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, userID int, name string) error {
 	user, err := s.repo.FindByID(ctx, userID)
 	if err != nil {
 		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
 	}
 
 	updates := map[string]interface{}{}
@@ -55,6 +69,9 @@ func (s *UserService) UpdateUserAvatar(ctx context.Context, userID int, imagePat
 	if err != nil {
 		return err
 	}
+	if user == nil {
+		return errors.New("user not found")
+	}
 
 	updates := map[string]interface{}{}
 	updates["avatar"] = imagePath
@@ -71,4 +88,3 @@ func (s *UserService) UpdateUserAvatar(ctx context.Context, userID int, imagePat
 
 	return nil
 }
-

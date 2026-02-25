@@ -12,7 +12,6 @@ services:
       - .:/app
     depends_on:
       - redis
-      - db
     ports:
       - "8000:8000"
     networks:
@@ -24,21 +23,6 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    networks:
-      - app-network
-
-  db:
-    image: postgres:15
-    container_name: postgres-db-dev
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mydb
-    volumes:
-      - pgdata-dev:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     networks:
       - app-network
 
@@ -86,6 +70,5 @@ networks:
     driver: bridge
 
 volumes:
-  pgdata-dev:
   prometheus-data-dev:
   grafana-data-dev:

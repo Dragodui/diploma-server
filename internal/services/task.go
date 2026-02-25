@@ -112,6 +112,9 @@ func (s *TaskService) GetTaskByID(ctx context.Context, taskID int) (*models.Task
 	if err != nil {
 		return nil, err
 	}
+	if task == nil {
+		return nil, errors.New("task not found")
+	}
 
 	// save to cache
 	if err := utils.WriteToCache(ctx, key, task, s.cache); err != nil {
@@ -238,6 +241,9 @@ func (s *TaskService) GetClosestAssignmentForUser(ctx context.Context, userID in
 	logger.Info.Printf("%s", string(ass_str))
 	if err != nil {
 		return nil, err
+	}
+	if assignment == nil {
+		return nil, nil
 	}
 
 	// save to cache
