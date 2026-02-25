@@ -164,7 +164,7 @@ func TestAuthService_Register_UserExists(t *testing.T) {
 	svc, _ := setupAuthService(t, repo)
 	err := svc.Register(context.Background(), "existing@example.com", "password123", "Test User")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "already exists")
+	assert.Contains(t, err.Error(), "registration failed")
 }
 
 func TestAuthService_Register_PasswordHashing(t *testing.T) {

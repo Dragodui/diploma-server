@@ -270,7 +270,7 @@ func TestRequireAdmin(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name:           "Is Admin - URL Param (checks member)",
+			name:           "Is Admin - URL Param",
 			homeID:         "1",
 			userID:         123,
 			isMember:       true,
@@ -280,14 +280,14 @@ func TestRequireAdmin(t *testing.T) {
 			expectedBody:   "success",
 		},
 		{
-			name:           "Not Member - URL Param",
+			name:           "Not Admin - URL Param",
 			homeID:         "1",
 			userID:         123,
 			isMember:       false,
 			isAdmin:        false,
 			useBody:        false,
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "you are not a member",
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "you are not an admin",
 		},
 		{
 			name:           "Is Admin - Body",
