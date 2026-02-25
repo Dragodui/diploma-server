@@ -110,10 +110,15 @@ func (r *shoppingRepo) MarkIsBought(ctx context.Context, id int) error {
 	if err := r.db.WithContext(ctx).First(&item, id).Error; err != nil {
 		return err
 	}
-
-	item.IsBought = true
+	currBought := item.IsBought
 	now := time.Now()
-	item.BoughtDate = &now
+	if currBought {
+		item.IsBought = false
+		item.BoughtDate = nil
+	} else {
+		item.IsBought = true
+		item.BoughtDate = &now
+	}
 
 	if err := r.db.WithContext(ctx).Save(&item).Error; err != nil {
 		return err
@@ -125,4 +130,3 @@ func (r *shoppingRepo) MarkIsBought(ctx context.Context, id int) error {
 func (r *shoppingRepo) EditItem(ctx context.Context, item *models.ShoppingItem, updates map[string]interface{}) error {
 	return r.db.WithContext(ctx).Model(item).Updates(updates).Error
 }
-
