@@ -111,17 +111,15 @@ func (s *ImageService) Upload(ctx context.Context, file multipart.File, header *
 			width, height, maxImageWidth, maxImageHeight)
 	}
 
-	// Verify extension matches detected content type
-	expectedExt, ok := allowedTypes[detectedContentType]
+	// Auto-correct extension to match detected content type
+	correctExt, ok := allowedTypes[detectedContentType]
 	if !ok {
 		return "", fmt.Errorf("unsupported content type: %s", detectedContentType)
 	}
 
-	// Allow .jpg for .jpeg and vice versa
-	if !(ext == expectedExt ||
-		(ext == ".jpg" && expectedExt == ".jpeg") ||
-		(ext == ".jpeg" && expectedExt == ".jpg")) {
-		return "", fmt.Errorf("file extension %s does not match detected content type %s", ext, detectedContentType)
+	if ext != correctExt && !(ext == ".jpg" && correctExt == ".jpeg") && !(ext == ".jpeg" && correctExt == ".jpg") {
+		log.Printf("Auto-correcting file extension from %s to %s (detected content type: %s)", ext, correctExt, detectedContentType)
+		ext = correctExt
 	}
 
 	// Generate new filename with validated extension
