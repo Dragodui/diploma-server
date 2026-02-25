@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/utils"
 
@@ -70,7 +72,11 @@ func (s *OCRService) ProcessFile(ctx context.Context, filePath, language string)
 		return nil, fmt.Errorf("OCR extraction failed: %w", err)
 	}
 
+	logger.Info.Printf("OCR raw text: %s", text)
+
 	result := utils.ParseReceipt(text)
+	strResult, _ := json.Marshal(result)
+	logger.Info.Printf("OCR Result: %s", string(strResult))
 
 	return result, nil
 }
