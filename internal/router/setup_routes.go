@@ -46,15 +46,10 @@ func SetupRoutes(
 ) http.Handler {
 	// websockets handler for real time updates
 	wsHandler := ws.NewWSHandler(cfg)
-
 	// Rate limiter
 	rateLimiter := ratelimiter.NewIpRateLimiter()
 
 	r := chi.NewRouter()
-
-	r.Use(middleware.MetricsMiddleware)
-	// HTTP request logger
-	r.Use(middleware.RequestResponseLogger)
 	// Global rate limiter - 120 requests per minute
 	r.Use(middleware.RateLimitMiddleware(rateLimiter))
 	// Request body size limit - prevents DoS via huge payloads
@@ -79,191 +74,196 @@ func SetupRoutes(
 	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
 		wsHandler.HandleWS(w, r, cache)
 	})
-
-	// Protected admin endpoints (Prometheus metrics and Swagger docs)
-	// Requires Basic Authentication
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.BasicAuth(cfg.AdminUsername, cfg.AdminPassword))
 
-		// Prometheus metrics - requires auth
-		r.Handle("/metrics", promhttp.Handler())
+		r.Use(middleware.MetricsMiddleware)
+		// HTTP request logger
+		r.Use(middleware.RequestResponseLogger)
+		// Protected admin endpoints (Prometheus metrics and Swagger docs)
+		// Requires Basic Authentication
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.BasicAuth(cfg.AdminUsername, cfg.AdminPassword))
 
-		// Swagger UI - requires auth
-		r.Get("/swagger/*", httpSwagger.WrapHandler)
-	})
+			// Prometheus metrics - requires auth
+			r.Handle("/metrics", promhttp.Handler())
 
-	// API routes
-	r.Route("/api", func(r chi.Router) {
-		// Auth routes (no JWT required) - with strict rate limiting
-		r.Route("/auth", func(r chi.Router) {
-			// Strict rate limit for login/register: 5 requests per minute
-			authStrictLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083) // 5 tokens, refill 0.083/sec = 5/min
-
-			r.With(authStrictLimit).Post("/register", authHandler.Register)
-			r.With(authStrictLimit).Post("/login", authHandler.Login)
-			r.With(authStrictLimit).Post("/google/mobile", authHandler.GoogleSignIn)
-
-			// OAuth endpoints - moderate limit
-			r.Get("/{provider}", authHandler.SignInWithProvider)
-			r.Get("/{provider}/callback", authHandler.CallbackHandler)
-
-			// Email verification - no limit for verify (one-time use token)
-			r.Get("/verify", authHandler.VerifyEmail)
-
-			// Email verification regenerate - strict limit: 3 requests per 5 minutes (prevents spam)
-			verifyRegenerateLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 3, 0.01) // 3 tokens, refill 0.01/sec = 0.6/min
-			r.With(verifyRegenerateLimit).Get("/verify/regenerate", authHandler.RegenerateVerify)
-
-			// Password reset - very strict: 3 requests per 5 minutes
-			resetStrictLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 3, 0.01) // 3 tokens, refill 0.01/sec = 0.6/min
-			r.With(resetStrictLimit).Post("/forgot", authHandler.ForgotPassword)
-			r.With(resetStrictLimit).Post("/reset", authHandler.ResetPassword)
+			// Swagger UI - requires auth
+			r.Get("/swagger/*", httpSwagger.WrapHandler)
 		})
 
-		// Protected routes
-		r.Group(func(r chi.Router) {
-			// JWT authentication for all following routes
-			r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
+		// API routes
+		r.Route("/api", func(r chi.Router) {
+			// Auth routes (no JWT required) - with strict rate limiting
+			r.Route("/auth", func(r chi.Router) {
+				// Strict rate limit for login/register: 5 requests per minute
+				authStrictLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083) // 5 tokens, refill 0.083/sec = 5/min
 
-			// Change password (authenticated)
-			changePasswordLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083)
-			r.With(changePasswordLimit).Post("/auth/change-password", authHandler.ChangePassword)
+				r.With(authStrictLimit).Post("/register", authHandler.Register)
+				r.With(authStrictLimit).Post("/login", authHandler.Login)
+				r.With(authStrictLimit).Post("/google/mobile", authHandler.GoogleSignIn)
 
-			// User routes
-			r.Post("/user", userHandler.GetMe)
-			r.Patch("/user", userHandler.Update)
+				// OAuth endpoints - moderate limit
+				r.Get("/{provider}", authHandler.SignInWithProvider)
+				r.Get("/{provider}/callback", authHandler.CallbackHandler)
 
-			// Upload images - limited to 10 per minute
-			uploadLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 10, 0.167) // 10 tokens, refill 0.167/sec = 10/min
-			r.With(uploadLimit).Post("/upload", imageHandler.UploadImage)
+				// Email verification - no limit for verify (one-time use token)
+				r.Get("/verify", authHandler.VerifyEmail)
 
-			// OCR processing - limited to 5 per minute (resource intensive)
-			ocrLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083) // 5 tokens, refill 0.083/sec = 5/min
-			r.With(ocrLimit).Post("/ocr/process", ocrHandler.ProcessImage)
+				// Email verification regenerate - strict limit: 3 requests per 5 minutes (prevents spam)
+				verifyRegenerateLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 3, 0.01) // 3 tokens, refill 0.01/sec = 0.6/min
+				r.With(verifyRegenerateLimit).Get("/verify/regenerate", authHandler.RegenerateVerify)
 
-			// Homes and nested resources
-			r.Route("/homes", func(r chi.Router) {
-				r.Post("/create", homeHandler.Create) // Create home
-				r.Post("/join", homeHandler.Join)     // Join home
-				r.Get("/my", homeHandler.GetUserHome) // Get user home
+				// Password reset - very strict: 3 requests per 5 minutes
+				resetStrictLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 3, 0.01) // 3 tokens, refill 0.01/sec = 0.6/min
+				r.With(resetStrictLimit).Post("/forgot", authHandler.ForgotPassword)
+				r.With(resetStrictLimit).Post("/reset", authHandler.ResetPassword)
+			})
 
-				// Notifications for user
-				r.Route("/notifications", func(r chi.Router) {
-					r.Get("/", notificationHandler.GetByUserID)
-					r.Delete("/{notification_id}", notificationHandler.MarkAsRead)
-				})
+			// Protected routes
+			r.Group(func(r chi.Router) {
+				// JWT authentication for all following routes
+				r.Use(middleware.JWTAuth([]byte(cfg.JWTSecret)))
 
-				// Home-specific actions
-				r.Route("/{home_id}", func(r chi.Router) {
-					r.With(middleware.RequireMember(homeRepo)).Get("/", homeHandler.GetByID)
-					r.With(middleware.RequireAdmin(homeRepo)).Delete("/", homeHandler.Delete)
-					r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
-					r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
-					r.With(middleware.RequireAdmin(homeRepo)).Post("/regenerate_code", homeHandler.RegenerateInviteCode)
+				// Change password (authenticated)
+				changePasswordLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083)
+				r.With(changePasswordLimit).Post("/auth/change-password", authHandler.ChangePassword)
 
-					// Notifications for home
+				// User routes
+				r.Post("/user", userHandler.GetMe)
+				r.Patch("/user", userHandler.Update)
+
+				// Upload images - limited to 10 per minute
+				uploadLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 10, 0.167) // 10 tokens, refill 0.167/sec = 10/min
+				r.With(uploadLimit).Post("/upload", imageHandler.UploadImage)
+
+				// OCR processing - limited to 5 per minute (resource intensive)
+				ocrLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083) // 5 tokens, refill 0.083/sec = 5/min
+				r.With(ocrLimit).Post("/ocr/process", ocrHandler.ProcessImage)
+
+				// Homes and nested resources
+				r.Route("/homes", func(r chi.Router) {
+					r.Post("/create", homeHandler.Create) // Create home
+					r.Post("/join", homeHandler.Join)     // Join home
+					r.Get("/my", homeHandler.GetUserHome) // Get user home
+
+					// Notifications for user
 					r.Route("/notifications", func(r chi.Router) {
-						r.Get("/", notificationHandler.GetByHomeID)
-						r.Delete("/{notification_id}", notificationHandler.MarkAsReadForHome)
+						r.Get("/", notificationHandler.GetByUserID)
+						r.Delete("/{notification_id}", notificationHandler.MarkAsRead)
 					})
 
-					// Rooms under a home
-					r.Route("/rooms", func(r chi.Router) {
-						r.With(middleware.RequireAdmin(homeRepo)).Post("/", roomHandler.Create)
-						r.With(middleware.RequireMember(homeRepo)).Get("/", roomHandler.GetByHomeID)
-						r.With(middleware.RequireMember(homeRepo)).Get("/{room_id}", roomHandler.GetByID)
-						r.With(middleware.RequireMember(homeRepo)).Get("/{room_id}/devices", smartHomeHandler.GetDevicesByRoom)
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{room_id}", roomHandler.Delete)
-					})
+					// Home-specific actions
+					r.Route("/{home_id}", func(r chi.Router) {
+						r.With(middleware.RequireMember(homeRepo)).Get("/", homeHandler.GetByID)
+						r.With(middleware.RequireAdmin(homeRepo)).Delete("/", homeHandler.Delete)
+						r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
+						r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
+						r.With(middleware.RequireAdmin(homeRepo)).Post("/regenerate_code", homeHandler.RegenerateInviteCode)
 
-					// Tasks under a home
-					r.Route("/tasks", func(r chi.Router) {
-						r.With(middleware.RequireMember(homeRepo)).Post("/", taskHandler.Create)
-						r.With(middleware.RequireMember(homeRepo)).Get("/", taskHandler.GetTasksByHomeID)
-						r.With(middleware.RequireMember(homeRepo)).Get("/{task_id}", taskHandler.GetByID)
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{task_id}", taskHandler.DeleteTask)
-						// Assignments
-						r.With(middleware.RequireMember(homeRepo)).Post("/{task_id}/assign", taskHandler.AssignUser)
-						r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/reassign-room", taskHandler.ReassignRoom)
-						r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-completed", taskHandler.MarkAssignmentCompleted)
-						r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-uncompleted", taskHandler.MarkAssignmentUncompleted)
-						r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/complete", taskHandler.MarkTaskCompleted)
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{task_id}/assignments/{assignment_id}", taskHandler.DeleteAssignment)
-					})
-
-					// User assignments (not scoped to a specific home)
-					r.Route("/users/{user_id}/assignments", func(r chi.Router) {
-						r.With(middleware.RequireMember(homeRepo)).Get("/", taskHandler.GetAssignmentsForUser)
-						r.With(middleware.RequireMember(homeRepo)).Get("/closest", taskHandler.GetClosestAssignmentForUser)
-					})
-
-					// Bills under a home
-					r.Route("/bills", func(r chi.Router) {
-						r.With(middleware.RequireMember(homeRepo)).Get("/", billHandler.GetByHomeID)
-						r.With(middleware.RequireMember(homeRepo)).Post("/", billHandler.Create)
-						r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetByID)
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
-						r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}", billHandler.MarkPayed)
-					})
-
-					// Bill Categories
-					r.Route("/bill-categories", func(r chi.Router) {
-						r.With(middleware.RequireMember(homeRepo)).Get("/", billCategoryHandler.GetAll)
-						r.With(middleware.RequireMember(homeRepo)).Post("/", billCategoryHandler.Create)
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{category_id}", billCategoryHandler.Delete)
-						r.With(middleware.RequireAdmin(homeRepo)).Patch("/{category_id}", billCategoryHandler.Update)
-					})
-
-					// Shopping
-					r.Route("/shopping", func(r chi.Router) {
-						r.Route("/categories", func(r chi.Router) {
-							r.With(middleware.RequireMember(homeRepo)).Post("/", shoppingHandler.CreateCategory)
-							r.With(middleware.RequireMember(homeRepo)).Get("/all", shoppingHandler.GetAllCategories)
-							r.With(middleware.RequireMember(homeRepo)).Get("/{category_id}", shoppingHandler.GetCategoryByID)
-							r.With(middleware.RequireMember(homeRepo)).Get("/{category_id}/items", shoppingHandler.GetItemsByCategoryID)
-							r.With(middleware.RequireMember(homeRepo)).Delete("/{category_id}", shoppingHandler.DeleteCategory)
-							r.With(middleware.RequireMember(homeRepo)).Put("/{category_id}", shoppingHandler.EditCategory)
+						// Notifications for home
+						r.Route("/notifications", func(r chi.Router) {
+							r.Get("/", notificationHandler.GetByHomeID)
+							r.Delete("/{notification_id}", notificationHandler.MarkAsReadForHome)
 						})
-						r.Route("/items", func(r chi.Router) {
-							r.With(middleware.RequireMember(homeRepo)).Post("/", shoppingHandler.CreateItem)
-							r.With(middleware.RequireMember(homeRepo)).Get("/{item_id}", shoppingHandler.GetItemByID)
-							r.With(middleware.RequireMember(homeRepo)).Delete("/{item_id}", shoppingHandler.DeleteItem)
-							r.With(middleware.RequireMember(homeRepo)).Put("/{item_id}", shoppingHandler.EditItem)
-							r.With(middleware.RequireMember(homeRepo)).Patch("/{item_id}", shoppingHandler.MarkIsBought)
+
+						// Rooms under a home
+						r.Route("/rooms", func(r chi.Router) {
+							r.With(middleware.RequireAdmin(homeRepo)).Post("/", roomHandler.Create)
+							r.With(middleware.RequireMember(homeRepo)).Get("/", roomHandler.GetByHomeID)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{room_id}", roomHandler.GetByID)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{room_id}/devices", smartHomeHandler.GetDevicesByRoom)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{room_id}", roomHandler.Delete)
 						})
-					})
-					r.Route("/polls", func(r chi.Router) {
 
-						r.With(middleware.RequireAdmin(homeRepo)).Post("/", pollHandler.Create)
-						r.With(middleware.RequireMember(homeRepo)).Get("/", pollHandler.GetAllByHomeID)
-						r.With(middleware.RequireMember(homeRepo)).Get("/{poll_id}", pollHandler.GetByID)
+						// Tasks under a home
+						r.Route("/tasks", func(r chi.Router) {
+							r.With(middleware.RequireMember(homeRepo)).Post("/", taskHandler.Create)
+							r.With(middleware.RequireMember(homeRepo)).Get("/", taskHandler.GetTasksByHomeID)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{task_id}", taskHandler.GetByID)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{task_id}", taskHandler.DeleteTask)
+							// Assignments
+							r.With(middleware.RequireMember(homeRepo)).Post("/{task_id}/assign", taskHandler.AssignUser)
+							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/reassign-room", taskHandler.ReassignRoom)
+							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-completed", taskHandler.MarkAssignmentCompleted)
+							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-uncompleted", taskHandler.MarkAssignmentUncompleted)
+							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/complete", taskHandler.MarkTaskCompleted)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{task_id}/assignments/{assignment_id}", taskHandler.DeleteAssignment)
+						})
 
-						r.With(middleware.RequireAdmin(homeRepo)).Patch("/{poll_id}/close", pollHandler.Close)
+						// User assignments (not scoped to a specific home)
+						r.Route("/users/{user_id}/assignments", func(r chi.Router) {
+							r.With(middleware.RequireMember(homeRepo)).Get("/", taskHandler.GetAssignmentsForUser)
+							r.With(middleware.RequireMember(homeRepo)).Get("/closest", taskHandler.GetClosestAssignmentForUser)
+						})
 
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/{poll_id}", pollHandler.Delete)
+						// Bills under a home
+						r.Route("/bills", func(r chi.Router) {
+							r.With(middleware.RequireMember(homeRepo)).Get("/", billHandler.GetByHomeID)
+							r.With(middleware.RequireMember(homeRepo)).Post("/", billHandler.Create)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetByID)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
+							r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}", billHandler.MarkPayed)
+						})
 
-						r.With(middleware.RequireMember(homeRepo)).Post("/{poll_id}/vote", pollHandler.Vote)
-						r.With(middleware.RequireMember(homeRepo)).Delete("/{poll_id}/vote", pollHandler.Unvote)
-					})
+						// Bill Categories
+						r.Route("/bill-categories", func(r chi.Router) {
+							r.With(middleware.RequireMember(homeRepo)).Get("/", billCategoryHandler.GetAll)
+							r.With(middleware.RequireMember(homeRepo)).Post("/", billCategoryHandler.Create)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{category_id}", billCategoryHandler.Delete)
+							r.With(middleware.RequireAdmin(homeRepo)).Patch("/{category_id}", billCategoryHandler.Update)
+						})
 
-					// Smart Home (Home Assistant integration)
-					r.Route("/smarthome", func(r chi.Router) {
-						r.With(middleware.RequireAdmin(homeRepo)).Post("/connect", smartHomeHandler.Connect)
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/disconnect", smartHomeHandler.Disconnect)
-						r.With(middleware.RequireMember(homeRepo)).Get("/status", smartHomeHandler.Status)
-						r.With(middleware.RequireMember(homeRepo)).Get("/discover", smartHomeHandler.Discover)
-						r.With(middleware.RequireMember(homeRepo)).Get("/states", smartHomeHandler.GetAllStates)
+						// Shopping
+						r.Route("/shopping", func(r chi.Router) {
+							r.Route("/categories", func(r chi.Router) {
+								r.With(middleware.RequireMember(homeRepo)).Post("/", shoppingHandler.CreateCategory)
+								r.With(middleware.RequireMember(homeRepo)).Get("/all", shoppingHandler.GetAllCategories)
+								r.With(middleware.RequireMember(homeRepo)).Get("/{category_id}", shoppingHandler.GetCategoryByID)
+								r.With(middleware.RequireMember(homeRepo)).Get("/{category_id}/items", shoppingHandler.GetItemsByCategoryID)
+								r.With(middleware.RequireMember(homeRepo)).Delete("/{category_id}", shoppingHandler.DeleteCategory)
+								r.With(middleware.RequireMember(homeRepo)).Put("/{category_id}", shoppingHandler.EditCategory)
+							})
+							r.Route("/items", func(r chi.Router) {
+								r.With(middleware.RequireMember(homeRepo)).Post("/", shoppingHandler.CreateItem)
+								r.With(middleware.RequireMember(homeRepo)).Get("/{item_id}", shoppingHandler.GetItemByID)
+								r.With(middleware.RequireMember(homeRepo)).Delete("/{item_id}", shoppingHandler.DeleteItem)
+								r.With(middleware.RequireMember(homeRepo)).Put("/{item_id}", shoppingHandler.EditItem)
+								r.With(middleware.RequireMember(homeRepo)).Patch("/{item_id}", shoppingHandler.MarkIsBought)
+							})
+						})
+						r.Route("/polls", func(r chi.Router) {
 
-						// Device control - rate limited to prevent abuse
-						deviceControlLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 30, 0.5) // 30 tokens, refill 0.5/sec = 30/min
+							r.With(middleware.RequireAdmin(homeRepo)).Post("/", pollHandler.Create)
+							r.With(middleware.RequireMember(homeRepo)).Get("/", pollHandler.GetAllByHomeID)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{poll_id}", pollHandler.GetByID)
 
-						r.Route("/devices", func(r chi.Router) {
-							r.With(middleware.RequireMember(homeRepo)).Post("/", smartHomeHandler.AddDevice)
-							r.With(middleware.RequireMember(homeRepo)).Get("/", smartHomeHandler.GetDevices)
-							r.With(middleware.RequireMember(homeRepo)).Get("/{device_id}", smartHomeHandler.GetDevice)
-							r.With(middleware.RequireAdmin(homeRepo)).Put("/{device_id}", smartHomeHandler.UpdateDevice)
-							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{device_id}", smartHomeHandler.DeleteDevice)
-							r.With(middleware.RequireMember(homeRepo), deviceControlLimit).Post("/{device_id}/control", smartHomeHandler.ControlDevice)
+							r.With(middleware.RequireAdmin(homeRepo)).Patch("/{poll_id}/close", pollHandler.Close)
+
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{poll_id}", pollHandler.Delete)
+
+							r.With(middleware.RequireMember(homeRepo)).Post("/{poll_id}/vote", pollHandler.Vote)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{poll_id}/vote", pollHandler.Unvote)
+						})
+
+						// Smart Home (Home Assistant integration)
+						r.Route("/smarthome", func(r chi.Router) {
+							r.With(middleware.RequireAdmin(homeRepo)).Post("/connect", smartHomeHandler.Connect)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/disconnect", smartHomeHandler.Disconnect)
+							r.With(middleware.RequireMember(homeRepo)).Get("/status", smartHomeHandler.Status)
+							r.With(middleware.RequireMember(homeRepo)).Get("/discover", smartHomeHandler.Discover)
+							r.With(middleware.RequireMember(homeRepo)).Get("/states", smartHomeHandler.GetAllStates)
+
+							// Device control - rate limited to prevent abuse
+							deviceControlLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 30, 0.5) // 30 tokens, refill 0.5/sec = 30/min
+
+							r.Route("/devices", func(r chi.Router) {
+								r.With(middleware.RequireMember(homeRepo)).Post("/", smartHomeHandler.AddDevice)
+								r.With(middleware.RequireMember(homeRepo)).Get("/", smartHomeHandler.GetDevices)
+								r.With(middleware.RequireMember(homeRepo)).Get("/{device_id}", smartHomeHandler.GetDevice)
+								r.With(middleware.RequireAdmin(homeRepo)).Put("/{device_id}", smartHomeHandler.UpdateDevice)
+								r.With(middleware.RequireAdmin(homeRepo)).Delete("/{device_id}", smartHomeHandler.DeleteDevice)
+								r.With(middleware.RequireMember(homeRepo), deviceControlLimit).Post("/{device_id}/control", smartHomeHandler.ControlDevice)
+							})
 						})
 					})
 				})

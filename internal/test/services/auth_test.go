@@ -26,6 +26,7 @@ type mockUserRepo struct {
 	SetVerifyTokenFunc  func(ctx context.Context, email, token string, expiresAt time.Time) error
 	VerifyEmailFunc     func(ctx context.Context, token string) error
 	GetByResetTokenFunc func(ctx context.Context, token string) (*models.User, error)
+	GetByVerifyTokenFunc func(ctx context.Context, token string) (*models.User, error)
 	UpdatePasswordFunc  func(ctx context.Context, userID int, newHash string) error
 	SetResetTokenFunc   func(ctx context.Context, email, token string, expiresAt time.Time) error
 	UpdateFunc          func(ctx context.Context, user *models.User, updates map[string]interface{}) error
@@ -76,6 +77,13 @@ func (m *mockUserRepo) VerifyEmail(ctx context.Context, token string) error {
 func (m *mockUserRepo) GetByResetToken(ctx context.Context, token string) (*models.User, error) {
 	if m.GetByResetTokenFunc != nil {
 		return m.GetByResetTokenFunc(ctx, token)
+	}
+	return nil, nil
+}
+
+func (m *mockUserRepo) GetByVerifyToken(ctx context.Context, token string) (*models.User, error) {
+	if m.GetByVerifyTokenFunc != nil {
+		return m.GetByVerifyTokenFunc(ctx, token)
 	}
 	return nil, nil
 }
@@ -303,7 +311,7 @@ func TestAuthService_HandleCallback_NewUser(t *testing.T) {
 		FindByEmailFunc: func(ctx context.Context, email string) (*models.User, error) {
 			callCount++
 			if callCount == 1 {
-				return nil, errors.New("not found")
+				return nil, nil
 			}
 			return &models.User{ID: 1, Email: email, Name: "OAuth User", EmailVerified: true}, nil
 		},

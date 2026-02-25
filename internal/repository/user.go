@@ -18,6 +18,7 @@ type UserRepository interface {
 	SetVerifyToken(ctx context.Context, email, token string, expiresAt time.Time) error
 	VerifyEmail(ctx context.Context, token string) error
 	GetByResetToken(ctx context.Context, token string) (*models.User, error)
+	GetByVerifyToken(ctx context.Context, token string) (*models.User, error)
 	UpdatePassword(ctx context.Context, userID int, newHash string) error
 	SetResetToken(ctx context.Context, email, token string, expiresAt time.Time) error
 	Update(ctx context.Context, user *models.User, updates map[string]interface{}) error
@@ -87,6 +88,16 @@ func (r *userRepo) VerifyEmail(ctx context.Context, token string) error {
 		return errors.New("not found")
 	}
 	return nil
+}
+
+func (r *userRepo) GetByVerifyToken(ctx context.Context, token string) (*models.User, error) {
+	var u models.User
+	err := r.db.WithContext(ctx).Where("verify_token = ? AND verify_expires_at > ?", token, time.Now()).
+		First(&u).Error
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
 }
 
 func (r *userRepo) GetByResetToken(ctx context.Context, token string) (*models.User, error) {

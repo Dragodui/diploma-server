@@ -23,6 +23,7 @@ type mockUserRepo struct {
 	VerifyEmailFunc      func(ctx context.Context, token string) error
 	SetResetTokenFunc    func(ctx context.Context, email, token string, exp time.Time) error
 	GetByResetTokenFunc  func(ctx context.Context, token string) (*models.User, error)
+	GetByVerifyTokenFunc func(ctx context.Context, token string) (*models.User, error)
 	UpdatePasswordFunc   func(ctx context.Context, userID int, hash string) error
 }
 
@@ -85,6 +86,13 @@ func (m *mockUserRepo) SetResetToken(ctx context.Context, email, token string, e
 func (m *mockUserRepo) GetByResetToken(ctx context.Context, token string) (*models.User, error) {
 	if m.GetByResetTokenFunc != nil {
 		return m.GetByResetTokenFunc(ctx, token)
+	}
+	return nil, nil
+}
+
+func (m *mockUserRepo) GetByVerifyToken(ctx context.Context, token string) (*models.User, error) {
+	if m.GetByVerifyTokenFunc != nil {
+		return m.GetByVerifyTokenFunc(ctx, token)
 	}
 	return nil, nil
 }
@@ -307,6 +315,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		token            string
 		newPassword      string
 		getByResetToken  func(ctx context.Context, token string) (*models.User, error)
+		getByVerifyToken  func(ctx context.Context, token string) (*models.User, error)
 		updatePassword   func(ctx context.Context, userID int, hash string) error
 		expectedError    string
 	}{

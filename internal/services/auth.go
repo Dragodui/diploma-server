@@ -217,7 +217,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, token, newPass string) 
 }
 
 func (s *AuthService) GetUserByVerifyToken(ctx context.Context, token string) (*models.User, error) {
-	u, err := s.repo.GetByResetToken(ctx, token)
+	u, err := s.repo.GetByVerifyToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}
