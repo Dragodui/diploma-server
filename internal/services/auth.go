@@ -113,6 +113,9 @@ func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (strin
 		if err != nil {
 			return "", "", err
 		}
+		if u == nil {
+			return "", "", errors.New("user not found")
+		}
 	}
 
 	token, err := security.GenerateToken(u.ID, user.Email, s.jwtSecret, s.ttl)
@@ -217,7 +220,15 @@ func (s *AuthService) GetUserByVerifyToken(ctx context.Context, token string) (*
 }
 
 func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	return s.repo.FindByEmail(ctx, email)
+	user, err := s.repo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	return user, err
 }
 
 func (s *AuthService) ChangePassword(ctx context.Context, userID int, currentPassword, newPassword string) error {
