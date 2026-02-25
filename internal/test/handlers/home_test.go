@@ -438,7 +438,7 @@ func TestHomeHandler_Delete(t *testing.T) {
 			isAdmin:  false,
 			isMember: false,
 			mockFunc: func(ctx context.Context, homeID int) error { return nil },
-			expectedStatus: http.StatusUnauthorized,
+			expectedStatus: http.StatusForbidden,
 			expectedBody:   "you are not a",
 		},
 	}
