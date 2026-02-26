@@ -166,10 +166,12 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
-	if task.CreatedBy != userID && !isAdmin {
-		utils.JSONError(w, "forbidden", http.StatusForbidden)
-		return
+	if task.CreatedBy != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "forbidden", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.DeleteTask(r.Context(), taskID); err != nil {

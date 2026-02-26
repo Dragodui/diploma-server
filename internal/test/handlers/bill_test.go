@@ -83,8 +83,14 @@ func setupBillHandler(svc *mockBillService) *handlers.BillHandler {
 
 func setupBillRouter(h *handlers.BillHandler) *chi.Mux {
 	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(utils.WithUserID(r.Context(), 123))
+			next.ServeHTTP(w, r)
+		})
+	})
 	r.Get("/bills/{bill_id}", h.GetByID)
-	r.Delete("/bills/{bill_id}", h.Delete)
+	r.Delete("/homes/{home_id}/bills/{bill_id}", h.Delete)
 	r.Put("/bills/{bill_id}/mark-payed", h.MarkPayed)
 	return r
 }
@@ -267,12 +273,15 @@ func TestBillHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &mockBillService{
 				DeleteFunc: tt.mockFunc,
+				GetBillByIDFunc: func(ctx context.Context, billID int) (*models.Bill, error) {
+					return &models.Bill{ID: billID, UploadedBy: 123, HomeID: 1}, nil
+				},
 			}
 
 			h := setupBillHandler(svc)
 			r := setupBillRouter(h)
 
-			req := httptest.NewRequest(http.MethodDelete, "/bills/"+tt.billID, nil)
+			req := httptest.NewRequest(http.MethodDelete, "/homes/1/bills/"+tt.billID, nil)
 			rr := httptest.NewRecorder()
 
 			r.ServeHTTP(rr, req)

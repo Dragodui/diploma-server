@@ -134,10 +134,12 @@ func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "Category not found", http.StatusNotFound)
 		return
 	}
-	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
-	if category.CreatedBy != userID && !isAdmin {
-		utils.JSONError(w, "forbidden", http.StatusForbidden)
-		return
+	if category.CreatedBy != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "forbidden", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.DeleteCategory(r.Context(), categoryID, homeID); err != nil {

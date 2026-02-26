@@ -183,10 +183,12 @@ func (h *ShoppingHandler) DeleteCategory(w http.ResponseWriter, r *http.Request)
 		utils.SafeError(w, err, "Failed to find category", http.StatusInternalServerError)
 		return
 	}
-	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
-	if category.CreatedBy != userID && !isAdmin {
-		utils.JSONError(w, "forbidden", http.StatusForbidden)
-		return
+	if category.CreatedBy != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "forbidden", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.DeleteCategory(r.Context(), categoryID, homeID); err != nil {
@@ -392,10 +394,12 @@ func (h *ShoppingHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "Item not found", http.StatusNotFound)
 		return
 	}
-	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
-	if item.UploadedBy != userID && !isAdmin {
-		utils.JSONError(w, "forbidden", http.StatusForbidden)
-		return
+	if item.UploadedBy != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "forbidden", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.DeleteItem(r.Context(), itemID); err != nil {

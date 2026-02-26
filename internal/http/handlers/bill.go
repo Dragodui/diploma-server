@@ -171,10 +171,12 @@ func (h *BillHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.SafeError(w, err, "Failed to find bill", http.StatusInternalServerError)
 		return
 	}
-	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
-	if bill.UploadedBy != userID && !isAdmin {
-		utils.JSONError(w, "forbidden", http.StatusForbidden)
-		return
+	if bill.UploadedBy != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "forbidden", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.Delete(r.Context(), billID); err != nil {

@@ -205,10 +205,12 @@ func (h *PollHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "Poll not found", http.StatusNotFound)
 		return
 	}
-	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
-	if poll.CreatedBy != userID && !isAdmin {
-		utils.JSONError(w, "forbidden", http.StatusForbidden)
-		return
+	if poll.CreatedBy != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "forbidden", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.Delete(r.Context(), pollID, homeID); err != nil {

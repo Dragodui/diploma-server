@@ -158,10 +158,12 @@ func (h *RoomHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.SafeError(w, err, "Failed to find room", http.StatusInternalServerError)
 		return
 	}
-	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
-	if room.CreatedBy != userID && !isAdmin {
-		utils.JSONError(w, "forbidden", http.StatusForbidden)
-		return
+	if room.CreatedBy != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "forbidden", http.StatusForbidden)
+			return
+		}
 	}
 
 	err = h.svc.DeleteRoom(r.Context(), roomID)
