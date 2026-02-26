@@ -12,6 +12,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -86,6 +87,12 @@ func makeJSONRequest(method, url string, body interface{}) *http.Request {
 
 func setupShoppingRouter(h *handlers.ShoppingHandler) *chi.Mux {
 	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(utils.WithUserID(r.Context(), 123))
+			next.ServeHTTP(w, r)
+		})
+	})
 	// Categories
 	r.Post("/homes/{home_id}/categories", h.CreateCategory)
 	r.Get("/homes/{home_id}/categories", h.GetAllCategories)
@@ -97,8 +104,8 @@ func setupShoppingRouter(h *handlers.ShoppingHandler) *chi.Mux {
 	r.Post("/items", h.CreateItem)
 	r.Get("/items/{item_id}", h.GetItemByID)
 	r.Get("/categories/{category_id}/items", h.GetItemsByCategoryID)
-	r.Put("/items/{item_id}", h.EditItem)
-	r.Delete("/items/{item_id}", h.DeleteItem)
+	r.Put("/homes/{home_id}/items/{item_id}", h.EditItem)
+	r.Delete("/homes/{home_id}/items/{item_id}", h.DeleteItem)
 	r.Put("/items/{item_id}/mark-bought", h.MarkIsBought)
 
 	return r
@@ -563,6 +570,9 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				svc := &mockShoppingService{
 					DeleteCategoryFunc: tt.mockFunc,
+					FindCategoryByIDFunc: func(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error) {
+						return &models.ShoppingCategory{ID: categoryID, HomeID: homeID, CreatedBy: 123}, nil
+					},
 				}
 
 				h := setupShoppingHandler(svc)
@@ -817,10 +827,10 @@ func TestShoppingHandler_Items(t *testing.T) {
 
 				var req *http.Request
 				if tt.name == "Invalid JSON" {
-					req = httptest.NewRequest(http.MethodPut, "/items/"+tt.itemID,
+					req = httptest.NewRequest(http.MethodPut, "/homes/1/items/"+tt.itemID,
 						bytes.NewBufferString("{bad json}"))
 				} else {
-					req = makeJSONRequest(http.MethodPut, "/items/"+tt.itemID, tt.body)
+					req = makeJSONRequest(http.MethodPut, "/homes/1/items/"+tt.itemID, tt.body)
 				}
 
 				rr := httptest.NewRecorder()
@@ -871,12 +881,15 @@ func TestShoppingHandler_Items(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				svc := &mockShoppingService{
 					DeleteItemFunc: tt.mockFunc,
+					FindItemByIDFunc: func(ctx context.Context, itemID int) (*models.ShoppingItem, error) {
+						return &models.ShoppingItem{ID: itemID, UploadedBy: 123}, nil
+					},
 				}
 
 				h := setupShoppingHandler(svc)
 				r := setupShoppingRouter(h)
 
-				req := httptest.NewRequest(http.MethodDelete, "/items/"+tt.itemID, nil)
+				req := httptest.NewRequest(http.MethodDelete, "/homes/1/items/"+tt.itemID, nil)
 				rr := httptest.NewRecorder()
 
 				r.ServeHTTP(rr, req)

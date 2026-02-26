@@ -11,6 +11,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -152,9 +153,15 @@ func setupTaskHandler(svc *mockTaskService) *handlers.TaskHandler {
 
 func setupTaskRouter(h *handlers.TaskHandler) *chi.Mux {
 	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(utils.WithUserID(r.Context(), 123))
+			next.ServeHTTP(w, r)
+		})
+	})
 	r.Get("/tasks/{task_id}", h.GetByID)
 	r.Get("/homes/{home_id}/tasks", h.GetTasksByHomeID)
-	r.Delete("/tasks/{task_id}", h.DeleteTask)
+	r.Delete("/homes/{home_id}/tasks/{task_id}", h.DeleteTask)
 	r.Get("/users/{user_id}/assignments", h.GetAssignmentsForUser)
 	r.Get("/users/{user_id}/assignments/closest", h.GetClosestAssignmentForUser)
 	r.Delete("/assignments/{assignment_id}", h.DeleteAssignment)
@@ -165,14 +172,14 @@ func TestTaskHandler_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
+		mockFunc       func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validCreateTaskReq,
-			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
+			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, "Clean Kitchen", name)
 				assert.Equal(t, "Daily cleaning", description)
@@ -193,7 +200,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		{
 			name: "Service Error",
 			body: validCreateTaskReq,
-			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
+			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -215,6 +222,7 @@ func TestTaskHandler_Create(t *testing.T) {
 			} else {
 				req = makeJSONRequest(http.MethodPost, "/tasks", tt.body)
 			}
+			req = req.WithContext(utils.WithUserID(req.Context(), 123))
 
 			rr := httptest.NewRecorder()
 			h.Create(rr, req)
@@ -378,12 +386,15 @@ func TestTaskHandler_DeleteTask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &mockTaskService{
 				DeleteTaskFunc: tt.mockFunc,
+				GetTaskByIDFunc: func(ctx context.Context, taskID int) (*models.Task, error) {
+					return &models.Task{ID: taskID, HomeID: 1, CreatedBy: 123}, nil
+				},
 			}
 
 			h := setupTaskHandler(svc)
 			r := setupTaskRouter(h)
 
-			req := httptest.NewRequest(http.MethodDelete, "/tasks/"+tt.taskID, nil)
+			req := httptest.NewRequest(http.MethodDelete, "/homes/1/tasks/"+tt.taskID, nil)
 			rr := httptest.NewRecorder()
 
 			r.ServeHTTP(rr, req)

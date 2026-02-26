@@ -488,6 +488,9 @@ func TestPollHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &mockPollService{
 				DeleteFunc: tt.mockFunc,
+				GetPollByIDFunc: func(ctx context.Context, pollID int) (*models.Poll, error) {
+					return &models.Poll{ID: pollID, HomeID: 1, CreatedBy: 123}, nil
+				},
 			}
 
 			h := setupPollHandler(svc)

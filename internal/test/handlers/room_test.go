@@ -10,6 +10,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,9 +64,15 @@ func setupRoomHandler(svc *mockRoomService) *handlers.RoomHandler {
 
 func setupRoomRouter(h *handlers.RoomHandler) *chi.Mux {
 	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(utils.WithUserID(r.Context(), 123))
+			next.ServeHTTP(w, r)
+		})
+	})
 	r.Get("/rooms/{room_id}", h.GetByID)
 	r.Get("/homes/{home_id}/rooms", h.GetByHomeID)
-	r.Delete("/rooms/{room_id}", h.Delete)
+	r.Delete("/homes/{home_id}/rooms/{room_id}", h.Delete)
 	return r
 }
 
@@ -120,6 +127,7 @@ func TestRoomHandler_Create(t *testing.T) {
 			} else {
 				req = makeJSONRequest(http.MethodPost, "/rooms", tt.body)
 			}
+			req = req.WithContext(utils.WithUserID(req.Context(), 123))
 
 			rr := httptest.NewRecorder()
 			h.Create(rr, req)
@@ -280,12 +288,15 @@ func TestRoomHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &mockRoomService{
 				DeleteRoomFunc: tt.mockFunc,
+				GetRoomByIDFunc: func(ctx context.Context, roomID int) (*models.Room, error) {
+					return &models.Room{ID: roomID, HomeID: 1, CreatedBy: 123}, nil
+				},
 			}
 
 			h := setupRoomHandler(svc)
 			r := setupRoomRouter(h)
 
-			req := httptest.NewRequest(http.MethodDelete, "/rooms/"+tt.roomID, nil)
+			req := httptest.NewRequest(http.MethodDelete, "/homes/1/rooms/"+tt.roomID, nil)
 			rr := httptest.NewRecorder()
 
 			r.ServeHTTP(rr, req)
