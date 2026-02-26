@@ -50,8 +50,6 @@ func SetupRoutes(
 	rateLimiter := ratelimiter.NewIpRateLimiter()
 
 	r := chi.NewRouter()
-	// Global rate limiter - 120 requests per minute
-	r.Use(middleware.RateLimitMiddleware(rateLimiter))
 	// Request body size limit - prevents DoS via huge payloads
 	r.Use(middleware.BodySizeLimit)
 	// CORS middleware
@@ -75,6 +73,8 @@ func SetupRoutes(
 		wsHandler.HandleWS(w, r, cache)
 	})
 	r.Group(func(r chi.Router) {
+	// Global rate limiter - 120 requests per minute
+	r.Use(middleware.RateLimitMiddleware(rateLimiter))
 
 		r.Use(middleware.MetricsMiddleware)
 		// HTTP request logger
