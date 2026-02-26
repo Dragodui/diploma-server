@@ -6,6 +6,7 @@ type Task struct {
 	ID           int        `gorm:"autoIncrement; primaryKey" json:"id"`
 	HomeID       int        `json:"home_id"`
 	RoomID       *int       `json:"room_id"`
+	CreatedBy    int        `json:"created_by"`
 	Name         string     `gorm:"not null;size:64" json:"name"`
 	Description  string     `gorm:"not null" json:"description"`
 	ScheduleType string     `gorm:"not null;size:64" json:"schedule_type"`
@@ -15,6 +16,7 @@ type Task struct {
 	// relations
 	Home            *Home            `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
 	Room            *Room            `gorm:"foreignKey:RoomID;constraint:OnDelete:SET NULL" json:"room,omitempty"`
+	Creator         *User            `gorm:"foreignKey:CreatedBy;constraint:OnDelete:CASCADE" json:"creator,omitempty"`
 	TaskAssignments []TaskAssignment `gorm:"foreignKey:TaskID" json:"assignments,omitempty"`
 }
 
@@ -25,6 +27,7 @@ type CreateTaskRequest struct {
 	DueDate      *time.Time `json:"due_date"`
 	HomeID       int        `json:"home_id"`
 	RoomID       *int       `json:"room_id,omitempty"`
+	UserID       *int       `json:"assign_user_id,omitempty"`
 }
 
 type ReassignRoomRequest struct {

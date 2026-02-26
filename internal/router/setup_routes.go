@@ -175,7 +175,7 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Get("/", roomHandler.GetByHomeID)
 							r.With(middleware.RequireMember(homeRepo)).Get("/{room_id}", roomHandler.GetByID)
 							r.With(middleware.RequireMember(homeRepo)).Get("/{room_id}/devices", smartHomeHandler.GetDevicesByRoom)
-							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{room_id}", roomHandler.Delete)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{room_id}", roomHandler.Delete)
 						})
 
 						// Tasks under a home
@@ -183,14 +183,14 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Post("/", taskHandler.Create)
 							r.With(middleware.RequireMember(homeRepo)).Get("/", taskHandler.GetTasksByHomeID)
 							r.With(middleware.RequireMember(homeRepo)).Get("/{task_id}", taskHandler.GetByID)
-							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{task_id}", taskHandler.DeleteTask)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{task_id}", taskHandler.DeleteTask)
 							// Assignments
 							r.With(middleware.RequireMember(homeRepo)).Post("/{task_id}/assign", taskHandler.AssignUser)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/reassign-room", taskHandler.ReassignRoom)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-completed", taskHandler.MarkAssignmentCompleted)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-uncompleted", taskHandler.MarkAssignmentUncompleted)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/complete", taskHandler.MarkTaskCompleted)
-							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{task_id}/assignments/{assignment_id}", taskHandler.DeleteAssignment)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{task_id}/assignments/{assignment_id}", taskHandler.DeleteAssignment)
 						})
 
 						// User assignments (not scoped to a specific home)
@@ -204,7 +204,7 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Get("/", billHandler.GetByHomeID)
 							r.With(middleware.RequireMember(homeRepo)).Post("/", billHandler.Create)
 							r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetByID)
-							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}", billHandler.MarkPayed)
 						})
 
@@ -212,8 +212,8 @@ func SetupRoutes(
 						r.Route("/bill-categories", func(r chi.Router) {
 							r.With(middleware.RequireMember(homeRepo)).Get("/", billCategoryHandler.GetAll)
 							r.With(middleware.RequireMember(homeRepo)).Post("/", billCategoryHandler.Create)
-							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{category_id}", billCategoryHandler.Delete)
-							r.With(middleware.RequireAdmin(homeRepo)).Patch("/{category_id}", billCategoryHandler.Update)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{category_id}", billCategoryHandler.Delete)
+							r.With(middleware.RequireMember(homeRepo)).Patch("/{category_id}", billCategoryHandler.Update)
 						})
 
 						// Shopping
@@ -242,7 +242,7 @@ func SetupRoutes(
 
 							r.With(middleware.RequireAdmin(homeRepo)).Patch("/{poll_id}/close", pollHandler.Close)
 
-							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{poll_id}", pollHandler.Delete)
+							r.With(middleware.RequireMember(homeRepo)).Delete("/{poll_id}", pollHandler.Delete)
 
 							r.With(middleware.RequireMember(homeRepo)).Post("/{poll_id}/vote", pollHandler.Vote)
 							r.With(middleware.RequireMember(homeRepo)).Delete("/{poll_id}/vote", pollHandler.Unvote)

@@ -58,7 +58,7 @@ var (
 )
 
 func setupPollHandler(mockSvc *mockPollService) *handlers.PollHandler {
-	return handlers.NewPollHandler(mockSvc)
+	return handlers.NewPollHandler(mockSvc, nil)
 }
 
 func setupPollRouter(h *handlers.PollHandler) *chi.Mux {
@@ -87,7 +87,7 @@ func setupPollRouter(h *handlers.PollHandler) *chi.Mux {
 // Mock service
 type mockPollService struct {
 	// Polls
-	CreateFunc              func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
+	CreateFunc              func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time, createdBy int) error
 	GetPollByIDFunc         func(ctx context.Context, pollID int) (*models.Poll, error)
 	GetAllPollsByHomeIDFunc func(ctx context.Context, homeID int) (*[]models.Poll, error)
 	ClosePollFunc           func(ctx context.Context, pollID, homeID int) error
@@ -99,9 +99,9 @@ type mockPollService struct {
 }
 
 // Poll methods
-func (m *mockPollService) Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
+func (m *mockPollService) Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time, createdBy int) error {
 	if m.CreateFunc != nil {
-		return m.CreateFunc(ctx, homeID, question, pollType, options, allowRevote, endsAt)
+		return m.CreateFunc(ctx, homeID, question, pollType, options, allowRevote, endsAt, createdBy)
 	}
 	return nil
 }
@@ -154,7 +154,7 @@ func TestPollHandler_Create(t *testing.T) {
 		name           string
 		homeID         string
 		body           interface{}
-		mockFunc       func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
+		mockFunc       func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time, createdBy int) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -162,7 +162,7 @@ func TestPollHandler_Create(t *testing.T) {
 			name:   "Success",
 			homeID: "1",
 			body:   validCreatePollRequest,
-			mockFunc: func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
+			mockFunc: func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time, createdBy int) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, "What's for dinner?", question)
 				assert.Equal(t, "public", pollType)
@@ -206,7 +206,7 @@ func TestPollHandler_Create(t *testing.T) {
 			name:   "Service Error",
 			homeID: "1",
 			body:   validCreatePollRequest,
-			mockFunc: func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
+			mockFunc: func(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time, createdBy int) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,

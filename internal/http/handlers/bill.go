@@ -7,17 +7,19 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/middleware"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 )
 
 type BillHandler struct {
-	svc services.IBillService
+	svc      services.IBillService
+	homeRepo repository.HomeRepository
 }
 
-func NewBillHandler(svc services.IBillService) *BillHandler {
-	return &BillHandler{svc}
+func NewBillHandler(svc services.IBillService, homeRepo repository.HomeRepository) *BillHandler {
+	return &BillHandler{svc: svc, homeRepo: homeRepo}
 }
 
 // GetByHomeID godoc
@@ -143,12 +145,38 @@ func (h *BillHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/bills/{bill_id} [delete]
 func (h *BillHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	billIDStr := chi.URLParam(r, "bill_id")
 	billID, err := strconv.Atoi(billIDStr)
 	if err != nil {
 		utils.JSONError(w, "invalid bill ID", http.StatusBadRequest)
 		return
 	}
+
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check ownership or admin
+	bill, err := h.svc.GetBillByID(r.Context(), billID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to find bill", http.StatusInternalServerError)
+		return
+	}
+	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+	if bill.UploadedBy != userID && !isAdmin {
+		utils.JSONError(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	if err := h.svc.Delete(r.Context(), billID); err != nil {
 		utils.SafeError(w, err, "Failed to delete bill", http.StatusInternalServerError)
 		return

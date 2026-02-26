@@ -18,7 +18,7 @@ type RoomService struct {
 }
 
 type IRoomService interface {
-	CreateRoom(ctx context.Context, name string, homeID int) error
+	CreateRoom(ctx context.Context, name string, homeID, createdBy int) error
 	GetRoomByID(ctx context.Context, roomID int) (*models.Room, error)
 	GetRoomsByHomeID(ctx context.Context, homeID int) (*[]models.Room, error)
 	DeleteRoom(ctx context.Context, roomID int) error
@@ -28,7 +28,7 @@ func NewRoomService(repo repository.RoomRepository, cache *redis.Client) *RoomSe
 	return &RoomService{repo: repo, cache: cache}
 }
 
-func (s *RoomService) CreateRoom(ctx context.Context, name string, homeID int) error {
+func (s *RoomService) CreateRoom(ctx context.Context, name string, homeID, createdBy int) error {
 	// delete homes rooms from cache
 	key := utils.GetRoomsForHomeKey(homeID)
 	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
@@ -36,8 +36,9 @@ func (s *RoomService) CreateRoom(ctx context.Context, name string, homeID int) e
 	}
 
 	room := &models.Room{
-		Name:   name,
-		HomeID: homeID,
+		Name:      name,
+		HomeID:    homeID,
+		CreatedBy: createdBy,
 	}
 	if err := s.repo.Create(ctx, room); err != nil {
 		return err

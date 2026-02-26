@@ -22,7 +22,7 @@ type PollService struct {
 
 type IPollService interface {
 	// polls
-	Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error
+	Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time, createdBy int) error
 	GetPollByID(ctx context.Context, pollID int) (*models.Poll, error)
 	GetAllPollsByHomeID(ctx context.Context, homeID int) (*[]models.Poll, error)
 	ClosePoll(ctx context.Context, pollID, homeID int) error
@@ -40,7 +40,7 @@ func NewPollService(repo repository.PollRepository, cache *redis.Client) *PollSe
 }
 
 // polls
-func (s *PollService) Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time) error {
+func (s *PollService) Create(ctx context.Context, homeID int, question, pollType string, options []models.OptionRequest, allowRevote bool, endsAt *time.Time, createdBy int) error {
 	var optionModels []models.Option
 	for _, option := range options {
 		optionModels = append(optionModels, models.Option{
@@ -55,6 +55,7 @@ func (s *PollService) Create(ctx context.Context, homeID int, question, pollType
 
 	poll := &models.Poll{
 		HomeID:      homeID,
+		CreatedBy:   createdBy,
 		Question:    question,
 		Type:        pollType,
 		AllowRevote: allowRevote,

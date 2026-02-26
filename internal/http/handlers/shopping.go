@@ -7,17 +7,19 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/middleware"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 )
 
 type ShoppingHandler struct {
-	svc services.IShoppingService
+	svc      services.IShoppingService
+	homeRepo repository.HomeRepository
 }
 
-func NewShoppingHandler(svc services.IShoppingService) *ShoppingHandler {
-	return &ShoppingHandler{svc}
+func NewShoppingHandler(svc services.IShoppingService, homeRepo repository.HomeRepository) *ShoppingHandler {
+	return &ShoppingHandler{svc: svc, homeRepo: homeRepo}
 }
 
 // categories
@@ -35,6 +37,12 @@ func NewShoppingHandler(svc services.IShoppingService) *ShoppingHandler {
 // @Failure      401  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/shopping/categories [post]
 func (h *ShoppingHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var req models.CreateCategoryRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -49,7 +57,7 @@ func (h *ShoppingHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.svc.CreateCategory(r.Context(), req.Name, req.Icon, req.Color, homeID); err != nil {
+	if err := h.svc.CreateCategory(r.Context(), req.Name, req.Icon, req.Color, homeID, userID); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
@@ -150,6 +158,12 @@ func (h *ShoppingHandler) GetCategoryByID(w http.ResponseWriter, r *http.Request
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/shopping/categories/{category_id} [delete]
 func (h *ShoppingHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	categoryIDStr := chi.URLParam(r, "category_id")
 	homeIDStr := chi.URLParam(r, "home_id")
 	categoryID, err := strconv.Atoi(categoryIDStr)
@@ -160,6 +174,18 @@ func (h *ShoppingHandler) DeleteCategory(w http.ResponseWriter, r *http.Request)
 	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
 		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check ownership or admin
+	category, err := h.svc.FindCategoryByID(r.Context(), categoryID, homeID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to find category", http.StatusInternalServerError)
+		return
+	}
+	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+	if category.CreatedBy != userID && !isAdmin {
+		utils.JSONError(w, "forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -336,10 +362,39 @@ func (h *ShoppingHandler) GetItemsByCategoryID(w http.ResponseWriter, r *http.Re
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/shopping/items/{item_id} [delete]
 func (h *ShoppingHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	itemIDStr := chi.URLParam(r, "item_id")
 	itemID, err := strconv.Atoi(itemIDStr)
 	if err != nil {
 		utils.JSONError(w, "invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check ownership or admin
+	item, err := h.svc.FindItemByID(r.Context(), itemID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to find item", http.StatusInternalServerError)
+		return
+	}
+	if item == nil {
+		utils.JSONError(w, "Item not found", http.StatusNotFound)
+		return
+	}
+	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+	if item.UploadedBy != userID && !isAdmin {
+		utils.JSONError(w, "forbidden", http.StatusForbidden)
 		return
 	}
 

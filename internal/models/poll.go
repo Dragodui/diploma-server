@@ -25,6 +25,7 @@ type Vote struct {
 type Poll struct {
 	ID          int        `gorm:"autoIncrement; primaryKey" json:"id"`
 	HomeID      int        `json:"home_id"`
+	CreatedBy   int        `json:"created_by"`
 	Question    string     `json:"question"`
 	Type        string     `gorm:"default:public" json:"type"`                  // public/anonymous
 	Status      string     `gorm:"not null;size:64;default:open" json:"status"` // open/closed
@@ -35,6 +36,7 @@ type Poll struct {
 
 	// relations
 	Home    *Home    `gorm:"foreignKey:HomeID;constraint;OnDelete:CASCADE" json:"home,omitempty"`
+	Creator *User    `gorm:"foreignKey:CreatedBy;constraint:OnDelete:CASCADE" json:"creator,omitempty"`
 	Options []Option `gorm:"foreignKey:PollID;constraint:OnDelete:CASCADE" json:"options,omitempty"`
 }
 

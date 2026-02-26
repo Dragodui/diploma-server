@@ -13,7 +13,8 @@ import (
 )
 
 type IBillCategoryService interface {
-	CreateCategory(ctx context.Context, homeID int, name, color string) error
+	CreateCategory(ctx context.Context, homeID int, name, color string, createdBy int) error
+	GetCategoryByID(ctx context.Context, id int) (*models.BillCategory, error)
 	GetCategories(ctx context.Context, homeID int) ([]models.BillCategory, error)
 	UpdateCategory(ctx context.Context, categoryID int, name, color *string) (*models.BillCategory, error)
 	DeleteCategory(ctx context.Context, id int, homeID int) error
@@ -28,11 +29,16 @@ func NewBillCategoryService(repo repository.IBillCategoryRepository, cache *redi
 	return &BillCategoryService{repo: repo, cache: cache}
 }
 
-func (s *BillCategoryService) CreateCategory(ctx context.Context, homeID int, name, color string) error {
+func (s *BillCategoryService) GetCategoryByID(ctx context.Context, id int) (*models.BillCategory, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
+func (s *BillCategoryService) CreateCategory(ctx context.Context, homeID int, name, color string, createdBy int) error {
 	category := &models.BillCategory{
-		HomeID: homeID,
-		Name:   name,
-		Color:  color,
+		HomeID:    homeID,
+		CreatedBy: createdBy,
+		Name:      name,
+		Color:     color,
 	}
 
 	key := utils.GetBillCategoriesKey(homeID)

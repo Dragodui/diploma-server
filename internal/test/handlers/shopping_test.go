@@ -71,7 +71,7 @@ func boolPtr(b bool) *bool           { return &b }
 func timePtr(t time.Time) *time.Time { return &t }
 
 func setupShoppingHandler(mockSvc *mockShoppingService) *handlers.ShoppingHandler {
-	return handlers.NewShoppingHandler(mockSvc)
+	return handlers.NewShoppingHandler(mockSvc, nil)
 }
 
 func makeJSONRequest(method, url string, body interface{}) *http.Request {
@@ -121,7 +121,7 @@ func assertJSONEqual(t *testing.T, rr *httptest.ResponseRecorder, expected inter
 // Mock service
 type mockShoppingService struct {
 	// Categories
-	CreateCategoryFunc           func(ctx context.Context, name string, icon *string, color string, homeID int) error
+	CreateCategoryFunc           func(ctx context.Context, name string, icon *string, color string, homeID, createdBy int) error
 	FindAllCategoriesForHomeFunc func(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error)
 	FindCategoryByIDFunc         func(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error)
 	DeleteCategoryFunc           func(ctx context.Context, categoryID, homeID int) error
@@ -137,9 +137,9 @@ type mockShoppingService struct {
 }
 
 // Category methods
-func (m *mockShoppingService) CreateCategory(ctx context.Context, name string, icon *string, color string, homeID int) error {
+func (m *mockShoppingService) CreateCategory(ctx context.Context, name string, icon *string, color string, homeID, createdBy int) error {
 	if m.CreateCategoryFunc != nil {
-		return m.CreateCategoryFunc(ctx, name, icon, color, homeID)
+		return m.CreateCategoryFunc(ctx, name, icon, color, homeID, createdBy)
 	}
 	return nil
 }
@@ -222,7 +222,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 			name           string
 			homeID         string
 			body           interface{}
-			mockFunc       func(ctx context.Context, name string, icon *string, color string, homeID int) error
+			mockFunc       func(ctx context.Context, name string, icon *string, color string, homeID, createdBy int) error
 			expectedStatus int
 			expectedBody   string
 		}{
@@ -230,7 +230,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:   "Success",
 				homeID: "1",
 				body:   validCreateCategoryRequest,
-				mockFunc: func(ctx context.Context, name string, icon *string, color string, homeID int) error {
+				mockFunc: func(ctx context.Context, name string, icon *string, color string, homeID, createdBy int) error {
 					assert.Equal(t, "Groceries", name)
 					assert.Equal(t, "🛒", *icon)
 					assert.Equal(t, "#ffffff", color)
@@ -260,7 +260,7 @@ func TestShoppingHandler_Categories(t *testing.T) {
 				name:   "Service Error",
 				homeID: "1",
 				body:   validCreateCategoryRequest,
-				mockFunc: func(ctx context.Context, name string, icon *string, color string, homeID int) error {
+				mockFunc: func(ctx context.Context, name string, icon *string, color string, homeID, createdBy int) error {
 					return errors.New("service error")
 				},
 				expectedStatus: http.StatusBadRequest,

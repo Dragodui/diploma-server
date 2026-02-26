@@ -17,15 +17,15 @@ import (
 
 // Mock service
 type mockRoomService struct {
-	CreateRoomFunc       func(ctx context.Context, name string, homeID int) error
+	CreateRoomFunc       func(ctx context.Context, name string, homeID, createdBy int) error
 	GetRoomByIDFunc      func(ctx context.Context, roomID int) (*models.Room, error)
 	GetRoomsByHomeIDFunc func(ctx context.Context, homeID int) (*[]models.Room, error)
 	DeleteRoomFunc       func(ctx context.Context, roomID int) error
 }
 
-func (m *mockRoomService) CreateRoom(ctx context.Context, name string, homeID int) error {
+func (m *mockRoomService) CreateRoom(ctx context.Context, name string, homeID, createdBy int) error {
 	if m.CreateRoomFunc != nil {
-		return m.CreateRoomFunc(ctx, name, homeID)
+		return m.CreateRoomFunc(ctx, name, homeID, createdBy)
 	}
 	return nil
 }
@@ -58,7 +58,7 @@ var validCreateRoomRequest = models.CreateRoomRequest{
 }
 
 func setupRoomHandler(svc *mockRoomService) *handlers.RoomHandler {
-	return handlers.NewRoomHandler(svc)
+	return handlers.NewRoomHandler(svc, nil)
 }
 
 func setupRoomRouter(h *handlers.RoomHandler) *chi.Mux {
@@ -73,14 +73,14 @@ func TestRoomHandler_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(ctx context.Context, name string, homeID int) error
+		mockFunc       func(ctx context.Context, name string, homeID, createdBy int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validCreateRoomRequest,
-			mockFunc: func(ctx context.Context, name string, homeID int) error {
+			mockFunc: func(ctx context.Context, name string, homeID, createdBy int) error {
 				assert.Equal(t, "Kitchen", name)
 				assert.Equal(t, 1, homeID)
 				return nil
@@ -98,7 +98,7 @@ func TestRoomHandler_Create(t *testing.T) {
 		{
 			name: "Service Error",
 			body: validCreateRoomRequest,
-			mockFunc: func(ctx context.Context, name string, homeID int) error {
+			mockFunc: func(ctx context.Context, name string, homeID, createdBy int) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,

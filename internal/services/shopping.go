@@ -22,7 +22,7 @@ type ShoppingService struct {
 
 type IShoppingService interface {
 	// categories
-	CreateCategory(ctx context.Context, name string, icon *string, color string, homeID int) error
+	CreateCategory(ctx context.Context, name string, icon *string, color string, homeID, createdBy int) error
 	FindAllCategoriesForHome(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error)
 	FindCategoryByID(ctx context.Context, categoryID, homeID int) (*models.ShoppingCategory, error)
 	DeleteCategory(ctx context.Context, categoryID, homeID int) error
@@ -45,16 +45,17 @@ func NewShoppingService(repo repository.ShoppingRepository, cache *redis.Client)
 }
 
 // categories
-func (s *ShoppingService) CreateCategory(ctx context.Context, name string, icon *string, color string, homeID int) error {
+func (s *ShoppingService) CreateCategory(ctx context.Context, name string, icon *string, color string, homeID, createdBy int) error {
 	key := utils.GetAllCategoriesForHomeKey(homeID)
 	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 	category := &models.ShoppingCategory{
-		Name:   name,
-		Icon:   icon,
-		Color:  color,
-		HomeID: homeID,
+		Name:      name,
+		Icon:      icon,
+		Color:     color,
+		HomeID:    homeID,
+		CreatedBy: createdBy,
 	}
 	if err := s.repo.CreateCategory(ctx, category); err != nil {
 		return err

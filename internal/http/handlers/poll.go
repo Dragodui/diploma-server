@@ -7,17 +7,19 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/middleware"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 )
 
 type PollHandler struct {
-	svc services.IPollService
+	svc      services.IPollService
+	homeRepo repository.HomeRepository
 }
 
-func NewPollHandler(svc services.IPollService) *PollHandler {
-	return &PollHandler{svc}
+func NewPollHandler(svc services.IPollService, homeRepo repository.HomeRepository) *PollHandler {
+	return &PollHandler{svc: svc, homeRepo: homeRepo}
 }
 
 // POST /homes/{home_id}/polls
@@ -51,7 +53,13 @@ func (h *PollHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Create(r.Context(), homeID, req.Question, req.Type, req.Options, req.AllowRevote, req.EndsAt); err != nil {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.svc.Create(r.Context(), homeID, req.Question, req.Type, req.Options, req.AllowRevote, req.EndsAt, userID); err != nil {
 		utils.SafeError(w, err, "Failed to create poll", http.StatusBadRequest)
 		return
 	}
@@ -170,6 +178,12 @@ func (h *PollHandler) Close(w http.ResponseWriter, r *http.Request) {
 // @Failure      401  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/polls/{poll_id} [delete]
 func (h *PollHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
 	if err != nil {
 		utils.JSONError(w, "Invalid home ID", http.StatusBadRequest)
@@ -178,6 +192,22 @@ func (h *PollHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	pollID, err := strconv.Atoi(chi.URLParam(r, "poll_id"))
 	if err != nil {
 		utils.JSONError(w, "Invalid poll ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check ownership or admin
+	poll, err := h.svc.GetPollByID(r.Context(), pollID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to find poll", http.StatusInternalServerError)
+		return
+	}
+	if poll == nil {
+		utils.JSONError(w, "Poll not found", http.StatusNotFound)
+		return
+	}
+	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+	if poll.CreatedBy != userID && !isAdmin {
+		utils.JSONError(w, "forbidden", http.StatusForbidden)
 		return
 	}
 

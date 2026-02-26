@@ -78,7 +78,7 @@ var (
 )
 
 func setupBillHandler(svc *mockBillService) *handlers.BillHandler {
-	return handlers.NewBillHandler(svc)
+	return handlers.NewBillHandler(svc, nil)
 }
 
 func setupBillRouter(h *handlers.BillHandler) *chi.Mux {

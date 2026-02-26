@@ -20,8 +20,8 @@ type TaskService struct {
 }
 
 type ITaskService interface {
-	CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
-	CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error
+	CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error
+	CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int, createdBy int) error
 	GetTaskByID(ctx context.Context, taskID int) (*models.Task, error)
 	GetTasksByHomeID(ctx context.Context, homeID int) (*[]models.Task, error)
 	DeleteTask(ctx context.Context, taskID int) error
@@ -39,7 +39,7 @@ func NewTaskService(repo repository.TaskRepository, cache *redis.Client) *TaskSe
 	return &TaskService{repo: repo, cache: cache}
 }
 
-func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
+func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error {
 	tasksKey := utils.GetTasksForHomeKey(homeID)
 	if err := utils.DeleteFromCache(ctx, tasksKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
@@ -50,6 +50,7 @@ func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, n
 		Description:  description,
 		HomeID:       homeID,
 		RoomID:       roomID,
+		CreatedBy:    createdBy,
 		ScheduleType: scheduleType,
 		DueDate:      dueDate,
 	}
@@ -66,7 +67,7 @@ func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, n
 	return nil
 }
 
-func (s *TaskService) CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error {
+func (s *TaskService) CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int, createdBy int) error {
 	tasksKey := utils.GetTasksForHomeKey(homeID)
 	if err := utils.DeleteFromCache(ctx, tasksKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
@@ -77,6 +78,7 @@ func (s *TaskService) CreateTaskWithAssignment(ctx context.Context, homeID int, 
 		Description:  description,
 		HomeID:       homeID,
 		RoomID:       roomID,
+		CreatedBy:    createdBy,
 		ScheduleType: scheduleType,
 		DueDate:      dueDate,
 	}

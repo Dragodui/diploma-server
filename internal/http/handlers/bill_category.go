@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Dragodui/diploma-server/internal/http/middleware"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
 
@@ -13,11 +15,12 @@ import (
 )
 
 type BillCategoryHandler struct {
-	svc services.IBillCategoryService
+	svc      services.IBillCategoryService
+	homeRepo repository.HomeRepository
 }
 
-func NewBillCategoryHandler(svc services.IBillCategoryService) *BillCategoryHandler {
-	return &BillCategoryHandler{svc: svc}
+func NewBillCategoryHandler(svc services.IBillCategoryService, homeRepo repository.HomeRepository) *BillCategoryHandler {
+	return &BillCategoryHandler{svc: svc, homeRepo: homeRepo}
 }
 
 // Create godoc
@@ -33,6 +36,12 @@ func NewBillCategoryHandler(svc services.IBillCategoryService) *BillCategoryHand
 // @Failure 500 {object} map[string]string
 // @Router /homes/{home_id}/bill-categories [post]
 func (h *BillCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
 	if err != nil {
 		utils.JSONError(w, "Invalid home ID", http.StatusBadRequest)
@@ -45,7 +54,7 @@ func (h *BillCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateCategory(r.Context(), homeID, req.Name, req.Color); err != nil {
+	if err := h.svc.CreateCategory(r.Context(), homeID, req.Name, req.Color, userID); err != nil {
 		utils.SafeError(w, err, "Failed to create category", http.StatusInternalServerError)
 		return
 	}
@@ -97,6 +106,12 @@ func (h *BillCategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /homes/{home_id}/bill-categories/{category_id} [delete]
 func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	categoryID, err := strconv.Atoi(chi.URLParam(r, "category_id"))
 	if err != nil {
 		utils.JSONError(w, "Invalid category ID", http.StatusBadRequest)
@@ -106,6 +121,22 @@ func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
 	if err != nil {
 		utils.JSONError(w, "Invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check ownership or admin
+	category, err := h.svc.GetCategoryByID(r.Context(), categoryID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to find category", http.StatusInternalServerError)
+		return
+	}
+	if category == nil {
+		utils.JSONError(w, "Category not found", http.StatusNotFound)
+		return
+	}
+	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+	if category.CreatedBy != userID && !isAdmin {
+		utils.JSONError(w, "forbidden", http.StatusForbidden)
 		return
 	}
 

@@ -147,7 +147,7 @@ var (
 )
 
 func setupTaskHandler(svc *mockTaskService) *handlers.TaskHandler {
-	return handlers.NewTaskHandler(svc)
+	return handlers.NewTaskHandler(svc, nil)
 }
 
 func setupTaskRouter(h *handlers.TaskHandler) *chi.Mux {

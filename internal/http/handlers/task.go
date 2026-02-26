@@ -7,17 +7,19 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/http/middleware"
 	"github.com/Dragodui/diploma-server/internal/models"
+	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/services"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/go-chi/chi/v5"
 )
 
 type TaskHandler struct {
-	svc services.ITaskService
+	svc      services.ITaskService
+	homeRepo repository.HomeRepository
 }
 
-func NewTaskHandler(svc services.ITaskService) *TaskHandler {
-	return &TaskHandler{svc}
+func NewTaskHandler(svc services.ITaskService, homeRepo repository.HomeRepository) *TaskHandler {
+	return &TaskHandler{svc: svc, homeRepo: homeRepo}
 }
 
 // Create godoc
@@ -34,15 +36,28 @@ func NewTaskHandler(svc services.ITaskService) *TaskHandler {
 // @Failure      401  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/tasks [post]
 func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var req models.CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.svc.CreateTask(r.Context(), req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate); err != nil {
-		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
-		return
+	if req.UserID != nil {
+		if err := h.svc.CreateTaskWithAssignment(r.Context(), req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate, *req.UserID, userID); err != nil {
+			utils.JSONError(w, "Invalid data", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := h.svc.CreateTask(r.Context(), req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate, userID); err != nil {
+			utils.JSONError(w, "Invalid data", http.StatusBadRequest)
+			return
+		}
 	}
 
 	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
@@ -124,6 +139,12 @@ func (h *TaskHandler) GetTasksByHomeID(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/tasks/{task_id} [delete]
 func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	taskIDStr := chi.URLParam(r, "task_id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
@@ -131,8 +152,27 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.svc.DeleteTask(r.Context(), taskID)
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check ownership or admin
+	task, err := h.svc.GetTaskByID(r.Context(), taskID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to find task", http.StatusInternalServerError)
+		return
+	}
+
+	isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+	if task.CreatedBy != userID && !isAdmin {
+		utils.JSONError(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	if err := h.svc.DeleteTask(r.Context(), taskID); err != nil {
 		utils.SafeError(w, err, "Failed to delete task", http.StatusInternalServerError)
 		return
 	}
