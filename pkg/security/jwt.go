@@ -12,11 +12,14 @@ type MyClaims struct {
 }
 
 func GenerateToken(userID int, subject string, secret []byte, ttl time.Duration) (string, error) {
+	now := time.Now()
 	claims := MyClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 		Subject:   subject,
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
+		ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+		IssuedAt:  jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now),
 	},
 	}
 

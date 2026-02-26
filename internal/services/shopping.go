@@ -275,10 +275,15 @@ func (s *ShoppingService) MarkIsBought(ctx context.Context, itemID int) error {
 		return err
 	}
 
+	updatedItem, err := s.repo.FindItemByID(ctx, itemID)
+	if err != nil {
+		logger.Info.Printf("Failed to fetch updated item %d for event: %v", itemID, err)
+	}
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingItem,
 		Action: event.ActionUpdated,
-		Data:   item,
+		Data:   updatedItem,
 	})
 
 	return nil

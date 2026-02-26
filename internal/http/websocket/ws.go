@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/config"
+	"github.com/Dragodui/diploma-server/pkg/security"
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
 )
@@ -19,9 +20,10 @@ const (
 
 // handler for all ws connections
 type WSHandler struct {
-	Upgrader websocket.Upgrader
-	Clients  map[*websocket.Conn]bool
-	Mu       sync.Mutex
+	Upgrader  websocket.Upgrader
+	Clients   map[*websocket.Conn]bool
+	Mu        sync.Mutex
+	jwtSecret []byte
 }
 
 func NewWSHandler(cfg *config.Config) *WSHandler {
@@ -45,11 +47,30 @@ func NewWSHandler(cfg *config.Config) *WSHandler {
 				return false
 			},
 		},
-		Clients: make(map[*websocket.Conn]bool),
+		Clients:   make(map[*websocket.Conn]bool),
+		jwtSecret: []byte(cfg.JWTSecret),
 	}
 }
 
 func (h *WSHandler) HandleWS(w http.ResponseWriter, r *http.Request, cache *redis.Client) {
+	// Authenticate: require a valid JWT token via query parameter
+	tokenStr := r.URL.Query().Get("token")
+	if tokenStr == "" {
+		http.Error(w, "missing token", http.StatusUnauthorized)
+		return
+	}
+
+	// Check if token has been revoked (logout)
+	if val, err := cache.Exists(r.Context(), "blacklist:"+tokenStr).Result(); err == nil && val > 0 {
+		http.Error(w, "token revoked", http.StatusUnauthorized)
+		return
+	}
+
+	if _, err := security.ParseToken(tokenStr, h.jwtSecret); err != nil {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := h.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)

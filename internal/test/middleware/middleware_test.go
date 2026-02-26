@@ -16,6 +16,7 @@ import (
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/Dragodui/diploma-server/pkg/security"
 	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -112,7 +113,9 @@ func TestJWTAuth(t *testing.T) {
 				}
 			})
 
-			handler := middleware.JWTAuth(testJWTSecret)(nextHandler)
+			// Use a dummy Redis client (connection errors are treated as not-blacklisted)
+			dummyCache := redis.NewClient(&redis.Options{Addr: "localhost:0"})
+			handler := middleware.JWTAuth(testJWTSecret, dummyCache)(nextHandler)
 
 			req := httptest.NewRequest(http.MethodGet, "/protected", nil)
 
@@ -267,7 +270,7 @@ func TestRequireAdmin(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name:           "Is Admin - URL Param (checks member)",
+			name:           "Is Admin - URL Param",
 			homeID:         "1",
 			userID:         123,
 			isMember:       true,
@@ -277,14 +280,14 @@ func TestRequireAdmin(t *testing.T) {
 			expectedBody:   "success",
 		},
 		{
-			name:           "Not Member - URL Param",
+			name:           "Not Admin - URL Param",
 			homeID:         "1",
 			userID:         123,
 			isMember:       false,
 			isAdmin:        false,
 			useBody:        false,
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "you are not a member",
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "you are not an admin",
 		},
 		{
 			name:           "Is Admin - Body",

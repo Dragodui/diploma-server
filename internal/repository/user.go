@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/models"
@@ -122,10 +121,8 @@ func (r *userRepo) SetResetToken(ctx context.Context, email, token string, expir
 		return result.Error
 	}
 
-	// We check RowsAffected to know if user exists
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("user not found")
-	}
+	// Return nil even if user doesn't exist to prevent user enumeration
+	_ = result.RowsAffected
 
 	return nil
 }

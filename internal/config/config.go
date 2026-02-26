@@ -105,6 +105,11 @@ func Load() *Config {
 		HAEncryptionKey: getEnvRequired("HA_ENCRYPTION_KEY"),
 	}
 
+	// Fail in production if admin credentials are still default
+	if cfg.Mode != "dev" && (cfg.AdminUsername == "admin" && cfg.AdminPassword == "changeme") {
+		log.Fatal("SECURITY: ADMIN_USERNAME and ADMIN_PASSWORD must be changed from defaults in production")
+	}
+
 	return cfg
 }
 

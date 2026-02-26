@@ -83,11 +83,12 @@ func extractDate(text string) string {
 // extractTotal extracts total amount from receipt text
 func extractTotal(text string) float64 {
 	// Patterns for total amount (multiple languages)
+	// Use [^0-9]* to skip OCR noise (underscores, dots, currency names) between keyword and amount
 	totalPatterns := []string{
-		`(?i)(?:total|итого|всего|suma|razem|сума|загалом|do\s+zapłaty)[:\s]*[=]?\s*(\d+[.,]?\d*)`,
-		`(?i)(?:к\s+оплате|до\s+сплати|amount)[:\s]*[=]?\s*(\d+[.,]?\d*)`,
-		`(?i)(?:сумма|kwota)[:\s]*[=]?\s*(\d+[.,]?\d*)`,
-		`(?i)(?:grand\s+total)[:\s]*[=]?\s*(\d+[.,]?\d*)`,
+		`(?i)(?:total|итого|всего|suma|razem|сума|загалом|do\s+zapłaty)[:\s=_.\-]*(?:PLN|UAH|USD|EUR|zł|грн)?\s*(\d+[.,]?\d*)`,
+		`(?i)(?:к\s+оплате|до\s+сплати|amount)[:\s=_.\-]*(?:PLN|UAH|USD|EUR|zł|грн)?\s*(\d+[.,]?\d*)`,
+		`(?i)(?:сумма|kwota)[:\s=_.\-]*(?:PLN|UAH|USD|EUR|zł|грн)?\s*(\d+[.,]?\d*)`,
+		`(?i)(?:grand\s+total)[:\s=_.\-]*(?:PLN|UAH|USD|EUR|zł|грн)?\s*(\d+[.,]?\d*)`,
 	}
 
 	var maxAmount float64
@@ -116,13 +117,14 @@ func extractItems(lines []string) []models.OCRItem {
 	var items []models.OCRItem
 
 	// Patterns for items: name ... price or name quantity x price
+	// Allow trailing OCR noise (letters, punctuation) after the price
 	itemPatterns := []*regexp.Regexp{
-		// Name ... quantity x price = total
-		regexp.MustCompile(`^(.+?)\s+(\d+(?:[.,]\d+)?)\s*[xх*]\s*(\d+[.,]?\d*)\s*[=]?\s*(\d+[.,]?\d*)$`),
-		// Name ... price (at end of line)
-		regexp.MustCompile(`^(.+?)\s{2,}(\d+[.,]\d{2})$`),
-		// Name price (no separator)
-		regexp.MustCompile(`^([A-Za-zА-Яа-яЁёІіЇїЄє\s\-]+)\s+(\d+[.,]\d{2})$`),
+		// Name ... quantity x price = total (with optional trailing junk)
+		regexp.MustCompile(`^(.+?)\s+(\d+(?:[.,]\d+)?)\s*[xх*]\s*(\d+[.,]?\d*)\s*[=]?\s*(\d+[.,]\d{2})[^\d]*$`),
+		// Name ... price (separated by spaces/dots/pipes, with optional trailing junk)
+		regexp.MustCompile(`^(.+?)[\s|.]{2,}(\d+[.,]\d{2})[^\d]*$`),
+		// Name price (no separator, with optional trailing junk)
+		regexp.MustCompile(`^([A-Za-zА-Яа-яЁёІіЇїЄєĄąĆćĘęŁłŃńÓóŚśŹźŻż\s\-]+)\s+(\d+[.,]\d{2})[^\d]*$`),
 	}
 
 	for _, line := range lines {

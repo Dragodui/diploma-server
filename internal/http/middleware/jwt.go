@@ -10,10 +10,13 @@ import (
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
 	"github.com/Dragodui/diploma-server/pkg/security"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func JWTAuth(secret []byte) func(http.Handler) http.Handler {
+const tokenBlacklistPrefix = "blacklist:"
+
+func JWTAuth(secret []byte, cache *redis.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			auth := r.Header.Get("Authorization")
@@ -23,6 +26,13 @@ func JWTAuth(secret []byte) func(http.Handler) http.Handler {
 			}
 
 			tokenStr := strings.TrimPrefix(auth, "Bearer ")
+
+			// Check if token has been revoked (logout)
+			if val, err := cache.Exists(r.Context(), tokenBlacklistPrefix+tokenStr).Result(); err == nil && val > 0 {
+				utils.JSONError(w, "token revoked", http.StatusUnauthorized)
+				return
+			}
+
 			claims, err := security.ParseToken(tokenStr, secret)
 			if err != nil {
 				utils.JSONError(w, "invalid token", http.StatusUnauthorized)

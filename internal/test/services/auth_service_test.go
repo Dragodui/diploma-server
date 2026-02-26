@@ -153,7 +153,7 @@ func TestAuthService_Register(t *testing.T) {
 				return &models.User{ID: 1, Email: email}, nil
 			},
 			create:        nil,
-			expectedError: "user already exists",
+			expectedError: "registration failed",
 		},
 		{
 			name:     "Create Error",

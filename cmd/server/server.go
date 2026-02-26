@@ -120,7 +120,7 @@ func NewServer() (*Server, error) {
 	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient, cfg.HAEncryptionKey)
 
 	// handlers
-	authHandler := handlers.NewAuthHandler(authSvc, cfg.ClientURL)
+	authHandler := handlers.NewAuthHandler(authSvc, cfg.ClientURL, cfg.Mode != "dev")
 	homeHandler := handlers.NewHomeHandler(homeSvc)
 	roomHandler := handlers.NewRoomHandler(roomSvc)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
