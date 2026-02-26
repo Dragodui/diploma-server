@@ -110,7 +110,7 @@ func TestPollService_Create_Success(t *testing.T) {
 	}
 
 	svc := setupPollService(t, repo)
-	err := svc.Create(context.Background(), 1, "What should we order?", "public", options, true, &endsAt)
+	err := svc.Create(context.Background(), 1, "What should we order?", "public", options, true, &endsAt, 1)
 
 	assert.NoError(t, err)
 }
@@ -128,7 +128,7 @@ func TestPollService_Create_RepositoryError(t *testing.T) {
 	}
 
 	svc := setupPollService(t, repo)
-	err := svc.Create(context.Background(), 1, "Question?", "public", options, false, nil)
+	err := svc.Create(context.Background(), 1, "Question?", "public", options, false, nil, 1)
 
 	assert.Error(t, err)
 }

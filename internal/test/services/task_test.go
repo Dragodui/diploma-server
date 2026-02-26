@@ -154,7 +154,7 @@ func TestTaskService_CreateTask_Success(t *testing.T) {
 	}
 
 	svc := setupTaskService(t, repo)
-	err := svc.CreateTask(context.Background(), 1, &roomID, "Clean Kitchen", "Deep clean the kitchen", "once", &dueDate)
+	err := svc.CreateTask(context.Background(), 1, &roomID, "Clean Kitchen", "Deep clean the kitchen", "once", &dueDate, 1)
 	assert.NoError(t, err)
 }
 
@@ -168,7 +168,7 @@ func TestTaskService_CreateTask_WithoutRoomID(t *testing.T) {
 	}
 
 	svc := setupTaskService(t, repo)
-	err := svc.CreateTask(context.Background(), 1, nil, "General Task", "Not room-specific", "weekly", nil)
+	err := svc.CreateTask(context.Background(), 1, nil, "General Task", "Not room-specific", "weekly", nil, 1)
 	assert.NoError(t, err)
 }
 
@@ -180,7 +180,7 @@ func TestTaskService_CreateTask_RepositoryError(t *testing.T) {
 	}
 
 	svc := setupTaskService(t, repo)
-	err := svc.CreateTask(context.Background(), 1, nil, "Task", "Description", "once", nil)
+	err := svc.CreateTask(context.Background(), 1, nil, "Task", "Description", "once", nil, 1)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
 }

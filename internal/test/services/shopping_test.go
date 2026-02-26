@@ -128,7 +128,7 @@ func TestShoppingService_CreateCategory_Success(t *testing.T) {
 	}
 
 	svc := setupShoppingService(t, repo)
-	err := svc.CreateCategory(context.Background(), "Groceries", &icon, "red", 1)
+	err := svc.CreateCategory(context.Background(), "Groceries", &icon, "red", 1, 1)
 
 	assert.NoError(t, err)
 }
@@ -141,7 +141,7 @@ func TestShoppingService_CreateCategory_RepositoryError(t *testing.T) {
 	}
 
 	svc := setupShoppingService(t, repo)
-	err := svc.CreateCategory(context.Background(), "Groceries", nil, "red", 1)
+	err := svc.CreateCategory(context.Background(), "Groceries", nil, "red", 1, 1)
 
 	assert.Error(t, err)
 }

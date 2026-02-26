@@ -18,8 +18,8 @@ import (
 
 // Mock service
 type mockTaskService struct {
-	CreateTaskFunc                  func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error
-	CreateTaskWithAssignmentFunc    func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error
+	CreateTaskFunc                  func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error
+	CreateTaskWithAssignmentFunc    func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int, createdBy int) error
 	GetTaskByIDFunc                 func(ctx context.Context, taskID int) (*models.Task, error)
 	GetTasksByHomeIDFunc            func(ctx context.Context, homeID int) (*[]models.Task, error)
 	DeleteTaskFunc                  func(ctx context.Context, taskID int) error
@@ -33,16 +33,16 @@ type mockTaskService struct {
 	ReassignRoomFunc                func(ctx context.Context, taskID, roomID int) error
 }
 
-func (m *mockTaskService) CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int) error {
+func (m *mockTaskService) CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int, createdBy int) error {
 	if m.CreateTaskWithAssignmentFunc != nil {
-		return m.CreateTaskWithAssignmentFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate, userID)
+		return m.CreateTaskWithAssignmentFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate, userID, createdBy)
 	}
 	return nil
 }
 
-func (m *mockTaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time) error {
+func (m *mockTaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error {
 	if m.CreateTaskFunc != nil {
-		return m.CreateTaskFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate)
+		return m.CreateTaskFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate, createdBy)
 	}
 	return nil
 }
