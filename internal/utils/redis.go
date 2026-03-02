@@ -57,8 +57,8 @@ func GetAssignmentKey(assignmentID int) string {
 	return "assignment:" + strconv.Itoa(assignmentID)
 }
 
-func GetAssignmentsForUserKey(userID int) string {
-	return "assignments:user:" + strconv.Itoa(userID)
+func GetAssignmentsForUserKey(userID int, homeID int) string {
+	return "assignments:user:" + strconv.Itoa(userID) + ":home:" + strconv.Itoa(homeID)
 }
 
 func GetClosestAssignmentsForUserKey(userID int) string {

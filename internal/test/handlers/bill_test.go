@@ -21,16 +21,18 @@ import (
 
 // Mock service
 type mockBillService struct {
-	CreateBillFunc       func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
-	GetBillByIDFunc      func(ctx context.Context, billID int) (*models.Bill, error)
+	CreateBillFunc    func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error
+	GetBillByIDFunc   func(ctx context.Context, billID int) (*models.Bill, error)
 	GetBillsByHomeIDFunc func(ctx context.Context, homeID int) ([]models.Bill, error)
-	DeleteFunc           func(ctx context.Context, billID int) error
-	MarkBillPayedFunc    func(ctx context.Context, billID int) error
+	DeleteFunc        func(ctx context.Context, billID int) error
+	MarkBillPayedFunc func(ctx context.Context, billID int) error
+	UpdateSplitsFunc  func(ctx context.Context, billID int, splits []models.SplitInput) error
+	MarkSplitPaidFunc func(ctx context.Context, splitID int) error
 }
 
-func (m *mockBillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+func (m *mockBillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
 	if m.CreateBillFunc != nil {
-		return m.CreateBillFunc(ctx, billType, billCategoryID, totalAmount, start, end, ocrData, homeID, userID)
+		return m.CreateBillFunc(ctx, billType, billCategoryID, totalAmount, start, end, ocrData, homeID, userID, splits)
 	}
 	return nil
 }
@@ -59,6 +61,20 @@ func (m *mockBillService) Delete(ctx context.Context, billID int) error {
 func (m *mockBillService) MarkBillPayed(ctx context.Context, billID int) error {
 	if m.MarkBillPayedFunc != nil {
 		return m.MarkBillPayedFunc(ctx, billID)
+	}
+	return nil
+}
+
+func (m *mockBillService) UpdateSplits(ctx context.Context, billID int, splits []models.SplitInput) error {
+	if m.UpdateSplitsFunc != nil {
+		return m.UpdateSplitsFunc(ctx, billID, splits)
+	}
+	return nil
+}
+
+func (m *mockBillService) MarkSplitPaid(ctx context.Context, splitID int) error {
+	if m.MarkSplitPaidFunc != nil {
+		return m.MarkSplitPaidFunc(ctx, splitID)
 	}
 	return nil
 }
@@ -92,6 +108,8 @@ func setupBillRouter(h *handlers.BillHandler) *chi.Mux {
 	r.Get("/bills/{bill_id}", h.GetByID)
 	r.Delete("/homes/{home_id}/bills/{bill_id}", h.Delete)
 	r.Put("/bills/{bill_id}/mark-payed", h.MarkPayed)
+	r.Put("/homes/{home_id}/bills/{bill_id}/splits", h.UpdateSplits)
+	r.Patch("/homes/{home_id}/bills/{bill_id}/splits/{split_id}/paid", h.MarkSplitPaid)
 	return r
 }
 
@@ -100,7 +118,7 @@ func TestBillHandler_Create(t *testing.T) {
 		name           string
 		body           interface{}
 		userID         int
-		mockFunc       func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error
+		mockFunc       func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -108,11 +126,11 @@ func TestBillHandler_Create(t *testing.T) {
 			name:   "Success",
 			body:   validBillRequest,
 			userID: 123,
-			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
 				assert.Equal(t, "electricity", billType)
 				assert.Nil(t, billCategoryID)
 				assert.Equal(t, 100.50, totalAmount)
-				assert.Equal(t, 1, homeID) // HomeID is now passed from URL param in real handler, but here we test service call
+				assert.Equal(t, 1, homeID)
 				assert.Equal(t, 123, userID)
 				return nil
 			},
@@ -139,7 +157,7 @@ func TestBillHandler_Create(t *testing.T) {
 			name:   "Service Error",
 			body:   validBillRequest,
 			userID: 123,
-			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int) error {
+			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -346,3 +364,106 @@ func TestBillHandler_MarkPayed(t *testing.T) {
 	}
 }
 
+func TestBillHandler_UpdateSplits(t *testing.T) {
+	tests := []struct {
+		name           string
+		billID         string
+		body           interface{}
+		mockFunc       func(ctx context.Context, billID int, splits []models.SplitInput) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			billID: "1",
+			body: models.UpdateSplitsRequest{
+				Splits: []models.SplitInput{
+					{UserID: 2, Amount: 50.0},
+					{UserID: 3, Amount: 50.0},
+				},
+			},
+			mockFunc: func(ctx context.Context, billID int, splits []models.SplitInput) error {
+				require.Equal(t, 1, billID)
+				require.Len(t, splits, 2)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Splits updated",
+		},
+		{
+			name:           "Invalid Bill ID",
+			billID:         "invalid",
+			body:           models.UpdateSplitsRequest{},
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid bill ID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockBillService{
+				UpdateSplitsFunc: tt.mockFunc,
+				GetBillByIDFunc: func(ctx context.Context, billID int) (*models.Bill, error) {
+					return &models.Bill{ID: billID, UploadedBy: 123, HomeID: 1}, nil
+				},
+			}
+
+			h := setupBillHandler(svc)
+			r := setupBillRouter(h)
+
+			req := makeJSONRequest(http.MethodPut, "/homes/1/bills/"+tt.billID+"/splits", tt.body)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestBillHandler_MarkSplitPaid(t *testing.T) {
+	tests := []struct {
+		name           string
+		splitID        string
+		mockFunc       func(ctx context.Context, splitID int) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:    "Success",
+			splitID: "5",
+			mockFunc: func(ctx context.Context, splitID int) error {
+				require.Equal(t, 5, splitID)
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Split marked as paid",
+		},
+		{
+			name:           "Invalid Split ID",
+			splitID:        "invalid",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid split ID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockBillService{
+				MarkSplitPaidFunc: tt.mockFunc,
+			}
+
+			h := setupBillHandler(svc)
+			r := setupBillRouter(h)
+
+			req := httptest.NewRequest(http.MethodPatch, "/homes/1/bills/1/splits/"+tt.splitID+"/paid", nil)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}

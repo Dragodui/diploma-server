@@ -24,6 +24,7 @@ type Bill struct {
 	Home         *Home         `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
 	User         *User         `gorm:"foreignKey:UploadedBy;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 	BillCategory *BillCategory `gorm:"foreignKey:BillCategoryID;constraint:OnDelete:SET NULL" json:"bill_category,omitempty"`
+	BillSplits   []BillSplit   `gorm:"foreignKey:BillID" json:"splits,omitempty"`
 }
 
 type CreateBillRequest struct {
@@ -33,4 +34,5 @@ type CreateBillRequest struct {
 	Start          time.Time      `json:"period_start" validate:"required"`
 	End            time.Time      `json:"period_end" validate:"required"`
 	OCRData        datatypes.JSON `json:"ocr_data" validate:"required"`
+	Splits         []SplitInput   `json:"splits,omitempty" gorm:"-"`
 }

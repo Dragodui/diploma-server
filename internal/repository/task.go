@@ -18,7 +18,7 @@ type TaskRepository interface {
 
 	// task assignments
 	AssignUser(ctx context.Context, taskID, userID int, date time.Time) error
-	FindAssignmentsForUser(ctx context.Context, userID int) (*[]models.TaskAssignment, error)
+	FindAssignmentsForUser(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error)
 	FindClosestAssignmentForUser(ctx context.Context, userID int) (*models.TaskAssignment, error)
 	FindAssignmentByTaskAndUser(ctx context.Context, taskID, userID int) (*models.TaskAssignment, error)
 	FindAssignmentByID(ctx context.Context, assignmentID int) (*models.TaskAssignment, error)
@@ -89,10 +89,13 @@ func (r *taskRepo) AssignUser(ctx context.Context, taskID, userID int, date time
 	return nil
 }
 
-func (r *taskRepo) FindAssignmentsForUser(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
+func (r *taskRepo) FindAssignmentsForUser(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error) {
 	var assignments []models.TaskAssignment
 
-	if err := r.db.WithContext(ctx).Where("user_id=?", userID).Find(&assignments).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Joins("JOIN tasks ON task_assignments.task_id = tasks.id").
+		Where("task_assignments.user_id = ? AND tasks.home_id = ?", userID, homeID).
+		Find(&assignments).Error; err != nil {
 		return nil, err
 	}
 

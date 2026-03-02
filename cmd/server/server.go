@@ -51,6 +51,7 @@ func NewServer() (*Server, error) {
 		&models.TaskAssignment{},
 		&models.Bill{},
 		&models.BillCategory{},
+		&models.BillSplit{},
 		&models.ShoppingCategory{},
 		&models.ShoppingItem{},
 		&models.Poll{},

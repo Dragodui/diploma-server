@@ -208,6 +208,8 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetByID)
 							r.With(middleware.RequireMember(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}", billHandler.MarkPayed)
+							r.With(middleware.RequireMember(homeRepo)).Put("/{bill_id}/splits", billHandler.UpdateSplits)
+							r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}/splits/{split_id}/paid", billHandler.MarkSplitPaid)
 						})
 
 						// Bill Categories
