@@ -116,7 +116,7 @@ func NewServer() (*Server, error) {
 		log.Fatalf("error running S3: %s", err.Error())
 	}
 
-	ocrSvc := services.NewOCRService()
+	ocrSvc := services.NewOCRService(cfg.GeminiAPIKey)
 	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient, cfg.HAEncryptionKey)
 
 	// handlers
