@@ -26,7 +26,7 @@ const (
 	maxImageDownloadSize = 10 * 1024 * 1024 // 10 MB
 	downloadTimeout      = 30 * time.Second
 	geminiTimeout        = 60 * time.Second
-	geminiBaseURL        = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
+	geminiBaseURL        = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
 )
 
 var (
@@ -91,7 +91,6 @@ func (s *OCRService) ProcessFile(ctx context.Context, filePath, language string)
 }
 
 // Gemini API request/response types
-
 type geminiRequest struct {
 	Contents         []geminiContent        `json:"contents"`
 	GenerationConfig geminiGenerationConfig `json:"generationConfig"`
@@ -102,8 +101,8 @@ type geminiContent struct {
 }
 
 type geminiPart struct {
-	Text       string          `json:"text,omitempty"`
-	InlineData *geminiInline   `json:"inlineData,omitempty"`
+	Text       string        `json:"text,omitempty"`
+	InlineData *geminiInline `json:"inlineData,omitempty"`
 }
 
 type geminiInline struct {
