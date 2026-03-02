@@ -47,6 +47,9 @@ type Config struct {
 
 	// Home Assistant token encryption key (32 bytes for AES-256)
 	HAEncryptionKey string
+
+	// Gemini API key for receipt OCR
+	GeminiAPIKey string
 }
 
 func Load() *Config {
@@ -103,6 +106,9 @@ func Load() *Config {
 
 		// Home Assistant token encryption (must be exactly 32 characters for AES-256)
 		HAEncryptionKey: getEnvRequired("HA_ENCRYPTION_KEY"),
+
+		// Gemini API for receipt OCR
+		GeminiAPIKey: getEnv("GEMINI_API_KEY", ""),
 	}
 
 	// Fail in production if admin credentials are still default

@@ -9,9 +9,7 @@ require (
 	github.com/go-chi/cors v1.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/lpernett/godotenv v0.0.0-20230527005122-0de1d4c5ef5e
 	github.com/markbates/goth v1.81.0
-	github.com/otiai10/gosseract/v2 v2.4.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/stretchr/testify v1.11.1
