@@ -22,8 +22,10 @@ type HomeRepository interface {
 	AddMember(ctx context.Context, id int, userID int, role string) error
 	IsMember(ctx context.Context, id int, userID int) (bool, error)
 	DeleteMember(ctx context.Context, id int, userID int) error
+	GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error)
 	GenerateUniqueInviteCode(ctx context.Context) (string, error)
 	GetUserHome(ctx context.Context, userID int) (*models.Home, error)
+	GetUserHomes(ctx context.Context, userID int) ([]models.Home, error)
 }
 
 type homeRepo struct {
@@ -185,6 +187,14 @@ func (r *homeRepo) DeleteMember(ctx context.Context, id int, userID int) error {
 	return nil
 }
 
+func (r *homeRepo) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	var members []models.HomeMembership
+	if err := r.db.WithContext(ctx).Where("home_id = ?", homeID).Preload("User").Find(&members).Error; err != nil {
+		return nil, err
+	}
+	return members, nil
+}
+
 func (r *homeRepo) GenerateUniqueInviteCode(ctx context.Context) (string, error) {
 	for {
 		code := utils.RandString(8)
@@ -209,6 +219,16 @@ func (r *homeRepo) IsAdmin(ctx context.Context, id int, userID int) (bool, error
 	}
 
 	return count > 0, nil
+}
+
+func (r *homeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
+	var homes []models.Home
+
+	if err := r.db.WithContext(ctx).Model(&models.Home{}).Joins("JOIN home_memberships ON home_memberships.home_id = homes.id").Where("home_memberships.user_id = ?", userID).Preload("Memberships").Preload("Memberships.User").Find(&homes).Error; err != nil {
+		return nil, err
+	}
+
+	return homes, nil
 }
 
 func (r *homeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {

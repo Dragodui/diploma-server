@@ -39,10 +39,16 @@ func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role s
 	return nil
 }
 func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) error { return nil }
+func (m *mockHomeRepo) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return nil, nil
+}
 func (m *mockHomeRepo) GenerateUniqueInviteCode(ctx context.Context) (string, error) {
 	return "CODE1234", nil
 }
 func (m *mockHomeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
 	return nil, nil
 }
 func (m *mockHomeRepo) RegenerateCode(ctx context.Context, code string, id int) error { return nil }

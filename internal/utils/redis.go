@@ -41,6 +41,10 @@ func GetUserHomeKey(userID int) string {
 	return "home:user:" + strconv.Itoa(userID)
 }
 
+func GetUserHomesKey(userID int) string {
+	return "homes:user:" + strconv.Itoa(userID)
+}
+
 func GetTaskKey(taskID int) string {
 	return "task:" + strconv.Itoa(taskID)
 }

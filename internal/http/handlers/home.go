@@ -132,6 +132,34 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Joined successfully"})
 }
 
+// GetUserHomes godoc
+// @Summary      Get all user homes
+// @Description  Get all homes the user belongs to
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string][]models.Home
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /homes/list [get]
+func (h *HomeHandler) GetUserHomes(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	homes, err := h.svc.GetUserHomes(r.Context(), userID)
+	if err != nil {
+		utils.SafeError(w, err, "Error getting user homes", http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"homes": homes,
+	})
+}
+
 // GetUserHome godoc
 // @Summary      Get user's home
 // @Description  Get the home the user belongs to
@@ -272,6 +300,36 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Leaved successfully"})
+}
+
+// GetMembers godoc
+// @Summary      Get home members
+// @Description  Get all members of a home (admin only)
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string][]models.HomeMembership
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      403  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/members [get]
+func (h *HomeHandler) GetMembers(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	members, err := h.svc.GetMembers(r.Context(), homeID)
+	if err != nil {
+		utils.SafeError(w, err, "Error getting members", http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"members": members,
+	})
 }
 
 // RemoveMember godoc

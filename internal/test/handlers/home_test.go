@@ -35,10 +35,16 @@ func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role s
 	return nil
 }
 func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) error { return nil }
+func (m *mockHomeRepo) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return nil, nil
+}
 func (m *mockHomeRepo) GenerateUniqueInviteCode(ctx context.Context) (string, error) {
 	return "CODE1234", nil
 }
 func (m *mockHomeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
 	return nil, nil
 }
 func (m *mockHomeRepo) RegenerateCode(ctx context.Context, code string, id int) error { return nil }
@@ -67,6 +73,8 @@ type mockHomeService struct {
 	DeleteHomeFunc           func(ctx context.Context, homeID int) error
 	LeaveHomeFunc            func(ctx context.Context, homeID, userID int) error
 	RemoveMemberFunc         func(ctx context.Context, homeID, userID, currentUserID int) error
+	GetMembersFunc           func(ctx context.Context, homeID int) ([]models.HomeMembership, error)
+	GetUserHomesFunc         func(ctx context.Context, userID int) ([]models.Home, error)
 }
 
 func (m *mockHomeService) CreateHome(ctx context.Context, name string, userID int) error {
@@ -99,6 +107,14 @@ func (m *mockHomeService) LeaveHome(ctx context.Context, homeID, userID int) err
 
 func (m *mockHomeService) RemoveMember(ctx context.Context, homeID, userID, currentUserID int) error {
 	return m.RemoveMemberFunc(ctx, homeID, userID, currentUserID)
+}
+
+func (m *mockHomeService) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return m.GetMembersFunc(ctx, homeID)
+}
+
+func (m *mockHomeService) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
+	return m.GetUserHomesFunc(ctx, userID)
 }
 
 // Test fixtures
@@ -305,6 +321,75 @@ func TestHomeHandler_GetUserHome(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			h.GetUserHome(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestHomeHandler_GetUserHomes(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         int
+		mockFunc       func(ctx context.Context, userID int) ([]models.Home, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Success",
+			userID: 123,
+			mockFunc: func(ctx context.Context, userID int) ([]models.Home, error) {
+				require.Equal(t, 123, userID)
+				return []models.Home{
+					{ID: 1, Name: "Home1"},
+					{ID: 2, Name: "Home2"},
+				}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "homes",
+		},
+		{
+			name:   "Empty list",
+			userID: 123,
+			mockFunc: func(ctx context.Context, userID int) ([]models.Home, error) {
+				return []models.Home{}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "homes",
+		},
+		{
+			name:   "Error",
+			userID: 123,
+			mockFunc: func(ctx context.Context, userID int) ([]models.Home, error) {
+				return nil, errors.New("db error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "",
+		},
+		{
+			name:           "Unauthorized",
+			userID:         0,
+			mockFunc:       nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   "Unauthorized",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				GetUserHomesFunc: tt.mockFunc,
+			}
+
+			h := setupHomeHandler(svc)
+
+			req := httptest.NewRequest(http.MethodGet, "/list", nil)
+			if tt.userID != 0 {
+				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			}
+
+			rr := httptest.NewRecorder()
+			h.GetUserHomes(rr, req)
 
 			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
 		})
@@ -526,6 +611,83 @@ func TestHomeHandler_Leave(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			h.Leave(rr, req)
+
+			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
+		})
+	}
+}
+
+func TestHomeHandler_GetMembers(t *testing.T) {
+	tests := []struct {
+		name           string
+		homeID         string
+		userID         int
+		isAdmin        bool
+		mockFunc       func(ctx context.Context, homeID int) ([]models.HomeMembership, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:    "Success",
+			homeID:  "1",
+			userID:  123,
+			isAdmin: true,
+			mockFunc: func(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+				require.Equal(t, 1, homeID)
+				return []models.HomeMembership{
+					{ID: 1, HomeID: 1, UserID: 123, Role: "admin"},
+					{ID: 2, HomeID: 1, UserID: 456, Role: "member"},
+				}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "members",
+		},
+		{
+			name:    "Error",
+			homeID:  "1",
+			userID:  123,
+			isAdmin: true,
+			mockFunc: func(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+				return nil, errors.New("db error")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Error getting members",
+		},
+		{
+			name:    "Unauthorized - Not Admin",
+			homeID:  "1",
+			userID:  123,
+			isAdmin: false,
+			mockFunc: func(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+				return nil, nil
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "you are not a",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &mockHomeService{
+				GetMembersFunc: tt.mockFunc,
+			}
+
+			h := setupHomeHandler(svc)
+
+			mockRepo := &mockHomeRepo{
+				IsAdminFunc: func(ctx context.Context, homeID, userID int) (bool, error) {
+					return tt.isAdmin, nil
+				},
+			}
+
+			r := chi.NewRouter()
+			r.With(middleware.RequireAdmin(mockRepo)).Get("/homes/{home_id}/members", h.GetMembers)
+
+			req := httptest.NewRequest(http.MethodGet, "/homes/"+tt.homeID+"/members", nil)
+			req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
 
 			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
 		})

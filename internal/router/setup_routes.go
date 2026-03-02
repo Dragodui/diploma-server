@@ -147,7 +147,8 @@ func SetupRoutes(
 				r.Route("/homes", func(r chi.Router) {
 					r.Post("/create", homeHandler.Create) // Create home
 					r.Post("/join", homeHandler.Join)     // Join home
-					r.Get("/my", homeHandler.GetUserHome) // Get user home
+					r.Get("/my", homeHandler.GetUserHome)    // Get user home (single)
+					r.Get("/list", homeHandler.GetUserHomes) // Get all user homes
 
 					// Notifications for user
 					r.Route("/notifications", func(r chi.Router) {
@@ -160,7 +161,8 @@ func SetupRoutes(
 						r.With(middleware.RequireMember(homeRepo)).Get("/", homeHandler.GetByID)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/", homeHandler.Delete)
 						r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
+						r.With(middleware.RequireAdmin(homeRepo)).Get("/members", homeHandler.GetMembers)
+					r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/regenerate_code", homeHandler.RegenerateInviteCode)
 
 						// Notifications for home

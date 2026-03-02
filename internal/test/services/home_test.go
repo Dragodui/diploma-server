@@ -98,11 +98,19 @@ func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) err
 	return nil
 }
 
+func (m *mockHomeRepo) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return nil, nil
+}
+
 func (m *mockHomeRepo) GenerateUniqueInviteCode(ctx context.Context) (string, error) {
 	if m.GenerateUniqueInviteCodeFunc != nil {
 		return m.GenerateUniqueInviteCodeFunc(ctx)
 	}
 	return "", nil
+}
+
+func (m *mockHomeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
+	return nil, nil
 }
 
 func (m *mockHomeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
