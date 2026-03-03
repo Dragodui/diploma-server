@@ -34,7 +34,7 @@ func NewBillCategoryHandler(svc services.IBillCategoryService, homeRepo reposito
 // @Success 201 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /homes/{home_id}/bill-categories [post]
+// @Router /homes/{home_id}/bill_categories [post]
 func (h *BillCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 	if userID == 0 {
@@ -74,7 +74,7 @@ func (h *BillCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /homes/{home_id}/bill-categories [get]
+// @Router /homes/{home_id}/bill_categories [get]
 func (h *BillCategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
 	if err != nil {
@@ -104,7 +104,7 @@ func (h *BillCategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /homes/{home_id}/bill-categories/{category_id} [delete]
+// @Router /homes/{home_id}/bill_categories/{category_id} [delete]
 func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 	if userID == 0 {
@@ -163,7 +163,7 @@ func (h *BillCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /homes/{home_id}/bill-categories/{category_id} [update]
+// @Router /homes/{home_id}/bill_categories/{category_id} [update]
 func (h *BillCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	categoryID, err := strconv.Atoi(chi.URLParam(r, "category_id"))
 	if err != nil {

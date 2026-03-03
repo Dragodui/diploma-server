@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/event"
@@ -20,10 +21,10 @@ type BillService struct {
 }
 
 type IBillService interface {
-	CreateBill(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time,
+	CreateBill(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time,
 		ocrData datatypes.JSON, homeID, uploadedBy int, splits []models.SplitInput) error
 	GetBillByID(ctx context.Context, id int) (*models.Bill, error)
-	GetBillsByHomeID(ctx context.Context, homeID int) ([]models.Bill, error)
+	GetBillsByHomeID(ctx context.Context, homeID int, categoryID *int) ([]models.Bill, error)
 	Delete(ctx context.Context, id int) error
 	MarkBillPayed(ctx context.Context, id int) error
 	UpdateSplits(ctx context.Context, billID int, splits []models.SplitInput) error
@@ -34,14 +35,35 @@ func NewBillService(repo repository.BillRepository, cache *redis.Client) *BillSe
 	return &BillService{repo: repo, cache: cache}
 }
 
-func (s *BillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time,
+func validateSplits(splits []models.SplitInput, totalAmount float64) error {
+	var sum float64
+	for _, sp := range splits {
+		if sp.Amount <= 0 {
+			return fmt.Errorf("split amount must be greater than 0")
+		}
+		sum += sp.Amount
+	}
+	if sum > totalAmount {
+		return fmt.Errorf("total split amount (%.2f) exceeds bill total (%.2f)", sum, totalAmount)
+	}
+	return nil
+}
+
+func (s *BillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time,
 	ocrData datatypes.JSON, homeID, uploadedBy int, splits []models.SplitInput) error {
+
+	if len(splits) > 0 {
+		if err := validateSplits(splits, totalAmount); err != nil {
+			return err
+		}
+	}
 
 	bill := &models.Bill{
 		HomeID:         homeID,
 		UploadedBy:     uploadedBy,
 		Type:           billType,
 		BillCategoryID: billCategoryID,
+		Description:    description,
 		TotalAmount:    totalAmount,
 		Start:          start,
 		End:            end,
@@ -97,8 +119,8 @@ func (s *BillService) GetBillByID(ctx context.Context, id int) (*models.Bill, er
 	return bill, nil
 }
 
-func (s *BillService) GetBillsByHomeID(ctx context.Context, homeID int) ([]models.Bill, error) {
-	return s.repo.FindByHomeID(ctx, homeID)
+func (s *BillService) GetBillsByHomeID(ctx context.Context, homeID int, categoryID *int) ([]models.Bill, error) {
+	return s.repo.FindByHomeID(ctx, homeID, categoryID)
 }
 
 func (s *BillService) Delete(ctx context.Context, id int) error {
@@ -156,6 +178,19 @@ func (s *BillService) MarkBillPayed(ctx context.Context, id int) error {
 }
 
 func (s *BillService) UpdateSplits(ctx context.Context, billID int, splits []models.SplitInput) error {
+	if len(splits) > 0 {
+		bill, err := s.repo.FindByID(ctx, billID)
+		if err != nil {
+			return err
+		}
+		if bill == nil {
+			return errors.New("bill not found")
+		}
+		if err := validateSplits(splits, bill.TotalAmount); err != nil {
+			return err
+		}
+	}
+
 	billSplits := make([]models.BillSplit, len(splits))
 	for i, sp := range splits {
 		billSplits[i] = models.BillSplit{

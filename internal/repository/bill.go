@@ -12,7 +12,7 @@ import (
 type BillRepository interface {
 	Create(ctx context.Context, b *models.Bill) error
 	FindByID(ctx context.Context, id int) (*models.Bill, error)
-	FindByHomeID(ctx context.Context, homeID int) ([]models.Bill, error)
+	FindByHomeID(ctx context.Context, homeID int, categoryID *int) ([]models.Bill, error)
 	Delete(ctx context.Context, id int) error
 	MarkPayed(ctx context.Context, id int) error
 	CreateSplits(ctx context.Context, billID int, splits []models.BillSplit) error
@@ -50,11 +50,15 @@ func (r *billRepo) FindByID(ctx context.Context, id int) (*models.Bill, error) {
 	return &bill, nil
 }
 
-func (r *billRepo) FindByHomeID(ctx context.Context, homeID int) ([]models.Bill, error) {
+func (r *billRepo) FindByHomeID(ctx context.Context, homeID int, categoryID *int) ([]models.Bill, error) {
 	var bills []models.Bill
 
-	if err := r.db.WithContext(ctx).
-		Where("home_id = ?", homeID).
+	query := r.db.WithContext(ctx).Where("home_id = ?", homeID)
+	if categoryID != nil {
+		query = query.Where("bill_category_id = ?", *categoryID)
+	}
+
+	if err := query.
 		Preload("User").
 		Preload("BillSplits").
 		Preload("BillSplits.User").
@@ -68,6 +72,9 @@ func (r *billRepo) FindByHomeID(ctx context.Context, homeID int) ([]models.Bill,
 }
 
 func (r *billRepo) Delete(ctx context.Context, id int) error {
+	if err := r.db.WithContext(ctx).Where("bill_id = ?", id).Delete(&models.BillSplit{}).Error; err != nil {
+		return err
+	}
 	return r.db.WithContext(ctx).Delete(&models.Bill{}, id).Error
 }
 

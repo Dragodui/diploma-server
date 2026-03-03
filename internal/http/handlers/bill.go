@@ -29,6 +29,7 @@ func NewBillHandler(svc services.IBillService, homeRepo repository.HomeRepositor
 // @Produce      json
 // @Security     BearerAuth
 // @Param        home_id path int true "Home ID"
+// @Param        category_id query int false "Filter by category ID"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      400  {object}  map[string]interface{}
 // @Failure      401  {object}  map[string]interface{}
@@ -42,7 +43,17 @@ func (h *BillHandler) GetByHomeID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bills, err := h.svc.GetBillsByHomeID(r.Context(), homeID)
+	var categoryID *int
+	if catStr := r.URL.Query().Get("category_id"); catStr != "" {
+		catID, err := strconv.Atoi(catStr)
+		if err != nil {
+			utils.JSONError(w, "invalid category_id", http.StatusBadRequest)
+			return
+		}
+		categoryID = &catID
+	}
+
+	bills, err := h.svc.GetBillsByHomeID(r.Context(), homeID, categoryID)
 	if err != nil {
 		utils.SafeError(w, err, "Failed to retrieve bills", http.StatusInternalServerError)
 		return
@@ -92,7 +103,7 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateBill(r.Context(), req.BillType, req.BillCategoryID, req.TotalAmount, req.Start, req.End, req.OCRData, homeID, userID, req.Splits); err != nil {
+	if err := h.svc.CreateBill(r.Context(), req.BillType, req.BillCategoryID, req.Description, req.TotalAmount, req.Start, req.End, req.OCRData, homeID, userID, req.Splits); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}

@@ -21,18 +21,18 @@ import (
 
 // Mock service
 type mockBillService struct {
-	CreateBillFunc    func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error
+	CreateBillFunc    func(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error
 	GetBillByIDFunc   func(ctx context.Context, billID int) (*models.Bill, error)
-	GetBillsByHomeIDFunc func(ctx context.Context, homeID int) ([]models.Bill, error)
+	GetBillsByHomeIDFunc func(ctx context.Context, homeID int, categoryID *int) ([]models.Bill, error)
 	DeleteFunc        func(ctx context.Context, billID int) error
 	MarkBillPayedFunc func(ctx context.Context, billID int) error
 	UpdateSplitsFunc  func(ctx context.Context, billID int, splits []models.SplitInput) error
 	MarkSplitPaidFunc func(ctx context.Context, splitID int) error
 }
 
-func (m *mockBillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
+func (m *mockBillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
 	if m.CreateBillFunc != nil {
-		return m.CreateBillFunc(ctx, billType, billCategoryID, totalAmount, start, end, ocrData, homeID, userID, splits)
+		return m.CreateBillFunc(ctx, billType, billCategoryID, description, totalAmount, start, end, ocrData, homeID, userID, splits)
 	}
 	return nil
 }
@@ -44,9 +44,9 @@ func (m *mockBillService) GetBillByID(ctx context.Context, billID int) (*models.
 	return nil, nil
 }
 
-func (m *mockBillService) GetBillsByHomeID(ctx context.Context, homeId int) ([]models.Bill, error) {
+func (m *mockBillService) GetBillsByHomeID(ctx context.Context, homeId int, categoryID *int) ([]models.Bill, error) {
 	if m.GetBillsByHomeIDFunc != nil {
-		return m.GetBillsByHomeIDFunc(ctx, homeId)
+		return m.GetBillsByHomeIDFunc(ctx, homeId, categoryID)
 	}
 	return nil, nil
 }
@@ -118,7 +118,7 @@ func TestBillHandler_Create(t *testing.T) {
 		name           string
 		body           interface{}
 		userID         int
-		mockFunc       func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error
+		mockFunc       func(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -126,7 +126,7 @@ func TestBillHandler_Create(t *testing.T) {
 			name:   "Success",
 			body:   validBillRequest,
 			userID: 123,
-			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
+			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
 				assert.Equal(t, "electricity", billType)
 				assert.Nil(t, billCategoryID)
 				assert.Equal(t, 100.50, totalAmount)
@@ -157,7 +157,7 @@ func TestBillHandler_Create(t *testing.T) {
 			name:   "Service Error",
 			body:   validBillRequest,
 			userID: 123,
-			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
+			mockFunc: func(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time, ocrData datatypes.JSON, homeID, userID int, splits []models.SplitInput) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
