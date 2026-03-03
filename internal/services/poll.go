@@ -202,6 +202,10 @@ func (s *PollService) Unvote(ctx context.Context, userID, pollID, homeID int) er
 		return errors.New("poll not found")
 	}
 
+	if poll.Status == "closed" {
+		return errors.New("poll is closed")
+	}
+
 	if !poll.AllowRevote {
 		return ErrRevoteNotAllowed
 	}
