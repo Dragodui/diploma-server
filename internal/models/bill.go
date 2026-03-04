@@ -18,6 +18,7 @@ type Bill struct {
 	End            time.Time      `json:"period_end"`
 	UploadedBy     int            `json:"uploaded_by"`
 	Description    string         `json:"description"`
+	ReceiptImage   *string        `json:"receipt_image"`
 	OCRData        datatypes.JSON `json:"ocr_data"`
 	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
 
@@ -32,6 +33,7 @@ type CreateBillRequest struct {
 	BillType       string         `json:"type"` // Optional if CategoryID is provided
 	BillCategoryID *int           `json:"bill_category_id"`
 	Description    string         `json:"description"`
+	ReceiptImage   *string        `json:"receipt_image"`
 	TotalAmount    float64        `json:"total_amount" validate:"required,gte=0"`
 	Start          time.Time      `json:"period_start" validate:"required"`
 	End            time.Time      `json:"period_end" validate:"required"`

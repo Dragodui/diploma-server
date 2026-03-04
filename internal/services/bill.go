@@ -23,7 +23,7 @@ type BillService struct {
 }
 
 type IBillService interface {
-	CreateBill(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time,
+	CreateBill(ctx context.Context, billType string, billCategoryID *int, description string, receiptImage *string, totalAmount float64, start, end time.Time,
 		ocrData datatypes.JSON, homeID, uploadedBy int, splits []models.SplitInput) error
 	GetBillByID(ctx context.Context, id int) (*models.Bill, error)
 	GetBillsByHomeID(ctx context.Context, homeID int, categoryID *int) ([]models.Bill, error)
@@ -51,7 +51,7 @@ func validateSplits(splits []models.SplitInput, totalAmount float64) error {
 	return nil
 }
 
-func (s *BillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, description string, totalAmount float64, start, end time.Time,
+func (s *BillService) CreateBill(ctx context.Context, billType string, billCategoryID *int, description string, receiptImage *string, totalAmount float64, start, end time.Time,
 	ocrData datatypes.JSON, homeID, uploadedBy int, splits []models.SplitInput) error {
 
 	if len(splits) > 0 {
@@ -66,6 +66,7 @@ func (s *BillService) CreateBill(ctx context.Context, billType string, billCateg
 		Type:           billType,
 		BillCategoryID: billCategoryID,
 		Description:    description,
+		ReceiptImage:   receiptImage,
 		TotalAmount:    totalAmount,
 		Start:          start,
 		End:            end,

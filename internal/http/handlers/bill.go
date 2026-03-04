@@ -103,7 +103,7 @@ func (h *BillHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.CreateBill(r.Context(), req.BillType, req.BillCategoryID, req.Description, req.TotalAmount, req.Start, req.End, req.OCRData, homeID, userID, req.Splits); err != nil {
+	if err := h.svc.CreateBill(r.Context(), req.BillType, req.BillCategoryID, req.Description, req.ReceiptImage, req.TotalAmount, req.Start, req.End, req.OCRData, homeID, userID, req.Splits); err != nil {
 		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
 		return
 	}
