@@ -18,6 +18,7 @@ type Task struct {
 	Room            *Room            `gorm:"foreignKey:RoomID;constraint:OnDelete:SET NULL" json:"room,omitempty"`
 	Creator         *User            `gorm:"foreignKey:CreatedBy;constraint:OnDelete:CASCADE" json:"creator,omitempty"`
 	TaskAssignments []TaskAssignment `gorm:"foreignKey:TaskID" json:"assignments,omitempty"`
+	Schedule        *TaskSchedule    `gorm:"foreignKey:TaskID" json:"schedule,omitempty"`
 }
 
 type CreateTaskRequest struct {

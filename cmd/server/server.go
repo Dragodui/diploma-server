@@ -57,6 +57,7 @@ func NewServer() (*Server, error) {
 		&models.HomeMembership{},
 		&models.Task{},
 		&models.TaskAssignment{},
+		&models.TaskSchedule{},
 		&models.Bill{},
 		&models.BillCategory{},
 		&models.BillSplit{},
@@ -107,6 +108,7 @@ func NewServer() (*Server, error) {
 	pollRepo := repository.NewPollRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
 	smartHomeRepo := repository.NewSmartHomeRepository(db)
+	taskScheduleRepo := repository.NewTaskScheduleRepository(db)
 
 	// services
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cacheClient, 24*time.Hour, cfg.ClientURL, cfg.ServerURL, mailer)
@@ -127,6 +129,7 @@ func NewServer() (*Server, error) {
 
 	ocrSvc := services.NewOCRService(cfg.GeminiAPIKey)
 	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient, cfg.HAEncryptionKey)
+	taskScheduleSvc := services.NewTaskScheduleService(taskScheduleRepo, taskRepo, cacheClient)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc, cfg.ClientURL, cfg.Mode != "dev")
@@ -142,9 +145,10 @@ func NewServer() (*Server, error) {
 	userHandler := handlers.NewUserHandler(userService, imageService)
 	ocrHandler := handlers.NewOCRHandler(ocrSvc)
 	smartHomeHandler := handlers.NewSmartHomeHandler(smartHomeSvc)
+	taskScheduleHandler := handlers.NewTaskScheduleHandler(taskScheduleSvc, homeRepo)
 
 	// setup all routes
-	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, cacheClient, homeRepo)
+	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, taskScheduleHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, cacheClient, homeRepo)
 
 	// Set startup metrics
 	metrics.ServerStartTime.Set(float64(time.Now().Unix()))
@@ -152,6 +156,9 @@ func NewServer() (*Server, error) {
 
 	// Start DB connection pool stats collector
 	go collectDBPoolStats(sqlDB)
+
+	// Start task schedule processor (checks every minute for due schedules)
+	go runTaskScheduler(taskScheduleSvc)
 
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -208,6 +215,17 @@ func (a *Server) Run() error {
 	}
 
 	return errors.Join(closeErrs...)
+}
+
+func runTaskScheduler(svc *services.TaskScheduleService) {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		ctx := context.Background()
+		if err := svc.ProcessDueSchedules(ctx); err != nil {
+			logger.Info.Printf("[Scheduler] Error processing due schedules: %v", err)
+		}
+	}
 }
 
 func collectDBPoolStats(sqlDB *sql.DB) {

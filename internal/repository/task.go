@@ -43,7 +43,7 @@ func (r *taskRepo) Create(ctx context.Context, t *models.Task) error {
 func (r *taskRepo) FindByID(ctx context.Context, id int) (*models.Task, error) {
 	var task models.Task
 	// we need preload to room field was not empty
-	err := r.db.WithContext(ctx).Preload("Room").First(&task, id).Error
+	err := r.db.WithContext(ctx).Preload("Room").Preload("Schedule").First(&task, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -52,7 +52,7 @@ func (r *taskRepo) FindByID(ctx context.Context, id int) (*models.Task, error) {
 
 func (r *taskRepo) FindByHomeID(ctx context.Context, homeID int) (*[]models.Task, error) {
 	var tasks []models.Task
-	if err := r.db.WithContext(ctx).Preload("Room").Preload("TaskAssignments").Preload("TaskAssignments.User").Where("home_id=?", homeID).Find(&tasks).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Room").Preload("Schedule").Preload("TaskAssignments").Preload("TaskAssignments.User").Where("home_id=?", homeID).Find(&tasks).Error; err != nil {
 		return nil, err
 	}
 
@@ -60,7 +60,12 @@ func (r *taskRepo) FindByHomeID(ctx context.Context, homeID int) (*[]models.Task
 }
 
 func (r *taskRepo) Delete(ctx context.Context, id int) error {
-	// Delete associated task assignments first
+	// Delete associated schedule first
+	if err := r.db.WithContext(ctx).Where("task_id = ?", id).Delete(&models.TaskSchedule{}).Error; err != nil {
+		return err
+	}
+
+	// Delete associated task assignments
 	if err := r.db.WithContext(ctx).Where("task_id = ?", id).Delete(&models.TaskAssignment{}).Error; err != nil {
 		return err
 	}
