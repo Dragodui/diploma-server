@@ -141,7 +141,7 @@ func SetupRoutes(
 
 				// OCR processing - limited to 5 per minute (resource intensive)
 				ocrLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083) // 5 tokens, refill 0.083/sec = 5/min
-				r.With(ocrLimit).Post("/ocr/process", ocrHandler.ProcessImage)
+				r.With(ocrLimit).Post("/ocr/process", ocrHandler.Process)
 
 				// Homes and nested resources
 				r.Route("/homes", func(r chi.Router) {

@@ -17,8 +17,3 @@ type OCRResult struct {
 	Confidence float64   `json:"confidence"` // Recognition confidence (0-1)
 }
 
-// OCRRequest for API request
-type OCRRequest struct {
-	ImageURL string `json:"image_url" validate:"required,url"`
-	Language string `json:"language" validate:"required"`
-}
