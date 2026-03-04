@@ -14,8 +14,9 @@ import (
 )
 
 type HomeService struct {
-	repo  repository.HomeRepository
-	cache *redis.Client
+	repo     repository.HomeRepository
+	cache    *redis.Client
+	notifSvc INotificationService
 }
 
 type IHomeService interface {
@@ -31,8 +32,8 @@ type IHomeService interface {
 	GetUserHomes(ctx context.Context, userID int) ([]models.Home, error)
 }
 
-func NewHomeService(repo repository.HomeRepository, cache *redis.Client) *HomeService {
-	return &HomeService{repo: repo, cache: cache}
+func NewHomeService(repo repository.HomeRepository, cache *redis.Client, notifSvc INotificationService) *HomeService {
+	return &HomeService{repo: repo, cache: cache, notifSvc: notifSvc}
 }
 
 func (s *HomeService) CreateHome(ctx context.Context, name string, userID int) error {
@@ -125,6 +126,10 @@ func (s *HomeService) JoinHomeByCode(ctx context.Context, code string, userID in
 		logger.Info.Printf("Failed to delete user homes cache: %v", err)
 	}
 
+	// Notify home that a new member joined
+	fromID := userID
+	_ = s.notifSvc.CreateHomeNotification(ctx, &fromID, home.ID, "A new member has joined the home")
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,
 		Action: event.ActionMemberJoined,
@@ -199,6 +204,10 @@ func (s *HomeService) LeaveHome(ctx context.Context, homeID int, userID int) err
 		logger.Info.Printf("Failed to delete user homes cache: %v", err)
 	}
 
+	// Notify home that a member left
+	fromID := userID
+	_ = s.notifSvc.CreateHomeNotification(ctx, &fromID, homeID, "A member has left the home")
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,
 		Action: event.ActionMemberLeft,
@@ -228,6 +237,12 @@ func (s *HomeService) RemoveMember(ctx context.Context, homeID int, userID int, 
 	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
 		logger.Info.Printf("Failed to delete user homes cache: %v", err)
 	}
+
+	// Notify the removed user
+	fromID := currentUserID
+	_ = s.notifSvc.Create(ctx, &fromID, userID, "You have been removed from a home")
+	// Notify home that a member was removed
+	_ = s.notifSvc.CreateHomeNotification(ctx, &fromID, homeID, "A member has been removed from the home")
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,

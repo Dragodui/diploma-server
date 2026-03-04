@@ -85,7 +85,7 @@ func (m *mockPollRepo) Unvote(ctx context.Context, userID, pollID int) error {
 // Test helpers
 func setupPollService(t *testing.T, repo repository.PollRepository) *services.PollService {
 	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	return services.NewPollService(repo, redisClient)
+	return services.NewPollService(repo, redisClient, &mockNotifSvc{})
 }
 
 // Create Poll Tests

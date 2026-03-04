@@ -16,8 +16,9 @@ import (
 )
 
 type TaskService struct {
-	repo  repository.TaskRepository
-	cache *redis.Client
+	repo     repository.TaskRepository
+	cache    *redis.Client
+	notifSvc INotificationService
 }
 
 type ITaskService interface {
@@ -35,8 +36,8 @@ type ITaskService interface {
 	ReassignRoom(ctx context.Context, taskID, roomID int) error
 }
 
-func NewTaskService(repo repository.TaskRepository, cache *redis.Client) *TaskService {
-	return &TaskService{repo: repo, cache: cache}
+func NewTaskService(repo repository.TaskRepository, cache *redis.Client, notifSvc INotificationService) *TaskService {
+	return &TaskService{repo: repo, cache: cache, notifSvc: notifSvc}
 }
 
 func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error {
@@ -63,6 +64,11 @@ func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, n
 	for _, uid := range userIDs {
 		if err := s.repo.AssignUser(ctx, task.ID, uid, now); err != nil {
 			return err
+		}
+		// Notify assigned user (skip if they created the task themselves)
+		if uid != createdBy {
+			fromID := createdBy
+			_ = s.notifSvc.Create(ctx, &fromID, uid, "You have been assigned a new task: "+name)
 		}
 	}
 
@@ -178,6 +184,13 @@ func (s *TaskService) AssignUser(ctx context.Context, taskID, userID, homeID int
 
 	if err := s.repo.AssignUser(ctx, taskID, userID, date); err != nil {
 		return err
+	}
+
+	// Notify assigned user
+	task, _ := s.repo.FindByID(ctx, taskID)
+	if task != nil {
+		taskName := task.Name
+		_ = s.notifSvc.Create(ctx, nil, userID, "You have been assigned to task: "+taskName)
 	}
 
 	metrics.TaskOperationsTotal.WithLabelValues("assign").Inc()

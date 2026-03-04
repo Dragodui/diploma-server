@@ -20,6 +20,28 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// Mock NotificationService (no-op, shared across all test files in this package)
+type mockNotifSvc struct{}
+
+func (m *mockNotifSvc) Create(ctx context.Context, from *int, to int, description string) error {
+	return nil
+}
+func (m *mockNotifSvc) GetByUserID(ctx context.Context, userID int) ([]models.Notification, error) {
+	return nil, nil
+}
+func (m *mockNotifSvc) MarkAsRead(ctx context.Context, notificationID, userID int) error {
+	return nil
+}
+func (m *mockNotifSvc) CreateHomeNotification(ctx context.Context, from *int, homeID int, description string) error {
+	return nil
+}
+func (m *mockNotifSvc) GetByHomeID(ctx context.Context, homeID int) ([]models.HomeNotification, error) {
+	return nil, nil
+}
+func (m *mockNotifSvc) MarkAsReadForHomeNotification(ctx context.Context, notificationID, homeID int) error {
+	return nil
+}
+
 // Mock HomeRepository
 type mockHomeRepo struct {
 	CreateFunc                   func(ctx context.Context, h *models.Home) error
@@ -123,7 +145,7 @@ func (m *mockHomeRepo) GetUserHome(ctx context.Context, userID int) (*models.Hom
 // Test helpers
 func setupHomeService(t *testing.T, repo repository.HomeRepository) *services.HomeService {
 	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	return services.NewHomeService(repo, redisClient)
+	return services.NewHomeService(repo, redisClient, &mockNotifSvc{})
 }
 
 // CreateHome Tests
