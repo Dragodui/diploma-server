@@ -26,6 +26,7 @@ func SetupRoutes(
 	authHandler *handlers.AuthHandler,
 	homeHandler *handlers.HomeHandler,
 	taskHandler *handlers.TaskHandler,
+	taskScheduleHandler *handlers.TaskScheduleHandler,
 	billHandler *handlers.BillHandler,
 	billCategoryHandler *handlers.BillCategoryHandler,
 	roomHandler *handlers.RoomHandler,
@@ -193,6 +194,11 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-uncompleted", taskHandler.MarkAssignmentUncompleted)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/complete", taskHandler.MarkTaskCompleted)
 							r.With(middleware.RequireMember(homeRepo)).Delete("/{task_id}/assignments/{assignment_id}", taskHandler.DeleteAssignment)
+							// Schedules 
+							r.With(middleware.RequireAdmin(homeRepo)).Post("/schedules", taskScheduleHandler.CreateSchedule)
+							r.With(middleware.RequireMember(homeRepo)).Get("/schedules", taskScheduleHandler.GetSchedulesByHomeID)
+							r.With(middleware.RequireMember(homeRepo)).Get("/{task_id}/schedule", taskScheduleHandler.GetScheduleByTaskID)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/schedules/{schedule_id}", taskScheduleHandler.DeleteSchedule)
 						})
 
 						// User assignments (not scoped to a specific home)
