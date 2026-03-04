@@ -48,16 +48,9 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserID != nil {
-		if err := h.svc.CreateTaskWithAssignment(r.Context(), req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate, *req.UserID, userID); err != nil {
-			utils.JSONError(w, "Invalid data", http.StatusBadRequest)
-			return
-		}
-	} else {
-		if err := h.svc.CreateTask(r.Context(), req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate, userID); err != nil {
-			utils.JSONError(w, "Invalid data", http.StatusBadRequest)
-			return
-		}
+	if err := h.svc.CreateTask(r.Context(), req.HomeID, req.RoomID, req.Name, req.Description, req.ScheduleType, req.DueDate, userID, req.UserIDs); err != nil {
+		utils.JSONError(w, "Invalid data", http.StatusBadRequest)
+		return
 	}
 
 	utils.JSON(w, http.StatusCreated, map[string]interface{}{"status": true, "message": "Created successfully"})
@@ -225,13 +218,19 @@ func (h *TaskHandler) AssignUser(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/users/{user_id}/assignments [get]
 func (h *TaskHandler) GetAssignmentsForUser(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
 	userIDStr := chi.URLParam(r, "user_id")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
 		utils.JSONError(w, "invalid user ID", http.StatusBadRequest)
 		return
 	}
-	assignments, err := h.svc.GetAssignmentsForUser(r.Context(), userID)
+	assignments, err := h.svc.GetAssignmentsForUser(r.Context(), userID, homeID)
 	if err != nil {
 		utils.SafeError(w, err, "Failed to retrieve assignments", http.StatusInternalServerError)
 		return

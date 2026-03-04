@@ -8,6 +8,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -20,13 +21,12 @@ type TaskService struct {
 }
 
 type ITaskService interface {
-	CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error
-	CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int, createdBy int) error
+	CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error
 	GetTaskByID(ctx context.Context, taskID int) (*models.Task, error)
 	GetTasksByHomeID(ctx context.Context, homeID int) (*[]models.Task, error)
 	DeleteTask(ctx context.Context, taskID int) error
 	AssignUser(ctx context.Context, taskID, userID, homeID int, date time.Time) error
-	GetAssignmentsForUser(ctx context.Context, userID int) (*[]models.TaskAssignment, error)
+	GetAssignmentsForUser(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error)
 	GetClosestAssignmentForUser(ctx context.Context, userID int) (*models.TaskAssignment, error)
 	MarkAssignmentCompleted(ctx context.Context, assignmentID int) error
 	MarkAssignmentUncompleted(ctx context.Context, assignmentID int) error
@@ -39,7 +39,7 @@ func NewTaskService(repo repository.TaskRepository, cache *redis.Client) *TaskSe
 	return &TaskService{repo: repo, cache: cache}
 }
 
-func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error {
+func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error {
 	tasksKey := utils.GetTasksForHomeKey(homeID)
 	if err := utils.DeleteFromCache(ctx, tasksKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
@@ -58,39 +58,16 @@ func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, n
 		return err
 	}
 
-	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
-		Module: event.ModuleTask,
-		Action: event.ActionCreated,
-		Data:   task,
-	})
-
-	return nil
-}
-
-func (s *TaskService) CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int, createdBy int) error {
-	tasksKey := utils.GetTasksForHomeKey(homeID)
-	if err := utils.DeleteFromCache(ctx, tasksKey, s.cache); err != nil {
-		logger.Info.Printf("Failed to delete redis cache for key %s: %v", tasksKey, err)
+	// Assign to users
+	now := time.Now()
+	for _, uid := range userIDs {
+		if err := s.repo.AssignUser(ctx, task.ID, uid, now); err != nil {
+			return err
+		}
 	}
 
-	task := &models.Task{
-		Name:         name,
-		Description:  description,
-		HomeID:       homeID,
-		RoomID:       roomID,
-		CreatedBy:    createdBy,
-		ScheduleType: scheduleType,
-		DueDate:      dueDate,
-	}
-
-	if err := s.repo.Create(ctx, task); err != nil {
-		return err
-	}
-
-	// Auto-assign to user
-	if err := s.repo.AssignUser(ctx, task.ID, userID, time.Now()); err != nil {
-		return err
-	}
+	metrics.TasksTotal.WithLabelValues("active").Inc()
+	metrics.TaskOperationsTotal.WithLabelValues("create").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleTask,
@@ -174,6 +151,9 @@ func (s *TaskService) DeleteTask(ctx context.Context, taskID int) error {
 		logger.Info.Printf("Failed to delete redis cache for home %d: %v", task.HomeID, err)
 	}
 
+	metrics.TasksTotal.WithLabelValues("active").Dec()
+	metrics.TaskOperationsTotal.WithLabelValues("delete").Inc()
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleTask,
 		Action: event.ActionDeleted,
@@ -200,6 +180,8 @@ func (s *TaskService) AssignUser(ctx context.Context, taskID, userID, homeID int
 		return err
 	}
 
+	metrics.TaskOperationsTotal.WithLabelValues("assign").Inc()
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleTask,
 		Action: event.ActionAssigned,
@@ -209,15 +191,15 @@ func (s *TaskService) AssignUser(ctx context.Context, taskID, userID, homeID int
 	return nil
 }
 
-func (s *TaskService) GetAssignmentsForUser(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
+func (s *TaskService) GetAssignmentsForUser(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error) {
 	// get assignments from cache if exists
-	key := utils.GetAssignmentsForUserKey(userID)
+	key := utils.GetAssignmentsForUserKey(userID, homeID)
 	cached, err := utils.GetFromCache[[]models.TaskAssignment](ctx, key, s.cache)
 	if cached != nil && err == nil {
 		return cached, nil
 	}
 
-	assignments, err := s.repo.FindAssignmentsForUser(ctx, userID)
+	assignments, err := s.repo.FindAssignmentsForUser(ctx, userID, homeID)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +254,7 @@ func (s *TaskService) MarkAssignmentCompleted(ctx context.Context, assignmentID 
 	}
 
 	// delete user assignments from cache
-	userAssignmentsKey := utils.GetAssignmentsForUserKey(assignment.UserID)
+	userAssignmentsKey := utils.GetAssignmentsForUserKey(assignment.UserID, assignment.Task.HomeID)
 	if err := utils.DeleteFromCache(ctx, userAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 	}
@@ -292,6 +274,8 @@ func (s *TaskService) MarkAssignmentCompleted(ctx context.Context, assignmentID 
 	if err := s.repo.MarkCompleted(ctx, assignmentID); err != nil {
 		return err
 	}
+
+	metrics.TaskOperationsTotal.WithLabelValues("complete").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleTask,
@@ -318,7 +302,7 @@ func (s *TaskService) MarkAssignmentUncompleted(ctx context.Context, assignmentI
 	}
 
 	// delete user assignments from cache
-	userAssignmentsKey := utils.GetAssignmentsForUserKey(assignment.UserID)
+	userAssignmentsKey := utils.GetAssignmentsForUserKey(assignment.UserID, assignment.Task.HomeID)
 	if err := utils.DeleteFromCache(ctx, userAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 	}
@@ -376,7 +360,7 @@ func (s *TaskService) MarkTaskCompletedForUser(ctx context.Context, taskID, user
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	userAssignmentsKey := utils.GetAssignmentsForUserKey(userID)
+	userAssignmentsKey := utils.GetAssignmentsForUserKey(userID, homeID)
 	if err := utils.DeleteFromCache(ctx, userAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 	}
@@ -411,22 +395,22 @@ func (s *TaskService) DeleteAssignment(ctx context.Context, assignmentID int) er
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	user, err := s.repo.FindUserByAssignmentID(ctx, assignmentID)
+	assignment, err := s.repo.FindAssignmentByID(ctx, assignmentID)
 	if err != nil {
 		return err
 	}
-	if user == nil {
+	if assignment == nil {
 		return errors.New("assignment not found")
 	}
 
 	// delete user assignments from cache
-	userAssignmentsKey := utils.GetAssignmentsForUserKey(user.ID)
+	userAssignmentsKey := utils.GetAssignmentsForUserKey(assignment.UserID, assignment.Task.HomeID)
 	if err := utils.DeleteFromCache(ctx, userAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 	}
 
 	// delete closest user assignment from cache
-	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(user.ID)
+	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID)
 	if err := utils.DeleteFromCache(ctx, userClosestAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}

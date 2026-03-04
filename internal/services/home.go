@@ -6,6 +6,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -25,7 +26,9 @@ type IHomeService interface {
 	DeleteHome(ctx context.Context, id int) error
 	LeaveHome(ctx context.Context, homeID int, userID int) error
 	RemoveMember(ctx context.Context, homeID int, userID int, currentUserID int) error
+	GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error)
 	GetUserHome(ctx context.Context, userID int) (*models.Home, error)
+	GetUserHomes(ctx context.Context, userID int) ([]models.Home, error)
 }
 
 func NewHomeService(repo repository.HomeRepository, cache *redis.Client) *HomeService {
@@ -50,6 +53,14 @@ func (s *HomeService) CreateHome(ctx context.Context, name string, userID int) e
 	if err := s.repo.AddMember(ctx, home.ID, userID, "admin"); err != nil {
 		return err
 	}
+
+	// invalidate user homes list cache
+	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
+		logger.Info.Printf("Failed to delete user homes cache: %v", err)
+	}
+
+	metrics.HomesTotal.Inc()
+	metrics.HomeOperationsTotal.WithLabelValues("create").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,
@@ -107,6 +118,13 @@ func (s *HomeService) JoinHomeByCode(ctx context.Context, code string, userID in
 		return err
 	}
 
+	metrics.HomeOperationsTotal.WithLabelValues("join").Inc()
+
+	// invalidate user homes list cache
+	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
+		logger.Info.Printf("Failed to delete user homes cache: %v", err)
+	}
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,
 		Action: event.ActionMemberJoined,
@@ -146,6 +164,9 @@ func (s *HomeService) DeleteHome(ctx context.Context, id int) error {
 		return err
 	}
 
+	metrics.HomesTotal.Dec()
+	metrics.HomeOperationsTotal.WithLabelValues("delete").Inc()
+
 	// remove from cache
 	key := utils.GetHomeCacheKey(id)
 	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
@@ -171,6 +192,13 @@ func (s *HomeService) LeaveHome(ctx context.Context, homeID int, userID int) err
 		return err
 	}
 
+	metrics.HomeOperationsTotal.WithLabelValues("leave").Inc()
+
+	// invalidate user homes list cache
+	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
+		logger.Info.Printf("Failed to delete user homes cache: %v", err)
+	}
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,
 		Action: event.ActionMemberLeft,
@@ -194,6 +222,13 @@ func (s *HomeService) RemoveMember(ctx context.Context, homeID int, userID int, 
 		return err
 	}
 
+	metrics.HomeOperationsTotal.WithLabelValues("remove_member").Inc()
+
+	// invalidate removed user's homes list cache
+	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
+		logger.Info.Printf("Failed to delete user homes cache: %v", err)
+	}
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,
 		Action: event.ActionMemberRemoved,
@@ -201,6 +236,10 @@ func (s *HomeService) RemoveMember(ctx context.Context, homeID int, userID int, 
 	})
 
 	return nil
+}
+
+func (s *HomeService) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return s.repo.GetMembers(ctx, homeID)
 }
 
 func (s *HomeService) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
@@ -223,5 +262,24 @@ func (s *HomeService) GetUserHome(ctx context.Context, userID int) (*models.Home
 	}
 
 	return home, nil
+}
+
+func (s *HomeService) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
+	key := utils.GetUserHomesKey(userID)
+	cached, err := utils.GetFromCache[[]models.Home](ctx, key, s.cache)
+	if cached != nil && err == nil {
+		return *cached, nil
+	}
+
+	homes, err := s.repo.GetUserHomes(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := utils.WriteToCache(ctx, key, homes, s.cache); err != nil {
+		logger.Info.Printf("Failed to write to cache [%s]: %v", key, err)
+	}
+
+	return homes, nil
 }
 

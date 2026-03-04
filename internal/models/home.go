@@ -15,5 +15,5 @@ type Home struct {
 }
 
 type CreateHomeRequest struct {
-	Name string `json:"name" validate:"required,min=8"`
+	Name string `json:"name" validate:"required,min=3"`
 }

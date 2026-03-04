@@ -141,13 +141,14 @@ func SetupRoutes(
 
 				// OCR processing - limited to 5 per minute (resource intensive)
 				ocrLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 5, 0.083) // 5 tokens, refill 0.083/sec = 5/min
-				r.With(ocrLimit).Post("/ocr/process", ocrHandler.ProcessImage)
+				r.With(ocrLimit).Post("/ocr/process", ocrHandler.Process)
 
 				// Homes and nested resources
 				r.Route("/homes", func(r chi.Router) {
 					r.Post("/create", homeHandler.Create) // Create home
 					r.Post("/join", homeHandler.Join)     // Join home
-					r.Get("/my", homeHandler.GetUserHome) // Get user home
+					r.Get("/my", homeHandler.GetUserHome)    // Get user home (single)
+					r.Get("/list", homeHandler.GetUserHomes) // Get all user homes
 
 					// Notifications for user
 					r.Route("/notifications", func(r chi.Router) {
@@ -160,7 +161,8 @@ func SetupRoutes(
 						r.With(middleware.RequireMember(homeRepo)).Get("/", homeHandler.GetByID)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/", homeHandler.Delete)
 						r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
-						r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
+						r.With(middleware.RequireAdmin(homeRepo)).Get("/members", homeHandler.GetMembers)
+					r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/regenerate_code", homeHandler.RegenerateInviteCode)
 
 						// Notifications for home
@@ -206,10 +208,12 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Get("/{bill_id}", billHandler.GetByID)
 							r.With(middleware.RequireMember(homeRepo)).Delete("/{bill_id}", billHandler.Delete)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}", billHandler.MarkPayed)
+							r.With(middleware.RequireMember(homeRepo)).Put("/{bill_id}/splits", billHandler.UpdateSplits)
+							r.With(middleware.RequireMember(homeRepo)).Patch("/{bill_id}/splits/{split_id}/paid", billHandler.MarkSplitPaid)
 						})
 
 						// Bill Categories
-						r.Route("/bill-categories", func(r chi.Router) {
+						r.Route("/bill_categories", func(r chi.Router) {
 							r.With(middleware.RequireMember(homeRepo)).Get("/", billCategoryHandler.GetAll)
 							r.With(middleware.RequireMember(homeRepo)).Post("/", billCategoryHandler.Create)
 							r.With(middleware.RequireMember(homeRepo)).Delete("/{category_id}", billCategoryHandler.Delete)
@@ -236,13 +240,13 @@ func SetupRoutes(
 						})
 						r.Route("/polls", func(r chi.Router) {
 
-							r.With(middleware.RequireAdmin(homeRepo)).Post("/", pollHandler.Create)
+							r.With(middleware.RequireMember(homeRepo)).Post("/", pollHandler.Create)
 							r.With(middleware.RequireMember(homeRepo)).Get("/", pollHandler.GetAllByHomeID)
 							r.With(middleware.RequireMember(homeRepo)).Get("/{poll_id}", pollHandler.GetByID)
 
 							r.With(middleware.RequireAdmin(homeRepo)).Patch("/{poll_id}/close", pollHandler.Close)
 
-							r.With(middleware.RequireMember(homeRepo)).Delete("/{poll_id}", pollHandler.Delete)
+							r.With(middleware.RequireAdmin(homeRepo)).Delete("/{poll_id}", pollHandler.Delete)
 
 							r.With(middleware.RequireMember(homeRepo)).Post("/{poll_id}/vote", pollHandler.Vote)
 							r.With(middleware.RequireMember(homeRepo)).Delete("/{poll_id}/vote", pollHandler.Unvote)
@@ -257,7 +261,7 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Get("/states", smartHomeHandler.GetAllStates)
 
 							// Device control - rate limited to prevent abuse
-							deviceControlLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 30, 0.5) // 30 tokens, refill 0.5/sec = 30/min
+							deviceControlLimit := middleware.StrictRateLimitMiddleware(rateLimiter, 120, 0.5) // 30 tokens, refill 0.5/sec = 30/min
 
 							r.Route("/devices", func(r chi.Router) {
 								r.With(middleware.RequireMember(homeRepo)).Post("/", smartHomeHandler.AddDevice)

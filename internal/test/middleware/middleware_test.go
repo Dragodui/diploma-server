@@ -39,10 +39,16 @@ func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role s
 	return nil
 }
 func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) error { return nil }
+func (m *mockHomeRepo) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return nil, nil
+}
 func (m *mockHomeRepo) GenerateUniqueInviteCode(ctx context.Context) (string, error) {
 	return "CODE1234", nil
 }
 func (m *mockHomeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
+	return nil, nil
+}
+func (m *mockHomeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
 	return nil, nil
 }
 func (m *mockHomeRepo) RegenerateCode(ctx context.Context, code string, id int) error { return nil }
@@ -377,7 +383,7 @@ func TestSecurityHeaders(t *testing.T) {
 	assert.Equal(t, "DENY", headers.Get("X-Frame-Options"))
 	assert.Equal(t, "nosniff", headers.Get("X-Content-Type-Options"))
 	assert.Equal(t, "1; mode=block", headers.Get("X-XSS-Protection"))
-	assert.Equal(t, "default-src 'self'", headers.Get("Content-Security-Policy"))
+	assert.Equal(t, "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:;", headers.Get("Content-Security-Policy"))
 	assert.Equal(t, "max-age=31536000; includeSubDomains", headers.Get("Strict-Transport-Security"))
 	assert.Equal(t, "no-referrer", headers.Get("Referrer-Policy"))
 	assert.Equal(t, "require-corp", headers.Get("Cross-Origin-Embedder-Policy"))
@@ -569,7 +575,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 		},
 		{
 			name:           "Block after exceeding limit",
-			requests:       125, // More than 120 (default limit)
+			requests:       250, // More than 240 (default limit)
 			ip:             "192.168.1.2",
 			expectedStatus: http.StatusTooManyRequests,
 			shouldBlock:    true,
@@ -772,7 +778,7 @@ func TestGetIPExtraction(t *testing.T) {
 			assert.Equal(t, http.StatusOK, w2.Code)
 
 			// Verify that the same IP is being tracked by exhausting the limit
-			for i := 0; i < 125; i++ {
+			for i := 0; i < 250; i++ {
 				reqN := httptest.NewRequest("GET", "/test", nil)
 				reqN.RemoteAddr = tt.remoteAddr
 				if tt.xForwardedFor != "" {

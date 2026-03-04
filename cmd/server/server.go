@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/Dragodui/diploma-server/internal/database"
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/router"
@@ -43,6 +46,11 @@ func NewServer() (*Server, error) {
 		return nil, err
 	}
 
+	// Register GORM metrics plugin
+	if err := db.Use(&metrics.GormMetricsPlugin{}); err != nil {
+		log.Printf("Warning: Failed to register GORM metrics plugin: %v", err)
+	}
+
 	if err = db.AutoMigrate(
 		&models.User{},
 		&models.Home{},
@@ -51,6 +59,7 @@ func NewServer() (*Server, error) {
 		&models.TaskAssignment{},
 		&models.Bill{},
 		&models.BillCategory{},
+		&models.BillSplit{},
 		&models.ShoppingCategory{},
 		&models.ShoppingItem{},
 		&models.Poll{},
@@ -137,6 +146,13 @@ func NewServer() (*Server, error) {
 	// setup all routes
 	router := router.SetupRoutes(cfg, authHandler, homeHandler, taskHandler, billHandler, billCategoryHandler, roomHandler, shoppingHandler, imageHandler, pollHandler, notificationHandler, userHandler, ocrHandler, smartHomeHandler, cacheClient, homeRepo)
 
+	// Set startup metrics
+	metrics.ServerStartTime.Set(float64(time.Now().Unix()))
+	metrics.AppInfo.WithLabelValues("1.0.0", runtime.Version()).Set(1)
+
+	// Start DB connection pool stats collector
+	go collectDBPoolStats(sqlDB)
+
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           router,
@@ -192,4 +208,14 @@ func (a *Server) Run() error {
 	}
 
 	return errors.Join(closeErrs...)
+}
+
+func collectDBPoolStats(sqlDB *sql.DB) {
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		stats := sqlDB.Stats()
+		metrics.DbConnectionsOpen.Set(float64(stats.OpenConnections))
+		metrics.DbConnectionsInUse.Set(float64(stats.InUse))
+	}
 }

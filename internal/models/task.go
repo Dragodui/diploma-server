@@ -27,7 +27,7 @@ type CreateTaskRequest struct {
 	DueDate      *time.Time `json:"due_date"`
 	HomeID       int        `json:"home_id"`
 	RoomID       *int       `json:"room_id,omitempty"`
-	UserID       *int       `json:"assign_user_id,omitempty"`
+	UserIDs      []int      `json:"assign_user_ids,omitempty"`
 }
 
 type ReassignRoomRequest struct {

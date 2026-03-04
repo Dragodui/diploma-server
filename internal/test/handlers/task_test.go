@@ -19,13 +19,12 @@ import (
 
 // Mock service
 type mockTaskService struct {
-	CreateTaskFunc                  func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error
-	CreateTaskWithAssignmentFunc    func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int, createdBy int) error
+	CreateTaskFunc func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error
 	GetTaskByIDFunc                 func(ctx context.Context, taskID int) (*models.Task, error)
 	GetTasksByHomeIDFunc            func(ctx context.Context, homeID int) (*[]models.Task, error)
 	DeleteTaskFunc                  func(ctx context.Context, taskID int) error
 	AssignUserFunc                  func(ctx context.Context, taskID, userID, homeID int, date time.Time) error
-	GetAssignmentsForUserFunc       func(ctx context.Context, userID int) (*[]models.TaskAssignment, error)
+	GetAssignmentsForUserFunc       func(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error)
 	GetClosestAssignmentForUserFunc func(ctx context.Context, userID int) (*models.TaskAssignment, error)
 	MarkAssignmentCompletedFunc     func(ctx context.Context, assignmentID int) error
 	MarkAssignmentUncompletedFunc   func(ctx context.Context, assignmentID int) error
@@ -34,16 +33,9 @@ type mockTaskService struct {
 	ReassignRoomFunc                func(ctx context.Context, taskID, roomID int) error
 }
 
-func (m *mockTaskService) CreateTaskWithAssignment(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, userID int, createdBy int) error {
-	if m.CreateTaskWithAssignmentFunc != nil {
-		return m.CreateTaskWithAssignmentFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate, userID, createdBy)
-	}
-	return nil
-}
-
-func (m *mockTaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error {
+func (m *mockTaskService) CreateTask(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error {
 	if m.CreateTaskFunc != nil {
-		return m.CreateTaskFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate, createdBy)
+		return m.CreateTaskFunc(ctx, homeID, roomID, name, description, scheduleType, dueDate, createdBy, userIDs)
 	}
 	return nil
 }
@@ -76,9 +68,9 @@ func (m *mockTaskService) AssignUser(ctx context.Context, taskID, userID, homeID
 	return nil
 }
 
-func (m *mockTaskService) GetAssignmentsForUser(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
+func (m *mockTaskService) GetAssignmentsForUser(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error) {
 	if m.GetAssignmentsForUserFunc != nil {
-		return m.GetAssignmentsForUserFunc(ctx, userID)
+		return m.GetAssignmentsForUserFunc(ctx, userID, homeID)
 	}
 	return nil, nil
 }
@@ -162,7 +154,7 @@ func setupTaskRouter(h *handlers.TaskHandler) *chi.Mux {
 	r.Get("/tasks/{task_id}", h.GetByID)
 	r.Get("/homes/{home_id}/tasks", h.GetTasksByHomeID)
 	r.Delete("/homes/{home_id}/tasks/{task_id}", h.DeleteTask)
-	r.Get("/users/{user_id}/assignments", h.GetAssignmentsForUser)
+	r.Get("/homes/{home_id}/users/{user_id}/assignments", h.GetAssignmentsForUser)
 	r.Get("/users/{user_id}/assignments/closest", h.GetClosestAssignmentForUser)
 	r.Delete("/assignments/{assignment_id}", h.DeleteAssignment)
 	return r
@@ -172,14 +164,14 @@ func TestTaskHandler_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		mockFunc       func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error
+		mockFunc       func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			body: validCreateTaskReq,
-			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error {
+			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error {
 				assert.Equal(t, 1, homeID)
 				assert.Equal(t, "Clean Kitchen", name)
 				assert.Equal(t, "Daily cleaning", description)
@@ -200,7 +192,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		{
 			name: "Service Error",
 			body: validCreateTaskReq,
-			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int) error {
+			mockFunc: func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error {
 				return errors.New("service error")
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -468,16 +460,19 @@ func TestTaskHandler_AssignUser(t *testing.T) {
 func TestTaskHandler_GetAssignmentsForUser(t *testing.T) {
 	tests := []struct {
 		name           string
+		homeID         string
 		userID         string
-		mockFunc       func(ctx context.Context, userID int) (*[]models.TaskAssignment, error)
+		mockFunc       func(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
+			homeID: "1",
 			userID: "123",
-			mockFunc: func(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
+			mockFunc: func(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error) {
 				require.Equal(t, 123, userID)
+				require.Equal(t, 1, homeID)
 				assignments := []models.TaskAssignment{
 					{ID: 1, TaskID: 1, UserID: 123},
 					{ID: 2, TaskID: 2, UserID: 123},
@@ -488,7 +483,16 @@ func TestTaskHandler_GetAssignmentsForUser(t *testing.T) {
 			expectedBody:   "assignments",
 		},
 		{
-			name:           "Invalid ID",
+			name:           "Invalid Home ID",
+			homeID:         "invalid",
+			userID:         "123",
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "invalid home ID",
+		},
+		{
+			name:           "Invalid User ID",
+			homeID:         "1",
 			userID:         "invalid",
 			mockFunc:       nil,
 			expectedStatus: http.StatusBadRequest,
@@ -496,8 +500,9 @@ func TestTaskHandler_GetAssignmentsForUser(t *testing.T) {
 		},
 		{
 			name:   "Service Error",
+			homeID: "1",
 			userID: "123",
-			mockFunc: func(ctx context.Context, userID int) (*[]models.TaskAssignment, error) {
+			mockFunc: func(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error) {
 				return nil, errors.New("service error")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -514,7 +519,7 @@ func TestTaskHandler_GetAssignmentsForUser(t *testing.T) {
 			h := setupTaskHandler(svc)
 			r := setupTaskRouter(h)
 
-			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.userID+"/assignments", nil)
+			req := httptest.NewRequest(http.MethodGet, "/homes/"+tt.homeID+"/users/"+tt.userID+"/assignments", nil)
 			rr := httptest.NewRecorder()
 
 			r.ServeHTTP(rr, req)
