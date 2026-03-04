@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/metrics"
@@ -50,7 +51,7 @@ type IAuthService interface {
 }
 
 func NewAuthService(repo repository.UserRepository, secret []byte, redis *redis.Client, ttl time.Duration, clientURL, serverURL string, mail utils.Mailer) *AuthService {
-	return &AuthService{repo: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: clientURL, serverURL: serverURL, mail: mail}
+	return &AuthService{repo: repo, jwtSecret: secret, cache: redis, ttl: ttl, clientURL: strings.TrimRight(clientURL, "/"), serverURL: strings.TrimRight(serverURL, "/"), mail: mail}
 }
 
 const tokenBlacklistPrefix = "blacklist:"
