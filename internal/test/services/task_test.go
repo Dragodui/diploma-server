@@ -133,7 +133,7 @@ func (m *mockTaskRepo) DeleteAssignment(ctx context.Context, assignmentID int) e
 // Test helpers
 func setupTaskService(t *testing.T, repo repository.TaskRepository) *services.TaskService {
 	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	return services.NewTaskService(repo, redisClient)
+	return services.NewTaskService(repo, redisClient, &mockNotifSvc{})
 }
 
 // CreateTask Tests

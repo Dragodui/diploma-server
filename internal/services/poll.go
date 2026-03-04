@@ -17,8 +17,9 @@ import (
 var ErrRevoteNotAllowed = errors.New("revoting is not allowed for this poll")
 
 type PollService struct {
-	repo  repository.PollRepository
-	cache *redis.Client
+	repo     repository.PollRepository
+	cache    *redis.Client
+	notifSvc INotificationService
 }
 
 type IPollService interface {
@@ -34,9 +35,11 @@ type IPollService interface {
 	Unvote(ctx context.Context, userID, pollID, homeID int) error
 }
 
-func NewPollService(repo repository.PollRepository, cache *redis.Client) *PollService {
+func NewPollService(repo repository.PollRepository, cache *redis.Client, notifSvc INotificationService) *PollService {
 	return &PollService{
-		repo, cache,
+		repo:     repo,
+		cache:    cache,
+		notifSvc: notifSvc,
 	}
 }
 
@@ -68,6 +71,10 @@ func (s *PollService) Create(ctx context.Context, homeID int, question, pollType
 	}
 
 	metrics.PollsTotal.Inc()
+
+	// Notify home about new poll
+	fromID := createdBy
+	_ = s.notifSvc.CreateHomeNotification(ctx, &fromID, homeID, "New poll created: "+question)
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,

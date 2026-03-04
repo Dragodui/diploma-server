@@ -26,10 +26,11 @@ type TaskScheduleService struct {
 	repo     repository.TaskScheduleRepository
 	taskRepo repository.TaskRepository
 	cache    *redis.Client
+	notifSvc INotificationService
 }
 
-func NewTaskScheduleService(repo repository.TaskScheduleRepository, taskRepo repository.TaskRepository, cache *redis.Client) *TaskScheduleService {
-	return &TaskScheduleService{repo: repo, taskRepo: taskRepo, cache: cache}
+func NewTaskScheduleService(repo repository.TaskScheduleRepository, taskRepo repository.TaskRepository, cache *redis.Client, notifSvc INotificationService) *TaskScheduleService {
+	return &TaskScheduleService{repo: repo, taskRepo: taskRepo, cache: cache, notifSvc: notifSvc}
 }
 
 func (s *TaskScheduleService) CreateSchedule(ctx context.Context, taskID, homeID int, recurrenceType string, userIDs []int) (*models.TaskSchedule, error) {
@@ -82,6 +83,9 @@ func (s *TaskScheduleService) CreateSchedule(ctx context.Context, taskID, homeID
 	if err := s.taskRepo.AssignUser(ctx, taskID, firstUserID, time.Now()); err != nil {
 		logger.Info.Printf("Failed to assign first rotation user: %v", err)
 	}
+
+	// Notify the first user
+	_ = s.notifSvc.Create(ctx, nil, firstUserID, "You have been assigned to scheduled task: "+task.Name)
 
 	// Invalidate caches
 	s.invalidateTaskCaches(ctx, taskID, homeID)
@@ -157,6 +161,13 @@ func (s *TaskScheduleService) ProcessDueSchedules(ctx context.Context) error {
 			logger.Info.Printf("[Scheduler] Failed to assign user %d to task %d: %v", nextUserID, schedule.TaskID, err)
 			continue
 		}
+
+		// Notify the user about their rotation assignment
+		taskName := ""
+		if schedule.Task != nil {
+			taskName = schedule.Task.Name
+		}
+		_ = s.notifSvc.Create(ctx, nil, nextUserID, "It's your turn! You've been assigned to task: "+taskName)
 
 		// Update rotation index and next run date
 		schedule.CurrentRotationIndex = (schedule.CurrentRotationIndex + 1) % len(userIDs)

@@ -17,8 +17,9 @@ import (
 )
 
 type BillService struct {
-	repo  repository.BillRepository
-	cache *redis.Client
+	repo     repository.BillRepository
+	cache    *redis.Client
+	notifSvc INotificationService
 }
 
 type IBillService interface {
@@ -32,8 +33,8 @@ type IBillService interface {
 	MarkSplitPaid(ctx context.Context, splitID int) error
 }
 
-func NewBillService(repo repository.BillRepository, cache *redis.Client) *BillService {
-	return &BillService{repo: repo, cache: cache}
+func NewBillService(repo repository.BillRepository, cache *redis.Client, notifSvc INotificationService) *BillService {
+	return &BillService{repo: repo, cache: cache, notifSvc: notifSvc}
 }
 
 func validateSplits(splits []models.SplitInput, totalAmount float64) error {
@@ -93,6 +94,14 @@ func (s *BillService) CreateBill(ctx context.Context, billType string, billCateg
 
 	metrics.BillsTotal.Inc()
 	metrics.BillOperationsTotal.WithLabelValues("create").Inc()
+
+	// Notify home about new expense
+	fromID := uploadedBy
+	desc := fmt.Sprintf("New expense added: $%.2f", totalAmount)
+	if description != "" {
+		desc = fmt.Sprintf("New expense added: %s ($%.2f)", description, totalAmount)
+	}
+	_ = s.notifSvc.CreateHomeNotification(ctx, &fromID, homeID, desc)
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleBill,

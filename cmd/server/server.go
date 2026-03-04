@@ -111,15 +111,15 @@ func NewServer() (*Server, error) {
 	taskScheduleRepo := repository.NewTaskScheduleRepository(db)
 
 	// services
+	notificationSvc := services.NewNotificationService(notificationRepo, cacheClient)
 	authSvc := services.NewAuthService(userRepo, []byte(cfg.JWTSecret), cacheClient, 24*time.Hour, cfg.ClientURL, cfg.ServerURL, mailer)
-	homeSvc := services.NewHomeService(homeRepo, cacheClient)
+	homeSvc := services.NewHomeService(homeRepo, cacheClient, notificationSvc)
 	roomSvc := services.NewRoomService(roomRepo, cacheClient)
-	taskSvc := services.NewTaskService(taskRepo, cacheClient)
-	billSvc := services.NewBillService(billRepo, cacheClient)
+	taskSvc := services.NewTaskService(taskRepo, cacheClient, notificationSvc)
+	billSvc := services.NewBillService(billRepo, cacheClient, notificationSvc)
 	billCategorySvc := services.NewBillCategoryService(billCategoryRepo, cacheClient)
 	shoppingSvc := services.NewShoppingService(shoppingRepo, cacheClient)
-	pollSvc := services.NewPollService(pollRepo, cacheClient)
-	notificationSvc := services.NewNotificationService(notificationRepo, cacheClient)
+	pollSvc := services.NewPollService(pollRepo, cacheClient, notificationSvc)
 	userService := services.NewUserService(userRepo, cacheClient)
 
 	imageService, err := services.NewImageService(cfg.AWSS3Bucket, cfg.AWSRegion)
@@ -129,7 +129,7 @@ func NewServer() (*Server, error) {
 
 	ocrSvc := services.NewOCRService(cfg.GeminiAPIKey)
 	smartHomeSvc := services.NewSmartHomeService(smartHomeRepo, cacheClient, cfg.HAEncryptionKey)
-	taskScheduleSvc := services.NewTaskScheduleService(taskScheduleRepo, taskRepo, cacheClient)
+	taskScheduleSvc := services.NewTaskScheduleService(taskScheduleRepo, taskRepo, cacheClient, notificationSvc)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authSvc, cfg.ClientURL, cfg.Mode != "dev")
