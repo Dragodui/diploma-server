@@ -50,8 +50,12 @@ type mockHomeRepo struct {
 	FindByInviteCodeFunc         func(ctx context.Context, inviteCode string) (*models.Home, error)
 	DeleteFunc                   func(ctx context.Context, id int) error
 	IsAdminFunc                  func(ctx context.Context, id int, userID int) (bool, error)
-	AddMemberFunc                func(ctx context.Context, id int, userID int, role string) error
+	AddMemberFunc                func(ctx context.Context, id int, userID int, role string, status string) error
 	IsMemberFunc                 func(ctx context.Context, id int, userID int) (bool, error)
+	IsPendingMemberFunc          func(ctx context.Context, id int, userID int) (bool, error)
+	ApproveMemberFunc            func(ctx context.Context, homeID int, userID int) error
+	RejectMemberFunc             func(ctx context.Context, homeID int, userID int) error
+	GetPendingMembersFunc        func(ctx context.Context, homeID int) ([]models.HomeMembership, error)
 	DeleteMemberFunc             func(ctx context.Context, id int, userID int) error
 	GenerateUniqueInviteCodeFunc func(ctx context.Context) (string, error)
 	GetUserHomeFunc              func(ctx context.Context, userID int) (*models.Home, error)
@@ -99,9 +103,9 @@ func (m *mockHomeRepo) IsAdmin(ctx context.Context, id int, userID int) (bool, e
 	return false, nil
 }
 
-func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role string) error {
+func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role string, status string) error {
 	if m.AddMemberFunc != nil {
-		return m.AddMemberFunc(ctx, id, userID, role)
+		return m.AddMemberFunc(ctx, id, userID, role, status)
 	}
 	return nil
 }
@@ -111,6 +115,34 @@ func (m *mockHomeRepo) IsMember(ctx context.Context, id int, userID int) (bool, 
 		return m.IsMemberFunc(ctx, id, userID)
 	}
 	return false, nil
+}
+
+func (m *mockHomeRepo) IsPendingMember(ctx context.Context, id int, userID int) (bool, error) {
+	if m.IsPendingMemberFunc != nil {
+		return m.IsPendingMemberFunc(ctx, id, userID)
+	}
+	return false, nil
+}
+
+func (m *mockHomeRepo) ApproveMember(ctx context.Context, homeID int, userID int) error {
+	if m.ApproveMemberFunc != nil {
+		return m.ApproveMemberFunc(ctx, homeID, userID)
+	}
+	return nil
+}
+
+func (m *mockHomeRepo) RejectMember(ctx context.Context, homeID int, userID int) error {
+	if m.RejectMemberFunc != nil {
+		return m.RejectMemberFunc(ctx, homeID, userID)
+	}
+	return nil
+}
+
+func (m *mockHomeRepo) GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	if m.GetPendingMembersFunc != nil {
+		return m.GetPendingMembersFunc(ctx, homeID)
+	}
+	return nil, nil
 }
 
 func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) error {
@@ -160,10 +192,11 @@ func TestHomeService_CreateHome_Success(t *testing.T) {
 			h.ID = 1
 			return nil
 		},
-		AddMemberFunc: func(ctx context.Context, id int, userID int, role string) error {
+		AddMemberFunc: func(ctx context.Context, id int, userID int, role string, status string) error {
 			require.Equal(t, 1, id)
 			require.Equal(t, 5, userID)
 			require.Equal(t, "admin", role)
+			require.Equal(t, "approved", status)
 			return nil
 		},
 	}
@@ -218,10 +251,11 @@ func TestHomeService_JoinHome_Success(t *testing.T) {
 			require.Equal(t, "ABC123", inviteCode)
 			return home, nil
 		},
-		AddMemberFunc: func(ctx context.Context, id int, userID int, role string) error {
+		AddMemberFunc: func(ctx context.Context, id int, userID int, role string, status string) error {
 			require.Equal(t, 1, id)
 			require.Equal(t, 5, userID)
 			require.Equal(t, "member", role)
+			require.Equal(t, "pending", status)
 			return nil
 		},
 	}

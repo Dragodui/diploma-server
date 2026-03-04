@@ -19,8 +19,12 @@ type HomeRepository interface {
 	IsAdmin(ctx context.Context, id int, userID int) (bool, error)
 
 	// home memberships
-	AddMember(ctx context.Context, id int, userID int, role string) error
+	AddMember(ctx context.Context, id int, userID int, role string, status string) error
 	IsMember(ctx context.Context, id int, userID int) (bool, error)
+	IsPendingMember(ctx context.Context, id int, userID int) (bool, error)
+	ApproveMember(ctx context.Context, homeID int, userID int) error
+	RejectMember(ctx context.Context, homeID int, userID int) error
+	GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error)
 	DeleteMember(ctx context.Context, id int, userID int) error
 	GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error)
 	GenerateUniqueInviteCode(ctx context.Context) (string, error)
@@ -155,12 +159,13 @@ func (r *homeRepo) Delete(ctx context.Context, id int) error {
 	return r.db.WithContext(ctx).Delete(&models.Home{}, id).Error
 }
 
-func (r *homeRepo) AddMember(ctx context.Context, id int, userID int, role string) error {
+func (r *homeRepo) AddMember(ctx context.Context, id int, userID int, role string, status string) error {
 
 	if err := r.db.WithContext(ctx).Create(&models.HomeMembership{
 		HomeID: id,
 		UserID: userID,
 		Role:   role,
+		Status: status,
 	}).Error; err != nil {
 		return err
 	}
@@ -171,11 +176,53 @@ func (r *homeRepo) AddMember(ctx context.Context, id int, userID int, role strin
 func (r *homeRepo) IsMember(ctx context.Context, id int, userID int) (bool, error) {
 
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&models.HomeMembership{}).Where("home_id = ? AND user_id = ?", id, userID).Count(&count).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.HomeMembership{}).Where("home_id = ? AND user_id = ? AND status = 'approved'", id, userID).Count(&count).Error; err != nil {
 		return false, err
 	}
 
 	return count > 0, nil
+}
+
+func (r *homeRepo) IsPendingMember(ctx context.Context, id int, userID int) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&models.HomeMembership{}).Where("home_id = ? AND user_id = ? AND status = 'pending'", id, userID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *homeRepo) ApproveMember(ctx context.Context, homeID int, userID int) error {
+	result := r.db.WithContext(ctx).Model(&models.HomeMembership{}).
+		Where("home_id = ? AND user_id = ? AND status = 'pending'", homeID, userID).
+		Update("status", "approved")
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("no pending membership found")
+	}
+	return nil
+}
+
+func (r *homeRepo) RejectMember(ctx context.Context, homeID int, userID int) error {
+	result := r.db.WithContext(ctx).
+		Where("home_id = ? AND user_id = ? AND status = 'pending'", homeID, userID).
+		Delete(&models.HomeMembership{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("no pending membership found")
+	}
+	return nil
+}
+
+func (r *homeRepo) GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	var members []models.HomeMembership
+	if err := r.db.WithContext(ctx).Where("home_id = ? AND status = 'pending'", homeID).Preload("User").Find(&members).Error; err != nil {
+		return nil, err
+	}
+	return members, nil
 }
 
 func (r *homeRepo) DeleteMember(ctx context.Context, id int, userID int) error {
@@ -189,7 +236,7 @@ func (r *homeRepo) DeleteMember(ctx context.Context, id int, userID int) error {
 
 func (r *homeRepo) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
 	var members []models.HomeMembership
-	if err := r.db.WithContext(ctx).Where("home_id = ?", homeID).Preload("User").Find(&members).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("home_id = ? AND status = 'approved'", homeID).Preload("User").Find(&members).Error; err != nil {
 		return nil, err
 	}
 	return members, nil
@@ -224,7 +271,7 @@ func (r *homeRepo) IsAdmin(ctx context.Context, id int, userID int) (bool, error
 func (r *homeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
 	var homes []models.Home
 
-	if err := r.db.WithContext(ctx).Model(&models.Home{}).Joins("JOIN home_memberships ON home_memberships.home_id = homes.id").Where("home_memberships.user_id = ?", userID).Preload("Memberships").Preload("Memberships.User").Find(&homes).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.Home{}).Joins("JOIN home_memberships ON home_memberships.home_id = homes.id").Where("home_memberships.user_id = ? AND home_memberships.status = 'approved'", userID).Preload("Memberships").Preload("Memberships.User").Find(&homes).Error; err != nil {
 		return nil, err
 	}
 
@@ -234,7 +281,7 @@ func (r *homeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.Home,
 func (r *homeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
 	var home models.Home
 
-	if err := r.db.WithContext(ctx).Model(&models.Home{}).Joins("JOIN home_memberships ON home_memberships.home_id = homes.id").Where("home_memberships.user_id = ?", userID).Preload("Memberships").Preload("Memberships.User").First(&home).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.Home{}).Joins("JOIN home_memberships ON home_memberships.home_id = homes.id").Where("home_memberships.user_id = ? AND home_memberships.status = 'approved'", userID).Preload("Memberships").Preload("Memberships.User").First(&home).Error; err != nil {
 		return nil, err
 	}
 

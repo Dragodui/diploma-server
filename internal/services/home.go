@@ -30,6 +30,9 @@ type IHomeService interface {
 	GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error)
 	GetUserHome(ctx context.Context, userID int) (*models.Home, error)
 	GetUserHomes(ctx context.Context, userID int) ([]models.Home, error)
+	ApproveMember(ctx context.Context, homeID int, userID int) error
+	RejectMember(ctx context.Context, homeID int, userID int) error
+	GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error)
 }
 
 func NewHomeService(repo repository.HomeRepository, cache *redis.Client, notifSvc INotificationService) *HomeService {
@@ -51,7 +54,7 @@ func (s *HomeService) CreateHome(ctx context.Context, name string, userID int) e
 		return err
 	}
 
-	if err := s.repo.AddMember(ctx, home.ID, userID, "admin"); err != nil {
+	if err := s.repo.AddMember(ctx, home.ID, userID, "admin", "approved"); err != nil {
 		return err
 	}
 
@@ -110,25 +113,28 @@ func (s *HomeService) JoinHomeByCode(ctx context.Context, code string, userID in
 		return errors.New("user already in this home")
 	}
 
+	pending, err := s.repo.IsPendingMember(ctx, home.ID, userID)
+	if err != nil {
+		return err
+	}
+	if pending {
+		return errors.New("join request already pending")
+	}
+
 	key := utils.GetHomeCacheKey(home.ID)
 	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
 	}
 
-	if err := s.repo.AddMember(ctx, home.ID, userID, "member"); err != nil {
+	if err := s.repo.AddMember(ctx, home.ID, userID, "member", "pending"); err != nil {
 		return err
 	}
 
-	metrics.HomeOperationsTotal.WithLabelValues("join").Inc()
+	metrics.HomeOperationsTotal.WithLabelValues("join_request").Inc()
 
-	// invalidate user homes list cache
-	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
-		logger.Info.Printf("Failed to delete user homes cache: %v", err)
-	}
-
-	// Notify home that a new member joined
+	// Notify home that a user has requested to join
 	fromID := userID
-	_ = s.notifSvc.CreateHomeNotification(ctx, &fromID, home.ID, "A new member has joined the home")
+	_ = s.notifSvc.CreateHomeNotification(ctx, &fromID, home.ID, "A user has requested to join the home")
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,
@@ -296,5 +302,54 @@ func (s *HomeService) GetUserHomes(ctx context.Context, userID int) ([]models.Ho
 	}
 
 	return homes, nil
+}
+
+func (s *HomeService) ApproveMember(ctx context.Context, homeID int, userID int) error {
+	if err := s.repo.ApproveMember(ctx, homeID, userID); err != nil {
+		return err
+	}
+
+	key := utils.GetHomeCacheKey(homeID)
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
+	}
+
+	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
+		logger.Info.Printf("Failed to delete user homes cache: %v", err)
+	}
+
+	metrics.HomeOperationsTotal.WithLabelValues("approve_member").Inc()
+
+	_ = s.notifSvc.Create(ctx, nil, userID, "Your request to join the home has been approved")
+	_ = s.notifSvc.CreateHomeNotification(ctx, nil, homeID, "A new member has been approved")
+
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHome,
+		Action: event.ActionMemberJoined,
+		Data:   map[string]int{"homeID": homeID, "userID": userID},
+	})
+
+	return nil
+}
+
+func (s *HomeService) RejectMember(ctx context.Context, homeID int, userID int) error {
+	if err := s.repo.RejectMember(ctx, homeID, userID); err != nil {
+		return err
+	}
+
+	key := utils.GetHomeCacheKey(homeID)
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
+	}
+
+	metrics.HomeOperationsTotal.WithLabelValues("reject_member").Inc()
+
+	_ = s.notifSvc.Create(ctx, nil, userID, "Your request to join the home has been rejected")
+
+	return nil
+}
+
+func (s *HomeService) GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return s.repo.GetPendingMembers(ctx, homeID)
 }
 

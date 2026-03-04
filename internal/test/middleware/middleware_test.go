@@ -35,8 +35,20 @@ func (m *mockHomeRepo) FindByInviteCode(ctx context.Context, inviteCode string) 
 	return nil, nil
 }
 func (m *mockHomeRepo) Delete(ctx context.Context, id int) error { return nil }
-func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role string) error {
+func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role string, status string) error {
 	return nil
+}
+func (m *mockHomeRepo) IsPendingMember(ctx context.Context, id int, userID int) (bool, error) {
+	return false, nil
+}
+func (m *mockHomeRepo) ApproveMember(ctx context.Context, homeID int, userID int) error {
+	return nil
+}
+func (m *mockHomeRepo) RejectMember(ctx context.Context, homeID int, userID int) error {
+	return nil
+}
+func (m *mockHomeRepo) GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return nil, nil
 }
 func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) error { return nil }
 func (m *mockHomeRepo) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {

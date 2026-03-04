@@ -7,6 +7,7 @@ type HomeMembership struct {
 	HomeID    int       `gorm:"not null" json:"home_id"`
 	UserID    int       `gorm:"not null" json:"user_id"`
 	Role      string    `gorm:"size:64;not null" json:"role"`
+	Status    string    `gorm:"size:64;not null;default:pending" json:"status"`
 	JoinedAt  time.Time `gorm:"autoCreateTime" json:"joined_at"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 

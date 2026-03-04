@@ -69,9 +69,9 @@ func SeedDatabase(db *gorm.DB) error {
 
 	// Create memberships
 	memberships := []models.HomeMembership{
-		{HomeID: home.ID, UserID: admin.ID, Role: "admin"},
-		{HomeID: home.ID, UserID: user1.ID, Role: "member"},
-		{HomeID: home.ID, UserID: user2.ID, Role: "member"},
+		{HomeID: home.ID, UserID: admin.ID, Role: "admin", Status: "approved"},
+		{HomeID: home.ID, UserID: user1.ID, Role: "member", Status: "approved"},
+		{HomeID: home.ID, UserID: user2.ID, Role: "member", Status: "approved"},
 	}
 	if err := db.Create(&memberships).Error; err != nil {
 		return err

@@ -31,8 +31,20 @@ func (m *mockHomeRepo) FindByInviteCode(ctx context.Context, inviteCode string) 
 	return nil, nil
 }
 func (m *mockHomeRepo) Delete(ctx context.Context, id int) error { return nil }
-func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role string) error {
+func (m *mockHomeRepo) AddMember(ctx context.Context, id int, userID int, role string, status string) error {
 	return nil
+}
+func (m *mockHomeRepo) IsPendingMember(ctx context.Context, id int, userID int) (bool, error) {
+	return false, nil
+}
+func (m *mockHomeRepo) ApproveMember(ctx context.Context, homeID int, userID int) error {
+	return nil
+}
+func (m *mockHomeRepo) RejectMember(ctx context.Context, homeID int, userID int) error {
+	return nil
+}
+func (m *mockHomeRepo) GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return nil, nil
 }
 func (m *mockHomeRepo) DeleteMember(ctx context.Context, id int, userID int) error { return nil }
 func (m *mockHomeRepo) GetMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
@@ -115,6 +127,18 @@ func (m *mockHomeService) GetMembers(ctx context.Context, homeID int) ([]models.
 
 func (m *mockHomeService) GetUserHomes(ctx context.Context, userID int) ([]models.Home, error) {
 	return m.GetUserHomesFunc(ctx, userID)
+}
+
+func (m *mockHomeService) ApproveMember(ctx context.Context, homeID int, userID int) error {
+	return nil
+}
+
+func (m *mockHomeService) RejectMember(ctx context.Context, homeID int, userID int) error {
+	return nil
+}
+
+func (m *mockHomeService) GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
+	return nil, nil
 }
 
 // Test fixtures
@@ -214,7 +238,7 @@ func TestHomeHandler_Join(t *testing.T) {
 				return nil
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   "Joined successfully",
+			expectedBody:   "Join request sent, waiting for admin approval",
 		},
 		{
 			name:           "Invalid JSON",

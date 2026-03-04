@@ -129,7 +129,7 @@ func (h *HomeHandler) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Joined successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Join request sent, waiting for admin approval"})
 }
 
 // GetUserHomes godoc
@@ -384,4 +384,104 @@ func (h *HomeHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "User removed successfully"})
+}
+
+// GetPendingMembers godoc
+// @Summary      Get pending members
+// @Description  Get all pending membership requests for a home (admin only)
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string][]models.HomeMembership
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      403  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/pending-members [get]
+func (h *HomeHandler) GetPendingMembers(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	members, err := h.svc.GetPendingMembers(r.Context(), homeID)
+	if err != nil {
+		utils.SafeError(w, err, "Error getting pending members", http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"members": members,
+	})
+}
+
+// ApproveMember godoc
+// @Summary      Approve member
+// @Description  Approve a pending membership request (admin only)
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        user_id path int true "User ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      403  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/members/{user_id}/approve [post]
+func (h *HomeHandler) ApproveMember(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	userIDStr := chi.URLParam(r, "user_id")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.ApproveMember(r.Context(), homeID, userID); err != nil {
+		utils.SafeError(w, err, "Error approving member", http.StatusBadRequest)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Member approved successfully"})
+}
+
+// RejectMember godoc
+// @Summary      Reject member
+// @Description  Reject a pending membership request (admin only)
+// @Tags         home
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        user_id path int true "User ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      403  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/members/{user_id}/reject [post]
+func (h *HomeHandler) RejectMember(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	userIDStr := chi.URLParam(r, "user_id")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.RejectMember(r.Context(), homeID, userID); err != nil {
+		utils.SafeError(w, err, "Error rejecting member", http.StatusBadRequest)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Member rejected successfully"})
 }
