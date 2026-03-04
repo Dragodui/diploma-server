@@ -6,30 +6,60 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/redis/go-redis/v9"
 )
 
 func WriteToCache(ctx context.Context, key string, data interface{}, cache *redis.Client) error {
+	start := time.Now()
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return cache.Set(ctx, key, bytes, time.Hour).Err()
+	err = cache.Set(ctx, key, bytes, time.Hour).Err()
+	duration := time.Since(start).Seconds()
+	metrics.RedisOperationDuration.WithLabelValues("set").Observe(duration)
+	if err != nil {
+		metrics.RedisOperationsTotal.WithLabelValues("set", "error").Inc()
+	} else {
+		metrics.RedisOperationsTotal.WithLabelValues("set", "success").Inc()
+	}
+	return err
 }
 
 func GetFromCache[T any](ctx context.Context, key string, cache *redis.Client) (*T, error) {
+	start := time.Now()
 	cached, err := cache.Get(ctx, key).Result()
+	duration := time.Since(start).Seconds()
+	metrics.RedisOperationDuration.WithLabelValues("get").Observe(duration)
 	if cached != "" && err == nil {
 		var data T
 		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			metrics.RedisOperationsTotal.WithLabelValues("get", "hit").Inc()
+			metrics.RedisCacheHits.Inc()
 			return &data, nil
 		}
+	}
+	if err != nil && err != redis.Nil {
+		metrics.RedisOperationsTotal.WithLabelValues("get", "error").Inc()
+	} else {
+		metrics.RedisOperationsTotal.WithLabelValues("get", "miss").Inc()
+		metrics.RedisCacheMisses.Inc()
 	}
 	return nil, err
 }
 
 func DeleteFromCache(ctx context.Context, key string, cache *redis.Client) error {
-	return cache.Del(ctx, key).Err()
+	start := time.Now()
+	err := cache.Del(ctx, key).Err()
+	duration := time.Since(start).Seconds()
+	metrics.RedisOperationDuration.WithLabelValues("del").Observe(duration)
+	if err != nil {
+		metrics.RedisOperationsTotal.WithLabelValues("del", "error").Inc()
+	} else {
+		metrics.RedisOperationsTotal.WithLabelValues("del", "success").Inc()
+	}
+	return err
 }
 
 // keys function

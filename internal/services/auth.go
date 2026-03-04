@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -76,12 +77,14 @@ func (s *AuthService) IsTokenBlacklisted(ctx context.Context, tokenStr string) b
 func (s *AuthService) Register(ctx context.Context, email, password, name string) error {
 	existing, _ := s.repo.FindByEmail(ctx, email)
 	if existing != nil {
+		metrics.AuthAttemptsTotal.WithLabelValues("register", "failure").Inc()
 		return errors.New("registration failed")
 	}
 
 	hash, err := security.HashPassword(password)
 
 	if err != nil {
+		metrics.AuthAttemptsTotal.WithLabelValues("register", "failure").Inc()
 		return err
 	}
 	u := &models.User{
@@ -90,7 +93,12 @@ func (s *AuthService) Register(ctx context.Context, email, password, name string
 		PasswordHash: hash,
 	}
 
-	return s.repo.Create(ctx, u)
+	if err := s.repo.Create(ctx, u); err != nil {
+		metrics.AuthAttemptsTotal.WithLabelValues("register", "failure").Inc()
+		return err
+	}
+	metrics.AuthAttemptsTotal.WithLabelValues("register", "success").Inc()
+	return nil
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (string, *models.User, error) {
@@ -108,19 +116,24 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 
 	// Check both conditions: user must exist AND password must be valid
 	if user == nil || !isValidPassword {
+		metrics.AuthAttemptsTotal.WithLabelValues("login", "failure").Inc()
 		return "", nil, ErrInvalidCredentials
 	}
 
 	// Check email verification after constant-time password check
 	if !user.EmailVerified {
+		metrics.AuthAttemptsTotal.WithLabelValues("login", "failure").Inc()
 		return "", nil, ErrEmailNotVerified
 	}
 
 	token, err := security.GenerateToken(user.ID, email, s.jwtSecret, s.ttl)
 	if err != nil {
+		metrics.AuthAttemptsTotal.WithLabelValues("login", "failure").Inc()
 		return "", nil, err
 	}
 
+	metrics.AuthAttemptsTotal.WithLabelValues("login", "success").Inc()
+	metrics.AuthTokensGenerated.Inc()
 	user.PasswordHash = ""
 	return token, user, nil
 }
@@ -154,8 +167,12 @@ func (s *AuthService) HandleCallback(ctx context.Context, user goth.User) (strin
 
 	token, err := security.GenerateToken(u.ID, user.Email, s.jwtSecret, s.ttl)
 	if err != nil {
+		metrics.AuthAttemptsTotal.WithLabelValues("oauth", "failure").Inc()
 		return "", "", err
 	}
+
+	metrics.AuthAttemptsTotal.WithLabelValues("oauth", "success").Inc()
+	metrics.AuthTokensGenerated.Inc()
 
 	// Return token separately to be set as HTTP-only cookie
 	redirectURL := s.clientURL + "/oauth-success"
@@ -233,9 +250,12 @@ func (s *AuthService) GoogleSignIn(ctx context.Context, accessToken string) (str
 
 	token, err := security.GenerateToken(u.ID, gInfo.Email, s.jwtSecret, s.ttl)
 	if err != nil {
+		metrics.AuthAttemptsTotal.WithLabelValues("google_signin", "failure").Inc()
 		return "", nil, err
 	}
 
+	metrics.AuthAttemptsTotal.WithLabelValues("google_signin", "success").Inc()
+	metrics.AuthTokensGenerated.Inc()
 	u.PasswordHash = ""
 	return token, u, nil
 }

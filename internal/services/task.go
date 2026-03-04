@@ -8,6 +8,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -64,6 +65,9 @@ func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, n
 			return err
 		}
 	}
+
+	metrics.TasksTotal.WithLabelValues("active").Inc()
+	metrics.TaskOperationsTotal.WithLabelValues("create").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleTask,
@@ -147,6 +151,9 @@ func (s *TaskService) DeleteTask(ctx context.Context, taskID int) error {
 		logger.Info.Printf("Failed to delete redis cache for home %d: %v", task.HomeID, err)
 	}
 
+	metrics.TasksTotal.WithLabelValues("active").Dec()
+	metrics.TaskOperationsTotal.WithLabelValues("delete").Inc()
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleTask,
 		Action: event.ActionDeleted,
@@ -172,6 +179,8 @@ func (s *TaskService) AssignUser(ctx context.Context, taskID, userID, homeID int
 	if err := s.repo.AssignUser(ctx, taskID, userID, date); err != nil {
 		return err
 	}
+
+	metrics.TaskOperationsTotal.WithLabelValues("assign").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleTask,
@@ -265,6 +274,8 @@ func (s *TaskService) MarkAssignmentCompleted(ctx context.Context, assignmentID 
 	if err := s.repo.MarkCompleted(ctx, assignmentID); err != nil {
 		return err
 	}
+
+	metrics.TaskOperationsTotal.WithLabelValues("complete").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleTask,

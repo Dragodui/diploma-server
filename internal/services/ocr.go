@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 
 	"github.com/google/uuid"
@@ -73,16 +74,25 @@ func (s *OCRService) ProcessImage(ctx context.Context, imageURL, language string
 
 // ProcessFile processes a local file with Gemini Vision API
 func (s *OCRService) ProcessFile(ctx context.Context, filePath, language string) (*models.OCRResult, error) {
+	start := time.Now()
+
 	imageData, err := os.ReadFile(filePath)
 	if err != nil {
+		metrics.OcrRequestsTotal.WithLabelValues("error").Inc()
+		metrics.OcrProcessingDuration.Observe(time.Since(start).Seconds())
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	mimeType := detectMimeType(filePath)
 	result, err := s.analyzeWithGemini(ctx, imageData, mimeType, language)
+	duration := time.Since(start).Seconds()
+	metrics.OcrProcessingDuration.Observe(duration)
 	if err != nil {
+		metrics.OcrRequestsTotal.WithLabelValues("error").Inc()
 		return nil, fmt.Errorf("Gemini Vision failed: %w", err)
 	}
+
+	metrics.OcrRequestsTotal.WithLabelValues("success").Inc()
 
 	strResult, _ := json.Marshal(result)
 	logger.Info.Printf("OCR Result: %s", string(strResult))

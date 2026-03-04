@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"gopkg.in/gomail.v2"
 )
 
@@ -85,7 +86,15 @@ func (m *SMTPMailer) Send(to, subject, body string) error {
 	msg.SetBody("text/html", sanitizedBody)
 
 	dial := gomail.NewDialer(m.Host, m.Port, m.Username, m.Password)
-	return dial.DialAndSend(msg)
+	start := time.Now()
+	err := dial.DialAndSend(msg)
+	metrics.EmailSendDuration.Observe(time.Since(start).Seconds())
+	if err != nil {
+		metrics.EmailsSentTotal.WithLabelValues("smtp", "error").Inc()
+		return err
+	}
+	metrics.EmailsSentTotal.WithLabelValues("smtp", "success").Inc()
+	return nil
 }
 
 type BrevoMailer struct {
@@ -94,6 +103,10 @@ type BrevoMailer struct {
 }
 
 func (m *BrevoMailer) Send(to, subject, body string) error {
+	start := time.Now()
+	defer func() {
+		metrics.EmailSendDuration.Observe(time.Since(start).Seconds())
+	}()
 	payload := map[string]interface{}{
 		"sender":      map[string]string{"email": m.From},
 		"to":          []map[string]string{{"email": to}},
@@ -122,9 +135,11 @@ func (m *BrevoMailer) Send(to, subject, body string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
+		metrics.EmailsSentTotal.WithLabelValues("brevo", "error").Inc()
 		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("brevo API error %d: %s", resp.StatusCode, string(respBody))
 	}
 
+	metrics.EmailsSentTotal.WithLabelValues("brevo", "success").Inc()
 	return nil
 }

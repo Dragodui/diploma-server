@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -126,6 +127,7 @@ func (s *ImageService) Upload(ctx context.Context, file multipart.File, header *
 	newName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
 	// Use detected content type instead of client-provided header
+	uploadStart := time.Now()
 	result, err := s.uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(s.bucketName),
 		Key:         aws.String(newName),
@@ -135,10 +137,16 @@ func (s *ImageService) Upload(ctx context.Context, file multipart.File, header *
 			"uploaded-at": time.Now().Format(time.RFC3339),
 		},
 	})
+	uploadDuration := time.Since(uploadStart).Seconds()
+	metrics.S3UploadDuration.Observe(uploadDuration)
 
 	if err != nil {
+		metrics.S3UploadsTotal.WithLabelValues("error").Inc()
 		return "", fmt.Errorf("failed to upload file to S3: %w", err)
 	}
+
+	metrics.S3UploadsTotal.WithLabelValues("success").Inc()
+	metrics.S3UploadSizeBytes.Observe(float64(header.Size))
 
 	publicURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s",
 		s.bucketName, s.region, newName)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -65,6 +66,8 @@ func (s *PollService) Create(ctx context.Context, homeID int, question, pollType
 	if err := s.repo.Create(ctx, poll, optionModels); err != nil {
 		return err
 	}
+
+	metrics.PollsTotal.Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,
@@ -141,6 +144,8 @@ func (s *PollService) Delete(ctx context.Context, pollID, homeID int) error {
 		return err
 	}
 
+	metrics.PollsTotal.Dec()
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,
 		Action: event.ActionDeleted,
@@ -183,6 +188,8 @@ func (s *PollService) Vote(ctx context.Context, userID, optionID, homeID int) er
 	if err := s.repo.Vote(ctx, vote); err != nil {
 		return err
 	}
+
+	metrics.PollVotesTotal.Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModulePoll,

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -57,6 +58,9 @@ func (s *HomeService) CreateHome(ctx context.Context, name string, userID int) e
 	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
 		logger.Info.Printf("Failed to delete user homes cache: %v", err)
 	}
+
+	metrics.HomesTotal.Inc()
+	metrics.HomeOperationsTotal.WithLabelValues("create").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleHome,
@@ -114,6 +118,8 @@ func (s *HomeService) JoinHomeByCode(ctx context.Context, code string, userID in
 		return err
 	}
 
+	metrics.HomeOperationsTotal.WithLabelValues("join").Inc()
+
 	// invalidate user homes list cache
 	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
 		logger.Info.Printf("Failed to delete user homes cache: %v", err)
@@ -158,6 +164,9 @@ func (s *HomeService) DeleteHome(ctx context.Context, id int) error {
 		return err
 	}
 
+	metrics.HomesTotal.Dec()
+	metrics.HomeOperationsTotal.WithLabelValues("delete").Inc()
+
 	// remove from cache
 	key := utils.GetHomeCacheKey(id)
 	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
@@ -182,6 +191,8 @@ func (s *HomeService) LeaveHome(ctx context.Context, homeID int, userID int) err
 	if err := s.repo.DeleteMember(ctx, homeID, userID); err != nil {
 		return err
 	}
+
+	metrics.HomeOperationsTotal.WithLabelValues("leave").Inc()
 
 	// invalidate user homes list cache
 	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {
@@ -210,6 +221,8 @@ func (s *HomeService) RemoveMember(ctx context.Context, homeID int, userID int, 
 	if err := s.repo.DeleteMember(ctx, homeID, userID); err != nil {
 		return err
 	}
+
+	metrics.HomeOperationsTotal.WithLabelValues("remove_member").Inc()
 
 	// invalidate removed user's homes list cache
 	if err := utils.DeleteFromCache(ctx, utils.GetUserHomesKey(userID), s.cache); err != nil {

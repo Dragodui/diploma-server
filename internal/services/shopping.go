@@ -7,6 +7,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -60,6 +61,8 @@ func (s *ShoppingService) CreateCategory(ctx context.Context, name string, icon 
 	if err := s.repo.CreateCategory(ctx, category); err != nil {
 		return err
 	}
+
+	metrics.ShoppingOperationsTotal.WithLabelValues("create_category").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingCategory,
@@ -136,6 +139,8 @@ func (s *ShoppingService) DeleteCategory(ctx context.Context, categoryID, homeID
 		return err
 	}
 
+	metrics.ShoppingOperationsTotal.WithLabelValues("delete_category").Inc()
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingCategory,
 		Action: event.ActionDeleted,
@@ -210,6 +215,9 @@ func (s *ShoppingService) CreateItem(ctx context.Context, categoryID int, userID
 		return err
 	}
 
+	metrics.ShoppingItemsTotal.Inc()
+	metrics.ShoppingOperationsTotal.WithLabelValues("create_item").Inc()
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingItem,
 		Action: event.ActionCreated,
@@ -246,6 +254,9 @@ func (s *ShoppingService) DeleteItem(ctx context.Context, itemID int) error {
 	if err := s.repo.DeleteItem(ctx, itemID); err != nil {
 		return err
 	}
+
+	metrics.ShoppingItemsTotal.Dec()
+	metrics.ShoppingOperationsTotal.WithLabelValues("delete_item").Inc()
 
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleShoppingItem,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/event"
 	"github.com/Dragodui/diploma-server/internal/logger"
+	"github.com/Dragodui/diploma-server/internal/metrics"
 	"github.com/Dragodui/diploma-server/internal/models"
 	"github.com/Dragodui/diploma-server/internal/repository"
 	"github.com/Dragodui/diploma-server/internal/utils"
@@ -90,6 +91,9 @@ func (s *BillService) CreateBill(ctx context.Context, billType string, billCateg
 		}
 	}
 
+	metrics.BillsTotal.Inc()
+	metrics.BillOperationsTotal.WithLabelValues("create").Inc()
+
 	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
 		Module: event.ModuleBill,
 		Action: event.ActionCreated,
@@ -128,6 +132,9 @@ func (s *BillService) Delete(ctx context.Context, id int) error {
 		return err
 	}
 
+	metrics.BillsTotal.Dec()
+	metrics.BillOperationsTotal.WithLabelValues("delete").Inc()
+
 	key := utils.GetBillKey(id)
 	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
@@ -147,6 +154,8 @@ func (s *BillService) MarkBillPayed(ctx context.Context, id int) error {
 	if err := s.repo.MarkPayed(ctx, id); err != nil {
 		return err
 	}
+
+	metrics.BillOperationsTotal.WithLabelValues("mark_paid").Inc()
 
 	// remove from cache
 	key := utils.GetBillKey(id)
