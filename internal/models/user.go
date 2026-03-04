@@ -21,11 +21,11 @@ type Login struct {
 type User struct {
 	ID              int        `gorm:"autoIncrement; primaryKey" json:"id"`
 	Email           string     `gorm:"size:64;not null;unique" json:"email"`
-	EmailVerified   bool       `db:"email_verified"`
-	VerifyToken     *string    `db:"verify_token"`
-	VerifyExpiresAt *time.Time `db:"verify_expires_at"`
-	ResetToken      *string    `db:"reset_token"`
-	ResetExpiresAt  *time.Time `db:"reset_expires_at"`
+	EmailVerified   bool       `gorm:"default:false" json:"email_verified"`
+	VerifyToken     *string    `json:"-"`
+	VerifyExpiresAt *time.Time `json:"-"`
+	ResetToken      *string    `json:"-"`
+	ResetExpiresAt  *time.Time `json:"-"`
 	Name            string     `gorm:"size:64;not null" json:"name"`
 	PasswordHash    string     `gorm:"not null" json:"-"`
 	Avatar          string     `json:"avatar"`
