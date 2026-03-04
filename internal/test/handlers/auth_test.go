@@ -313,11 +313,11 @@ func TestAuthHandler_Login(t *testing.T) {
 
 func TestAuthHandler_VerifyEmail(t *testing.T) {
 	tests := []struct {
-		name             string
-		token            string
-		verifyFunc       func(ctx context.Context, token string) error
-		expectedStatus   int
-		expectedRedirect string
+		name           string
+		token          string
+		verifyFunc     func(ctx context.Context, token string) error
+		expectedStatus int
+		expectedBody   string
 	}{
 		{
 			name:  "Success",
@@ -326,8 +326,8 @@ func TestAuthHandler_VerifyEmail(t *testing.T) {
 				require.Equal(t, "valid-token", token)
 				return nil
 			},
-			expectedStatus:   http.StatusFound,
-			expectedRedirect: "http://localhost:3000/verify?status=success",
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Email Verified",
 		},
 		{
 			name:  "Invalid Token",
@@ -335,8 +335,8 @@ func TestAuthHandler_VerifyEmail(t *testing.T) {
 			verifyFunc: func(ctx context.Context, token string) error {
 				return errors.New("invalid token")
 			},
-			expectedStatus:   http.StatusFound,
-			expectedRedirect: "http://localhost:3000/verify?status=error",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Verification Failed",
 		},
 	}
 
@@ -354,7 +354,7 @@ func TestAuthHandler_VerifyEmail(t *testing.T) {
 			h.VerifyEmail(rr, req)
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
-			assert.Equal(t, tt.expectedRedirect, rr.Header().Get("Location"))
+			assert.Contains(t, rr.Body.String(), tt.expectedBody)
 		})
 	}
 }

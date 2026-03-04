@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -221,11 +222,25 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	err := h.svc.VerifyEmail(r.Context(), token)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
 	if err != nil {
-		http.Redirect(w, r, h.clientURL+"/verify?status=error", http.StatusFound)
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verification Failed</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,system-ui,sans-serif;background:#1C1C1E;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.card{text-align:center;max-width:400px}.icon{font-size:64px;margin-bottom:24px}h1{font-size:24px;margin-bottom:12px}p{color:#8E8E93;font-size:16px;line-height:1.5}</style>
+</head><body><div class="card"><div class="icon">&#10060;</div><h1>Verification Failed</h1><p>The link may have expired or is invalid. Please request a new verification email from the app.</p></div></body></html>`)
 		return
 	}
-	http.Redirect(w, r, h.clientURL+"/verify?status=success", http.StatusFound)
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Email Verified</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,system-ui,sans-serif;background:#1C1C1E;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.card{text-align:center;max-width:400px}.icon{font-size:64px;margin-bottom:24px}h1{font-size:24px;margin-bottom:12px}p{color:#8E8E93;font-size:16px;line-height:1.5}</style>
+</head><body><div class="card"><div class="icon">&#9989;</div><h1>Email Verified!</h1><p>Your email has been verified successfully. You can now return to the app and log in.</p></div></body></html>`)
 }
 
 // ForgotPassword godoc
