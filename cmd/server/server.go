@@ -14,7 +14,6 @@ import (
 
 	"github.com/Dragodui/diploma-server/internal/cache"
 	"github.com/Dragodui/diploma-server/internal/config"
-	"github.com/Dragodui/diploma-server/internal/database"
 	"github.com/Dragodui/diploma-server/internal/http/handlers"
 	"github.com/Dragodui/diploma-server/internal/logger"
 	"github.com/Dragodui/diploma-server/internal/metrics"
@@ -76,9 +75,9 @@ func NewServer() (*Server, error) {
 	}
 
 	// Seed database with test data
-	if err = database.SeedDatabase(db); err != nil {
-		log.Printf("Warning: Failed to seed database: %v", err)
-	}
+	// if err = database.SeedDatabase(db); err != nil {
+	// 	log.Printf("Warning: Failed to seed database: %v", err)
+	// }
 
 	sqlDB, err := db.DB()
 	if err != nil {
