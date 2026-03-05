@@ -21,8 +21,8 @@ func (i *IPRateLimiter) GetLimiter(ip string) *RateLimiter {
 
 	limiter, exists := i.limiters[ip]
 	if !exists {
-		// 120 rpm
-		limiter = NewRateLimiter(240, 0.05)
+		// 240 rpm (burst of 240 tokens, refill 4 tokens/sec)
+		limiter = NewRateLimiter(240, 4)
 		i.limiters[ip] = limiter
 	}
 

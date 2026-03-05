@@ -172,7 +172,7 @@ func (s *PollService) Vote(ctx context.Context, userID, optionID, homeID int) er
 		return errors.New("poll not found")
 	}
 
-	if poll.Status == "closed" {
+	if poll.Status == "closed" || (poll.EndsAt != nil && poll.EndsAt.Before(time.Now())) {
 		return errors.New("poll is closed")
 	}
 
@@ -216,7 +216,7 @@ func (s *PollService) Unvote(ctx context.Context, userID, pollID, homeID int) er
 		return errors.New("poll not found")
 	}
 
-	if poll.Status == "closed" {
+	if poll.Status == "closed" || (poll.EndsAt != nil && poll.EndsAt.Before(time.Now())) {
 		return errors.New("poll is closed")
 	}
 

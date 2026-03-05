@@ -109,9 +109,6 @@ func (h *OCRHandler) Process(w http.ResponseWriter, r *http.Request) {
 	defer os.Remove(tempPath)
 
 	language := r.FormValue("language")
-	if language == "" {
-		language = "eng"
-	}
 
 	result, err := h.svc.ProcessFile(r.Context(), tempPath, language)
 	if err != nil {

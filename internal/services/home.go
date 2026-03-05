@@ -318,6 +318,10 @@ func (s *HomeService) ApproveMember(ctx context.Context, homeID int, userID int)
 		logger.Info.Printf("Failed to delete user homes cache: %v", err)
 	}
 
+	if err := utils.DeleteFromCache(ctx, utils.GetUserHomeKey(userID), s.cache); err != nil {
+		logger.Info.Printf("Failed to delete user home cache: %v", err)
+	}
+
 	metrics.HomeOperationsTotal.WithLabelValues("approve_member").Inc()
 
 	_ = s.notifSvc.Create(ctx, nil, userID, "Your request to join the home has been approved")

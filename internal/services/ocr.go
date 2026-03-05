@@ -108,23 +108,27 @@ type geminiResponse struct {
 }
 
 func (s *OCRService) analyzeWithGemini(ctx context.Context, imageData []byte, mimeType, language string) (*models.OCRResult, error) {
-	prompt := fmt.Sprintf(`Analyze this receipt/bill image. The text is likely in %s.
-Extract the following data and return ONLY valid JSON (no markdown, no code fences):
-{
-  "vendor": "store or company name",
-  "date": "date from receipt in original format",
-  "total": 0.00,
-  "items": [
-    {"name": "item name", "quantity": 1, "price": 0.00}
-  ],
-  "raw_text": "all visible text from the image"
-}
+	languageHint := "Detect the language automatically."
+	if language != "" {
+		languageHint = fmt.Sprintf("The text is likely in %s.", language)
+	}
 
-Rules:
-- "total" must be a number (float), not a string
-- "price" is the total price for that line item (quantity * unit price)
-- If you cannot determine a field, use empty string for strings, 0 for numbers, [] for items
-- Do NOT wrap the response in markdown code blocks`, language)
+	prompt := "Analyze this receipt/bill image. " + languageHint + "\n" +
+		"Extract the following data and return ONLY valid JSON (no markdown, no code fences):\n" +
+		"{\n" +
+		"  \"vendor\": \"store or company name\",\n" +
+		"  \"date\": \"date from receipt in original format\",\n" +
+		"  \"total\": 0.00,\n" +
+		"  \"items\": [\n" +
+		"    {\"name\": \"item name\", \"quantity\": 1, \"price\": 0.00}\n" +
+		"  ],\n" +
+		"  \"raw_text\": \"all visible text from the image\"\n" +
+		"}\n\n" +
+		"Rules:\n" +
+		"- \"total\" must be a number (float), not a string\n" +
+		"- \"price\" is the total price for that line item (quantity * unit price)\n" +
+		"- If you cannot determine a field, use empty string for strings, 0 for numbers, [] for items\n" +
+		"- Do NOT wrap the response in markdown code blocks"
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{

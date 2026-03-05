@@ -65,6 +65,15 @@ func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, n
 		if err := s.repo.AssignUser(ctx, task.ID, uid, now); err != nil {
 			return err
 		}
+		// Invalidate user assignments cache
+		userAssignmentsKey := utils.GetAssignmentsForUserKey(uid, homeID)
+		if err := utils.DeleteFromCache(ctx, userAssignmentsKey, s.cache); err != nil {
+			logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
+		}
+		userClosestKey := utils.GetClosestAssignmentsForUserKey(uid)
+		if err := utils.DeleteFromCache(ctx, userClosestKey, s.cache); err != nil {
+			logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestKey, err)
+		}
 		// Notify assigned user (skip if they created the task themselves)
 		if uid != createdBy {
 			fromID := createdBy
