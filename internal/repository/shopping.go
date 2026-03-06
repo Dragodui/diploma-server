@@ -51,7 +51,7 @@ func (r *shoppingRepo) FindAllCategories(ctx context.Context, homeID int) (*[]mo
 
 func (r *shoppingRepo) FindCategoryByID(ctx context.Context, id int) (*models.ShoppingCategory, error) {
 	var category models.ShoppingCategory
-	if err := r.db.WithContext(ctx).Preload("Items").First(&category, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Items").Preload("Items.User").First(&category, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -81,7 +81,7 @@ func (r *shoppingRepo) CreateItem(ctx context.Context, i *models.ShoppingItem) e
 func (r *shoppingRepo) FindItemsByCategoryID(ctx context.Context, id int) ([]models.ShoppingItem, error) {
 	var items []models.ShoppingItem
 	// Use Find() instead of First() to get all items, not just one
-	if err := r.db.WithContext(ctx).Where("category_id = ?", id).Find(&items).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("User").Where("category_id = ?", id).Find(&items).Error; err != nil {
 		return nil, err
 	}
 
