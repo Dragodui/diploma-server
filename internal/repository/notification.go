@@ -84,4 +84,3 @@ func (r *notificationRepo) MarkAsReadForHomeNotification(ctx context.Context, id
 
 	return nil
 }
-

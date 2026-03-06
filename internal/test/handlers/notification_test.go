@@ -16,11 +16,11 @@ import (
 
 // Mock notification service
 type mockNotificationService struct {
-	CreateFunc                       func(ctx context.Context, from *int, to int, description string) error
-	GetByUserIDFunc                  func(ctx context.Context, userID int) ([]models.Notification, error)
-	MarkAsReadFunc                   func(ctx context.Context, notificationID, userID int) error
-	CreateHomeNotificationFunc       func(ctx context.Context, from *int, homeID int, description string) error
-	GetByHomeIDFunc                  func(ctx context.Context, homeID int) ([]models.HomeNotification, error)
+	CreateFunc                        func(ctx context.Context, from *int, to int, description string) error
+	GetByUserIDFunc                   func(ctx context.Context, userID int) ([]models.Notification, error)
+	MarkAsReadFunc                    func(ctx context.Context, notificationID, userID int) error
+	CreateHomeNotificationFunc        func(ctx context.Context, from *int, homeID int, description string) error
+	GetByHomeIDFunc                   func(ctx context.Context, homeID int) ([]models.HomeNotification, error)
 	MarkAsReadForHomeNotificationFunc func(ctx context.Context, notificationID, homeID int) error
 }
 
@@ -320,4 +320,3 @@ func TestNotificationHandler_MarkAsReadForHome(t *testing.T) {
 		})
 	}
 }
-

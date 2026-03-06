@@ -74,8 +74,8 @@ func SetupRoutes(
 		wsHandler.HandleWS(w, r, cache)
 	})
 	r.Group(func(r chi.Router) {
-	// Global rate limiter - 120 requests per minute
-	r.Use(middleware.RateLimitMiddleware(rateLimiter))
+		// Global rate limiter - 120 requests per minute
+		r.Use(middleware.RateLimitMiddleware(rateLimiter))
 
 		r.Use(middleware.MetricsMiddleware)
 		// HTTP request logger
@@ -146,8 +146,8 @@ func SetupRoutes(
 
 				// Homes and nested resources
 				r.Route("/homes", func(r chi.Router) {
-					r.Post("/create", homeHandler.Create) // Create home
-					r.Post("/join", homeHandler.Join)     // Join home
+					r.Post("/create", homeHandler.Create)    // Create home
+					r.Post("/join", homeHandler.Join)        // Join home
 					r.Get("/my", homeHandler.GetUserHome)    // Get user home (single)
 					r.Get("/list", homeHandler.GetUserHomes) // Get all user homes
 
@@ -163,11 +163,11 @@ func SetupRoutes(
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/", homeHandler.Delete)
 						r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
 						r.With(middleware.RequireMember(homeRepo)).Get("/members", homeHandler.GetMembers)
-					r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
+						r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
 						r.With(middleware.RequireAdmin(homeRepo)).Get("/pending-members", homeHandler.GetPendingMembers)
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/members/{user_id}/approve", homeHandler.ApproveMember)
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/members/{user_id}/reject", homeHandler.RejectMember)
-					r.With(middleware.RequireAdmin(homeRepo)).Patch("/members/{user_id}/role", homeHandler.UpdateMemberRole)
+						r.With(middleware.RequireAdmin(homeRepo)).Patch("/members/{user_id}/role", homeHandler.UpdateMemberRole)
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/regenerate_code", homeHandler.RegenerateInviteCode)
 
 						// Notifications for home
@@ -198,7 +198,7 @@ func SetupRoutes(
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/mark-uncompleted", taskHandler.MarkAssignmentUncompleted)
 							r.With(middleware.RequireMember(homeRepo)).Patch("/{task_id}/complete", taskHandler.MarkTaskCompleted)
 							r.With(middleware.RequireMember(homeRepo)).Delete("/{task_id}/assignments/{assignment_id}", taskHandler.DeleteAssignment)
-							// Schedules 
+							// Schedules
 							r.With(middleware.RequireAdmin(homeRepo)).Post("/schedules", taskScheduleHandler.CreateSchedule)
 							r.With(middleware.RequireMember(homeRepo)).Get("/schedules", taskScheduleHandler.GetSchedulesByHomeID)
 							r.With(middleware.RequireMember(homeRepo)).Get("/{task_id}/schedule", taskScheduleHandler.GetScheduleByTaskID)

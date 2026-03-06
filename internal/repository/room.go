@@ -51,4 +51,3 @@ func (r *roomRepo) FindByHomeID(ctx context.Context, homeID int) (*[]models.Room
 
 	return &rooms, nil
 }
-

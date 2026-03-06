@@ -102,10 +102,10 @@ func TestImageHandler_UploadImage(t *testing.T) {
 			expectedBody:   "File required",
 		},
 		{
-			name:      "Wrong Field Name",
-			hasFile:   true,
-			fieldName: "wrong_field",
-			fileName:  "test.jpg",
+			name:           "Wrong Field Name",
+			hasFile:        true,
+			fieldName:      "wrong_field",
+			fileName:       "test.jpg",
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "File required",
 		},
@@ -152,4 +152,3 @@ func TestImageHandler_UploadImage(t *testing.T) {
 		})
 	}
 }
-

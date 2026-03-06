@@ -55,4 +55,3 @@ func (r *BillCategoryRepository) Update(ctx context.Context, category *models.Bi
 	}
 	return category, nil
 }
-

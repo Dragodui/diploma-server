@@ -156,4 +156,3 @@ func (s *NotificationService) MarkAsReadForHomeNotification(ctx context.Context,
 
 	return nil
 }
-

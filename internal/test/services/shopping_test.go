@@ -16,19 +16,19 @@ import (
 // Mock ShoppingRepository
 type mockShoppingRepo struct {
 	// Categories
-	CreateCategoryFunc   func(ctx context.Context, c *models.ShoppingCategory) error
+	CreateCategoryFunc    func(ctx context.Context, c *models.ShoppingCategory) error
 	FindAllCategoriesFunc func(ctx context.Context, homeID int) (*[]models.ShoppingCategory, error)
-	FindCategoryByIDFunc func(ctx context.Context, id int) (*models.ShoppingCategory, error)
-	DeleteCategoryFunc   func(ctx context.Context, id int) error
-	EditCategoryFunc     func(ctx context.Context, category *models.ShoppingCategory, updates map[string]interface{}) error
+	FindCategoryByIDFunc  func(ctx context.Context, id int) (*models.ShoppingCategory, error)
+	DeleteCategoryFunc    func(ctx context.Context, id int) error
+	EditCategoryFunc      func(ctx context.Context, category *models.ShoppingCategory, updates map[string]interface{}) error
 
 	// Items
-	CreateItemFunc           func(ctx context.Context, i *models.ShoppingItem) error
+	CreateItemFunc            func(ctx context.Context, i *models.ShoppingItem) error
 	FindItemsByCategoryIDFunc func(ctx context.Context, categoryID int) ([]models.ShoppingItem, error)
-	FindItemByIDFunc         func(ctx context.Context, id int) (*models.ShoppingItem, error)
-	DeleteItemFunc           func(ctx context.Context, id int) error
-	MarkIsBoughtFunc         func(ctx context.Context, id int) error
-	EditItemFunc             func(ctx context.Context, item *models.ShoppingItem, updates map[string]interface{}) error
+	FindItemByIDFunc          func(ctx context.Context, id int) (*models.ShoppingItem, error)
+	DeleteItemFunc            func(ctx context.Context, id int) error
+	MarkIsBoughtFunc          func(ctx context.Context, id int) error
+	EditItemFunc              func(ctx context.Context, item *models.ShoppingItem, updates map[string]interface{}) error
 }
 
 func (m *mockShoppingRepo) CreateCategory(ctx context.Context, c *models.ShoppingCategory) error {

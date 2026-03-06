@@ -305,4 +305,3 @@ func TestRoomHandler_Delete(t *testing.T) {
 		})
 	}
 }
-

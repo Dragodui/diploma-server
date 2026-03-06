@@ -255,4 +255,3 @@ func detectMimeType(filePath string) string {
 		return "image/jpeg"
 	}
 }
-

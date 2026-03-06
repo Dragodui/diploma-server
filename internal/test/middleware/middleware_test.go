@@ -709,16 +709,16 @@ func TestStrictRateLimitMiddleware(t *testing.T) {
 // TestGetIPExtraction tests IP extraction from various headers
 func TestGetIPExtraction(t *testing.T) {
 	tests := []struct {
-		name           string
-		remoteAddr     string
-		xForwardedFor  string
-		xRealIP        string
-		expectedIP     string
+		name          string
+		remoteAddr    string
+		xForwardedFor string
+		xRealIP       string
+		expectedIP    string
 	}{
 		{
-			name:        "Extract from RemoteAddr",
-			remoteAddr:  "192.168.1.1:12345",
-			expectedIP:  "192.168.1.1",
+			name:       "Extract from RemoteAddr",
+			remoteAddr: "192.168.1.1:12345",
+			expectedIP: "192.168.1.1",
 		},
 		{
 			name:          "Extract from X-Forwarded-For (single IP)",
@@ -733,10 +733,10 @@ func TestGetIPExtraction(t *testing.T) {
 			expectedIP:    "203.0.113.1",
 		},
 		{
-			name:        "Extract from X-Real-IP",
-			remoteAddr:  "10.0.0.1:12345",
-			xRealIP:     "203.0.113.5",
-			expectedIP:  "203.0.113.5",
+			name:       "Extract from X-Real-IP",
+			remoteAddr: "10.0.0.1:12345",
+			xRealIP:    "203.0.113.5",
+			expectedIP: "203.0.113.5",
 		},
 		{
 			name:          "Prefer X-Forwarded-For over X-Real-IP",
@@ -746,9 +746,9 @@ func TestGetIPExtraction(t *testing.T) {
 			expectedIP:    "203.0.113.1",
 		},
 		{
-			name:        "IPv6 address",
-			remoteAddr:  "[2001:db8::1]:12345",
-			expectedIP:  "[2001:db8::1]",
+			name:       "IPv6 address",
+			remoteAddr: "[2001:db8::1]:12345",
+			expectedIP: "[2001:db8::1]",
 		},
 	}
 

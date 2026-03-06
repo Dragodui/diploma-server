@@ -20,7 +20,7 @@ import (
 
 // Mock service
 type mockTaskService struct {
-	CreateTaskFunc func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error
+	CreateTaskFunc                  func(ctx context.Context, homeID int, roomID *int, name, description, scheduleType string, dueDate *time.Time, createdBy int, userIDs []int) error
 	GetTaskByIDFunc                 func(ctx context.Context, taskID int) (*models.Task, error)
 	GetTasksByHomeIDFunc            func(ctx context.Context, homeID int) (*[]models.Task, error)
 	DeleteTaskFunc                  func(ctx context.Context, taskID int) error
@@ -771,4 +771,3 @@ func TestTaskHandler_ReassignRoom(t *testing.T) {
 		})
 	}
 }
-

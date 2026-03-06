@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	maxFileSize       = 10 * 1024 * 1024 // 10 MB
-	maxImageWidth     = 10000            // max width in pixels
-	maxImageHeight    = 10000            // max height in pixels
+	maxFileSize    = 10 * 1024 * 1024 // 10 MB
+	maxImageWidth  = 10000            // max width in pixels
+	maxImageHeight = 10000            // max height in pixels
 )
 
 var (

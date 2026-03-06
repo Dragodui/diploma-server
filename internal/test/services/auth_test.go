@@ -19,17 +19,17 @@ import (
 
 // Mock UserRepository
 type mockUserRepo struct {
-	CreateFunc          func(ctx context.Context, u *models.User) error
-	FindByIDFunc        func(ctx context.Context, id int) (*models.User, error)
-	FindByNameFunc      func(ctx context.Context, name string) (*models.User, error)
-	FindByEmailFunc     func(ctx context.Context, email string) (*models.User, error)
-	SetVerifyTokenFunc  func(ctx context.Context, email, token string, expiresAt time.Time) error
-	VerifyEmailFunc     func(ctx context.Context, token string) error
-	GetByResetTokenFunc func(ctx context.Context, token string) (*models.User, error)
+	CreateFunc           func(ctx context.Context, u *models.User) error
+	FindByIDFunc         func(ctx context.Context, id int) (*models.User, error)
+	FindByNameFunc       func(ctx context.Context, name string) (*models.User, error)
+	FindByEmailFunc      func(ctx context.Context, email string) (*models.User, error)
+	SetVerifyTokenFunc   func(ctx context.Context, email, token string, expiresAt time.Time) error
+	VerifyEmailFunc      func(ctx context.Context, token string) error
+	GetByResetTokenFunc  func(ctx context.Context, token string) (*models.User, error)
 	GetByVerifyTokenFunc func(ctx context.Context, token string) (*models.User, error)
-	UpdatePasswordFunc  func(ctx context.Context, userID int, newHash string) error
-	SetResetTokenFunc   func(ctx context.Context, email, token string, expiresAt time.Time) error
-	UpdateFunc          func(ctx context.Context, user *models.User, updates map[string]interface{}) error
+	UpdatePasswordFunc   func(ctx context.Context, userID int, newHash string) error
+	SetResetTokenFunc    func(ctx context.Context, email, token string, expiresAt time.Time) error
+	UpdateFunc           func(ctx context.Context, user *models.User, updates map[string]interface{}) error
 }
 
 func (m *mockUserRepo) Create(ctx context.Context, u *models.User) error {

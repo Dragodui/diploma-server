@@ -549,12 +549,12 @@ func TestHomeHandler_Delete(t *testing.T) {
 			expectedBody:   "Error delete home",
 		},
 		{
-			name:     "Unauthorized - Not Admin",
-			homeID:   "1",
-			userID:   123,
-			isAdmin:  false,
-			isMember: false,
-			mockFunc: func(ctx context.Context, homeID int) error { return nil },
+			name:           "Unauthorized - Not Admin",
+			homeID:         "1",
+			userID:         123,
+			isAdmin:        false,
+			isMember:       false,
+			mockFunc:       func(ctx context.Context, homeID int) error { return nil },
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "you are not a",
 		},
@@ -793,4 +793,3 @@ func TestHomeHandler_RemoveMember(t *testing.T) {
 		})
 	}
 }
-

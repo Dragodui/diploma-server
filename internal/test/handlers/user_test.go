@@ -282,4 +282,3 @@ func TestUserHandler_Update(t *testing.T) {
 		})
 	}
 }
-

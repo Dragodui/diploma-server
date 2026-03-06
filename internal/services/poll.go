@@ -248,4 +248,3 @@ func (s *PollService) Unvote(ctx context.Context, userID, pollID, homeID int) er
 
 	return nil
 }
-

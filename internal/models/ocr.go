@@ -16,4 +16,3 @@ type OCRResult struct {
 	RawText    string    `json:"raw_text"`   // Raw text for debugging
 	Confidence float64   `json:"confidence"` // Recognition confidence (0-1)
 }
-

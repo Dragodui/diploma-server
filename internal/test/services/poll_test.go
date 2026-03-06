@@ -16,14 +16,14 @@ import (
 
 // Mock PollRepository
 type mockPollRepo struct {
-	CreateFunc             func(ctx context.Context, poll *models.Poll, options []models.Option) error
-	FindPollByIDFunc       func(ctx context.Context, id int) (*models.Poll, error)
-	FindPollByOptionIDFunc func(ctx context.Context, id int) (*models.Poll, error)
+	CreateFunc               func(ctx context.Context, poll *models.Poll, options []models.Option) error
+	FindPollByIDFunc         func(ctx context.Context, id int) (*models.Poll, error)
+	FindPollByOptionIDFunc   func(ctx context.Context, id int) (*models.Poll, error)
 	FindAllPollsByHomeIDFunc func(ctx context.Context, id int) (*[]models.Poll, error)
-	ClosePollFunc          func(ctx context.Context, id int) error
-	DeleteFunc             func(ctx context.Context, id int) error
-	VoteFunc               func(ctx context.Context, vote *models.Vote) error
-	UnvoteFunc             func(ctx context.Context, userID, pollID int) error
+	ClosePollFunc            func(ctx context.Context, id int) error
+	DeleteFunc               func(ctx context.Context, id int) error
+	VoteFunc                 func(ctx context.Context, vote *models.Vote) error
+	UnvoteFunc               func(ctx context.Context, userID, pollID int) error
 }
 
 func (m *mockPollRepo) Create(ctx context.Context, poll *models.Poll, options []models.Option) error {

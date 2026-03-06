@@ -301,4 +301,3 @@ func (r *homeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, e
 
 	return &home, nil
 }
-

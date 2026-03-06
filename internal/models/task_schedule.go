@@ -5,7 +5,7 @@ import "time"
 type TaskSchedule struct {
 	ID                   int       `gorm:"autoIncrement; primaryKey" json:"id"`
 	TaskID               int       `gorm:"not null;uniqueIndex" json:"task_id"`
-	RecurrenceType       string    `gorm:"not null;size:32" json:"recurrence_type"` // daily, weekly, monthly
+	RecurrenceType       string    `gorm:"not null;size:32" json:"recurrence_type"`     // daily, weekly, monthly
 	RotationUserIDs      string    `gorm:"not null;type:text" json:"rotation_user_ids"` // JSON array of user IDs in order
 	CurrentRotationIndex int       `gorm:"not null;default:0" json:"current_rotation_index"`
 	NextRunDate          time.Time `gorm:"not null" json:"next_run_date"`

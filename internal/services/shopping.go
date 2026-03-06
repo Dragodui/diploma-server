@@ -353,4 +353,3 @@ func (s *ShoppingService) EditItem(ctx context.Context, itemID int, name, image,
 
 	return nil
 }
-

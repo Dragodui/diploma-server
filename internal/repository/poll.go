@@ -160,4 +160,3 @@ func (r *pollRepo) Unvote(ctx context.Context, userID, pollID int) error {
 
 	return r.db.WithContext(ctx).Where("user_id = ? AND option_id IN ?", userID, optionIDs).Delete(&models.Vote{}).Error
 }
-

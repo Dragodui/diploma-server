@@ -955,4 +955,3 @@ func TestShoppingHandler_Items(t *testing.T) {
 	})
 
 }
-

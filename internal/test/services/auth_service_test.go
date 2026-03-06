@@ -315,7 +315,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		token            string
 		newPassword      string
 		getByResetToken  func(ctx context.Context, token string) (*models.User, error)
-		getByVerifyToken  func(ctx context.Context, token string) (*models.User, error)
+		getByVerifyToken func(ctx context.Context, token string) (*models.User, error)
 		updatePassword   func(ctx context.Context, userID int, hash string) error
 		expectedError    string
 	}{
@@ -429,4 +429,3 @@ func TestAuthService_GetUserByEmail(t *testing.T) {
 		})
 	}
 }
-

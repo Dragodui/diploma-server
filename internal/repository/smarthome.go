@@ -116,4 +116,3 @@ func (r *smartHomeRepo) DeleteDevice(ctx context.Context, id int, homeID int) er
 	}
 	return nil
 }
-

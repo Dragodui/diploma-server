@@ -24,8 +24,8 @@ func SetAuthCookie(w http.ResponseWriter, token string, secure bool) {
 		Value:    token,
 		Path:     "/",
 		MaxAge:   AuthCookieMaxAge,
-		HttpOnly: true,  // Prevents JavaScript access (XSS protection)
-		Secure:   secure, // Only send over HTTPS (set to true in production)
+		HttpOnly: true,                 // Prevents JavaScript access (XSS protection)
+		Secure:   secure,               // Only send over HTTPS (set to true in production)
 		SameSite: http.SameSiteLaxMode, // CSRF protection
 	}
 

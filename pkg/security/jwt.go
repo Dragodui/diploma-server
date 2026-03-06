@@ -16,11 +16,11 @@ func GenerateToken(userID int, subject string, secret []byte, ttl time.Duration)
 	claims := MyClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-		Subject:   subject,
-		ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
-		IssuedAt:  jwt.NewNumericDate(now),
-		NotBefore: jwt.NewNumericDate(now),
-	},
+			Subject:   subject,
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

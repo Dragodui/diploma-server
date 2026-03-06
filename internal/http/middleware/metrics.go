@@ -10,8 +10,8 @@ import (
 
 type responseWriter struct {
 	http.ResponseWriter
-	statusCode  int
-	wroteHeader bool
+	statusCode   int
+	wroteHeader  bool
 	bytesWritten int
 }
 

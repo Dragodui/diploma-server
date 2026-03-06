@@ -380,4 +380,3 @@ func (s *HomeService) UpdateMemberRole(ctx context.Context, homeID int, userID i
 
 	return nil
 }
-
