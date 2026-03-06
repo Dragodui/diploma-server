@@ -296,10 +296,37 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/tasks/{task_id}/mark-completed [patch]
 func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var assignmentRequest models.AssignmentIDRequest
 	if err := json.NewDecoder(r.Body).Decode(&assignmentRequest); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
 		return
+	}
+
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check if user is the assigned user or an admin
+	assignedUser, err := h.svc.GetAssignmentUser(r.Context(), assignmentRequest.AssignmentID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to find assignment", http.StatusInternalServerError)
+		return
+	}
+	if assignedUser.ID != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "only the assigned user or an admin can mark this task as done", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.MarkAssignmentCompleted(r.Context(), assignmentRequest.AssignmentID); err != nil {
@@ -326,10 +353,37 @@ func (h *TaskHandler) MarkAssignmentCompleted(w http.ResponseWriter, r *http.Req
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/tasks/{task_id}/mark-uncompleted [patch]
 func (h *TaskHandler) MarkAssignmentUncompleted(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var assignmentRequest models.AssignmentIDRequest
 	if err := json.NewDecoder(r.Body).Decode(&assignmentRequest); err != nil {
 		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
 		return
+	}
+
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check if user is the assigned user or an admin
+	assignedUser, err := h.svc.GetAssignmentUser(r.Context(), assignmentRequest.AssignmentID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to find assignment", http.StatusInternalServerError)
+		return
+	}
+	if assignedUser.ID != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "only the assigned user or an admin can change this task status", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.MarkAssignmentUncompleted(r.Context(), assignmentRequest.AssignmentID); err != nil {

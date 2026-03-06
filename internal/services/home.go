@@ -33,6 +33,7 @@ type IHomeService interface {
 	ApproveMember(ctx context.Context, homeID int, userID int) error
 	RejectMember(ctx context.Context, homeID int, userID int) error
 	GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error)
+	UpdateMemberRole(ctx context.Context, homeID int, userID int, role string) error
 }
 
 func NewHomeService(repo repository.HomeRepository, cache *redis.Client, notifSvc INotificationService) *HomeService {
@@ -355,5 +356,28 @@ func (s *HomeService) RejectMember(ctx context.Context, homeID int, userID int) 
 
 func (s *HomeService) GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
 	return s.repo.GetPendingMembers(ctx, homeID)
+}
+
+func (s *HomeService) UpdateMemberRole(ctx context.Context, homeID int, userID int, role string) error {
+	if err := s.repo.UpdateMemberRole(ctx, homeID, userID, role); err != nil {
+		return err
+	}
+
+	key := utils.GetHomeCacheKey(homeID)
+	if err := utils.DeleteFromCache(ctx, key, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", key, err)
+	}
+
+	metrics.HomeOperationsTotal.WithLabelValues("update_role").Inc()
+
+	_ = s.notifSvc.Create(ctx, nil, userID, "Your role has been updated to "+role)
+
+	event.SendEvent(ctx, s.cache, "updates", &event.RealTimeEvent{
+		Module: event.ModuleHome,
+		Action: event.ActionUpdated,
+		Data:   map[string]interface{}{"homeID": homeID, "userID": userID, "role": role},
+	})
+
+	return nil
 }
 

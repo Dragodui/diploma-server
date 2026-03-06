@@ -32,7 +32,7 @@ func (r *notificationRepo) Create(ctx context.Context, n *models.Notification) e
 
 func (r *notificationRepo) FindByUserID(ctx context.Context, id int) ([]models.Notification, error) {
 	var notifications []models.Notification
-	if err := r.db.WithContext(ctx).Where("to = ?", id).Find(&notifications).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("\"to\" = ?", id).Find(&notifications).Error; err != nil {
 		return nil, err
 	}
 
@@ -62,7 +62,7 @@ func (r *notificationRepo) CreateHomeNotification(ctx context.Context, n *models
 
 func (r *notificationRepo) FindByHomeID(ctx context.Context, id int) ([]models.HomeNotification, error) {
 	var notifications []models.HomeNotification
-	if err := r.db.WithContext(ctx).Where("to = ?", id).Find(&notifications).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("home_id = ?", id).Find(&notifications).Error; err != nil {
 		return nil, err
 	}
 

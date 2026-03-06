@@ -18,6 +18,7 @@ type BillRepository interface {
 	CreateSplits(ctx context.Context, billID int, splits []models.BillSplit) error
 	UpdateSplits(ctx context.Context, billID int, splits []models.BillSplit) error
 	MarkSplitPaid(ctx context.Context, splitID int) error
+	FindSplitByID(ctx context.Context, splitID int) (*models.BillSplit, error)
 }
 
 type billRepo struct {
@@ -113,6 +114,17 @@ func (r *billRepo) UpdateSplits(ctx context.Context, billID int, splits []models
 		splits[i].BillID = billID
 	}
 	return r.db.WithContext(ctx).Create(&splits).Error
+}
+
+func (r *billRepo) FindSplitByID(ctx context.Context, splitID int) (*models.BillSplit, error) {
+	var split models.BillSplit
+	if err := r.db.WithContext(ctx).First(&split, splitID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &split, nil
 }
 
 func (r *billRepo) MarkSplitPaid(ctx context.Context, splitID int) error {

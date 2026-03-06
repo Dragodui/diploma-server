@@ -75,6 +75,10 @@ func (m *mockHomeRepo) IsAdmin(ctx context.Context, homeID, userID int) (bool, e
 	return false, nil
 }
 
+func (m *mockHomeRepo) UpdateMemberRole(ctx context.Context, homeID int, userID int, role string) error {
+	return nil
+}
+
 // Mock service
 type mockHomeService struct {
 	CreateHomeFunc           func(ctx context.Context, name string, userID int) error
@@ -139,6 +143,10 @@ func (m *mockHomeService) RejectMember(ctx context.Context, homeID int, userID i
 
 func (m *mockHomeService) GetPendingMembers(ctx context.Context, homeID int) ([]models.HomeMembership, error) {
 	return nil, nil
+}
+
+func (m *mockHomeService) UpdateMemberRole(ctx context.Context, homeID int, userID int, role string) error {
+	return nil
 }
 
 // Test fixtures
@@ -582,7 +590,7 @@ func TestHomeHandler_Delete(t *testing.T) {
 func TestHomeHandler_Leave(t *testing.T) {
 	tests := []struct {
 		name           string
-		body           interface{}
+		homeID         string
 		userID         int
 		mockFunc       func(ctx context.Context, homeID, userID int) error
 		expectedStatus int
@@ -590,7 +598,7 @@ func TestHomeHandler_Leave(t *testing.T) {
 	}{
 		{
 			name:   "Success",
-			body:   validLeaveRequest,
+			homeID: "1",
 			userID: 123,
 			mockFunc: func(ctx context.Context, homeID, userID int) error {
 				assert.Equal(t, 1, homeID)
@@ -598,11 +606,11 @@ func TestHomeHandler_Leave(t *testing.T) {
 				return nil
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   "Leaved successfully",
+			expectedBody:   "Left successfully",
 		},
 		{
 			name:   "Error",
-			body:   validLeaveRequest,
+			homeID: "1",
 			userID: 123,
 			mockFunc: func(ctx context.Context, homeID, userID int) error {
 				return errors.New("leave failed")
@@ -612,7 +620,7 @@ func TestHomeHandler_Leave(t *testing.T) {
 		},
 		{
 			name:           "Unauthorized",
-			body:           validLeaveRequest,
+			homeID:         "1",
 			userID:         0,
 			mockFunc:       nil,
 			expectedStatus: http.StatusUnauthorized,
@@ -628,13 +636,18 @@ func TestHomeHandler_Leave(t *testing.T) {
 
 			h := setupHomeHandler(svc)
 
-			req := makeJSONRequest(http.MethodPost, "/homes/leave", tt.body)
-			if tt.userID != 0 {
-				req = req.WithContext(utils.WithUserID(req.Context(), tt.userID))
-			}
+			r := chi.NewRouter()
+			r.Post("/homes/{home_id}/leave", func(w http.ResponseWriter, r *http.Request) {
+				if tt.userID != 0 {
+					r = r.WithContext(utils.WithUserID(r.Context(), tt.userID))
+				}
+				h.Leave(w, r)
+			})
 
+			req := httptest.NewRequest(http.MethodPost, "/homes/"+tt.homeID+"/leave", nil)
 			rr := httptest.NewRecorder()
-			h.Leave(rr, req)
+
+			r.ServeHTTP(rr, req)
 
 			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
 		})

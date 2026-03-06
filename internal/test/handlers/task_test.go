@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -115,6 +116,10 @@ func (m *mockTaskService) ReassignRoom(ctx context.Context, taskID, roomID int) 
 		return m.ReassignRoomFunc(ctx, taskID, roomID)
 	}
 	return nil
+}
+
+func (m *mockTaskService) GetAssignmentUser(ctx context.Context, assignmentID int) (*models.User, error) {
+	return &models.User{ID: 123}, nil
 }
 
 // Test fixtures
@@ -628,15 +633,24 @@ func TestTaskHandler_MarkAssignmentCompleted(t *testing.T) {
 
 			h := setupTaskHandler(svc)
 
-			var req *http.Request
+			r := chi.NewRouter()
+			r.Patch("/homes/{home_id}/tasks/{task_id}/mark-completed", func(w http.ResponseWriter, r *http.Request) {
+				r = r.WithContext(utils.WithUserID(r.Context(), 123))
+				h.MarkAssignmentCompleted(w, r)
+			})
+
+			var body []byte
 			if tt.name == "Invalid JSON" {
-				req = httptest.NewRequest(http.MethodPut, "/assignments/mark-completed", bytes.NewBufferString("{bad json}"))
+				body = []byte("{bad json}")
 			} else {
-				req = makeJSONRequest(http.MethodPut, "/assignments/mark-completed", tt.body)
+				body, _ = json.Marshal(tt.body)
 			}
 
+			req := httptest.NewRequest(http.MethodPatch, "/homes/1/tasks/1/mark-completed", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
-			h.MarkAssignmentCompleted(rr, req)
+
+			r.ServeHTTP(rr, req)
 
 			assertJSONResponse(t, rr, tt.expectedStatus, tt.expectedBody)
 		})

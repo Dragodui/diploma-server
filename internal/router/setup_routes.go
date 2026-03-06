@@ -162,11 +162,12 @@ func SetupRoutes(
 						r.With(middleware.RequireMember(homeRepo)).Get("/", homeHandler.GetByID)
 						r.With(middleware.RequireAdmin(homeRepo)).Delete("/", homeHandler.Delete)
 						r.With(middleware.RequireMember(homeRepo)).Post("/leave", homeHandler.Leave)
-						r.With(middleware.RequireAdmin(homeRepo)).Get("/members", homeHandler.GetMembers)
+						r.With(middleware.RequireMember(homeRepo)).Get("/members", homeHandler.GetMembers)
 					r.With(middleware.RequireAdmin(homeRepo)).Delete("/members/{user_id}", homeHandler.RemoveMember)
 						r.With(middleware.RequireAdmin(homeRepo)).Get("/pending-members", homeHandler.GetPendingMembers)
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/members/{user_id}/approve", homeHandler.ApproveMember)
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/members/{user_id}/reject", homeHandler.RejectMember)
+					r.With(middleware.RequireAdmin(homeRepo)).Patch("/members/{user_id}/role", homeHandler.UpdateMemberRole)
 						r.With(middleware.RequireAdmin(homeRepo)).Post("/regenerate_code", homeHandler.RegenerateInviteCode)
 
 						// Notifications for home

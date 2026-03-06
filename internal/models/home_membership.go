@@ -28,3 +28,7 @@ type RemoveMemberRequest struct {
 	HomeID string `json:"home_id" validate:"required"`
 	UserID string `json:"user_id" validate:"required"`
 }
+
+type UpdateRoleRequest struct {
+	Role string `json:"role" validate:"required,oneof=admin member"`
+}

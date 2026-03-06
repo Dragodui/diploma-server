@@ -167,6 +167,10 @@ func (m *mockHomeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.H
 	return nil, nil
 }
 
+func (m *mockHomeRepo) UpdateMemberRole(ctx context.Context, homeID int, userID int, role string) error {
+	return nil
+}
+
 func (m *mockHomeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {
 	if m.GetUserHomeFunc != nil {
 		return m.GetUserHomeFunc(ctx, userID)

@@ -31,6 +31,7 @@ type IBillService interface {
 	MarkBillPayed(ctx context.Context, id int) error
 	UpdateSplits(ctx context.Context, billID int, splits []models.SplitInput) error
 	MarkSplitPaid(ctx context.Context, splitID int) error
+	GetSplitByID(ctx context.Context, splitID int) (*models.BillSplit, error)
 }
 
 func NewBillService(repo repository.BillRepository, cache *redis.Client, notifSvc INotificationService) *BillService {
@@ -235,6 +236,10 @@ func (s *BillService) UpdateSplits(ctx context.Context, billID int, splits []mod
 	})
 
 	return nil
+}
+
+func (s *BillService) GetSplitByID(ctx context.Context, splitID int) (*models.BillSplit, error) {
+	return s.repo.FindSplitByID(ctx, splitID)
 }
 
 func (s *BillService) MarkSplitPaid(ctx context.Context, splitID int) error {

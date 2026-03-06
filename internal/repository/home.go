@@ -30,6 +30,7 @@ type HomeRepository interface {
 	GenerateUniqueInviteCode(ctx context.Context) (string, error)
 	GetUserHome(ctx context.Context, userID int) (*models.Home, error)
 	GetUserHomes(ctx context.Context, userID int) ([]models.Home, error)
+	UpdateMemberRole(ctx context.Context, homeID int, userID int, role string) error
 }
 
 type homeRepo struct {
@@ -276,6 +277,19 @@ func (r *homeRepo) GetUserHomes(ctx context.Context, userID int) ([]models.Home,
 	}
 
 	return homes, nil
+}
+
+func (r *homeRepo) UpdateMemberRole(ctx context.Context, homeID int, userID int, role string) error {
+	result := r.db.WithContext(ctx).Model(&models.HomeMembership{}).
+		Where("home_id = ? AND user_id = ? AND status = 'approved'", homeID, userID).
+		Update("role", role)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("member not found")
+	}
+	return nil
 }
 
 func (r *homeRepo) GetUserHome(ctx context.Context, userID int) (*models.Home, error) {

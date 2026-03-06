@@ -79,6 +79,10 @@ func (m *mockBillService) MarkSplitPaid(ctx context.Context, splitID int) error 
 	return nil
 }
 
+func (m *mockBillService) GetSplitByID(ctx context.Context, splitID int) (*models.BillSplit, error) {
+	return &models.BillSplit{ID: splitID, UserID: 123, BillID: 1, Amount: 50.0}, nil
+}
+
 // Test fixtures
 var (
 	testStartTime    = time.Now()

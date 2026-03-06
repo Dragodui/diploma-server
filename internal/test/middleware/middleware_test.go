@@ -79,6 +79,10 @@ func (m *mockHomeRepo) IsAdmin(ctx context.Context, homeID, userID int) (bool, e
 	return false, nil
 }
 
+func (m *mockHomeRepo) UpdateMemberRole(ctx context.Context, homeID int, userID int, role string) error {
+	return nil
+}
+
 var testJWTSecret = []byte("test-secret-key-for-testing-purposes")
 
 func TestJWTAuth(t *testing.T) {

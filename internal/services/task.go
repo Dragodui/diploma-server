@@ -34,6 +34,7 @@ type ITaskService interface {
 	MarkTaskCompletedForUser(ctx context.Context, taskID, userID, homeID int) error
 	DeleteAssignment(ctx context.Context, assignmentID int) error
 	ReassignRoom(ctx context.Context, taskID, roomID int) error
+	GetAssignmentUser(ctx context.Context, assignmentID int) (*models.User, error)
 }
 
 func NewTaskService(repo repository.TaskRepository, cache *redis.Client, notifSvc INotificationService) *TaskService {
@@ -447,6 +448,10 @@ func (s *TaskService) DeleteAssignment(ctx context.Context, assignmentID int) er
 	})
 
 	return nil
+}
+
+func (s *TaskService) GetAssignmentUser(ctx context.Context, assignmentID int) (*models.User, error) {
+	return s.repo.FindUserByAssignmentID(ctx, assignmentID)
 }
 
 func (s *TaskService) ReassignRoom(ctx context.Context, taskID, roomID int) error {

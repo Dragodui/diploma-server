@@ -301,11 +301,38 @@ func (h *BillHandler) UpdateSplits(w http.ResponseWriter, r *http.Request) {
 // @Failure      400  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/bills/{bill_id}/splits/{split_id}/paid [patch]
 func (h *BillHandler) MarkSplitPaid(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
 	splitIDStr := chi.URLParam(r, "split_id")
 	splitID, err := strconv.Atoi(splitIDStr)
 	if err != nil {
 		utils.JSONError(w, "invalid split ID", http.StatusBadRequest)
 		return
+	}
+
+	// Check if user owns this split or is an admin
+	split, err := h.svc.GetSplitByID(r.Context(), splitID)
+	if err != nil || split == nil {
+		utils.JSONError(w, "split not found", http.StatusNotFound)
+		return
+	}
+	if split.UserID != userID {
+		isAdmin, _ := h.homeRepo.IsAdmin(r.Context(), homeID, userID)
+		if !isAdmin {
+			utils.JSONError(w, "only the split owner or an admin can mark this as paid", http.StatusForbidden)
+			return
+		}
 	}
 
 	if err := h.svc.MarkSplitPaid(r.Context(), splitID); err != nil {

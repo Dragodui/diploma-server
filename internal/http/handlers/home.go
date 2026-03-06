@@ -259,30 +259,16 @@ func (h *HomeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // @Summary      Leave home
 // @Description  Leave the current home
 // @Tags         home
-// @Accept       json
 // @Produce      json
 // @Security     BearerAuth
 // @Param        home_id path int true "Home ID"
-// @Param        input body models.LeaveRequest true "Leave Request"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      400  {object}  map[string]interface{}
 // @Failure      401  {object}  map[string]interface{}
 // @Router       /homes/{home_id}/leave [post]
 func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
-	var req models.LeaveRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	// validation
-	if err := utils.Validate.Struct(req); err != nil {
-		utils.JSONValidationErrors(w, err)
-		return
-	}
-
-	homeID, err := strconv.Atoi(req.HomeID)
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
 	if err != nil {
 		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
 		return
@@ -299,7 +285,7 @@ func (h *HomeHandler) Leave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Leaved successfully"})
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Left successfully"})
 }
 
 // GetMembers godoc
@@ -484,4 +470,52 @@ func (h *HomeHandler) RejectMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Member rejected successfully"})
+}
+
+// UpdateMemberRole godoc
+// @Summary      Update member role
+// @Description  Update a member's role (admin only)
+// @Tags         home
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Param        user_id path int true "User ID"
+// @Param        input body models.UpdateRoleRequest true "Update Role Request"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      403  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/members/{user_id}/role [patch]
+func (h *HomeHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) {
+	homeIDStr := chi.URLParam(r, "home_id")
+	homeID, err := strconv.Atoi(homeIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	userIDStr := chi.URLParam(r, "user_id")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		utils.JSONError(w, "invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	var req models.UpdateRoleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.JSONError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := utils.Validate.Struct(req); err != nil {
+		utils.JSONValidationErrors(w, err)
+		return
+	}
+
+	if err := h.svc.UpdateMemberRole(r.Context(), homeID, userID, req.Role); err != nil {
+		utils.SafeError(w, err, "Error updating member role", http.StatusBadRequest)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"status": true, "message": "Role updated successfully"})
 }
