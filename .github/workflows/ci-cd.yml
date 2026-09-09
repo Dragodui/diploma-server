@@ -58,6 +58,10 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.APP_DIR }}"
+            git fetch origin main
             git checkout main
-            git pull --ff-only origin main
+            # Hard-reset instead of a fast-forward pull, so a rewritten
+            # history on origin/main (e.g. a force-push) can't abort the
+            # deploy - the server checkout always ends up matching origin.
+            git reset --hard origin/main
             docker compose up -d --build
