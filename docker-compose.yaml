@@ -9,18 +9,11 @@ services:
     depends_on:
       - redis
       - fluent-bit
-      - fluent-bit
     ports:
       - "8000:8000"
     networks:
       - app-network
     restart: always
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: localhost:24224
-        fluentd-async: "true"
-        tag: home-app.api
     logging:
       driver: fluentd
       options:
@@ -149,5 +142,4 @@ networks:
 volumes:
   prometheus-data:
   grafana-data:
-  opensearch-data:
   opensearch-data:
