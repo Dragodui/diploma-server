@@ -13,15 +13,18 @@ import (
 type ChatRepository interface {
 	Create(ctx context.Context, message *models.ChatMessage) error
 	FindByID(ctx context.Context, id int) (*models.ChatMessage, error)
-	// FindByHomeID returns messages oldest-last (newest first), paging backwards
-	// from beforeID when it is non-nil so the client can scroll into history.
-	FindByHomeID(ctx context.Context, homeID int, limit int, beforeID *int) ([]models.ChatMessage, error)
+	// FindConversation returns one conversation's messages newest-first, paging
+	// backwards from beforeID when it is non-nil. peerID nil means the shared
+	// home chat; otherwise it's the direct chat between userID and peerID.
+	FindConversation(ctx context.Context, homeID, userID int, peerID *int, limit int, beforeID *int) ([]models.ChatMessage, error)
+	// FindLastMessage returns the newest message of one conversation, or nil.
+	FindLastMessage(ctx context.Context, homeID, userID int, peerID *int) (*models.ChatMessage, error)
 	Update(ctx context.Context, message *models.ChatMessage) error
 	Delete(ctx context.Context, id int) error
 
 	// read receipts
-	MarkReadUpTo(ctx context.Context, homeID, userID, lastMessageID int, readAt time.Time) error
-	CountUnread(ctx context.Context, homeID, userID int) (int64, error)
+	MarkReadUpTo(ctx context.Context, homeID, userID, lastMessageID int, peerID *int, readAt time.Time) error
+	CountUnread(ctx context.Context, homeID, userID int, peerID *int) (int64, error)
 }
 
 type chatRepo struct {
@@ -64,10 +67,23 @@ func (r *chatRepo) FindByID(ctx context.Context, id int) (*models.ChatMessage, e
 	return &message, nil
 }
 
-func (r *chatRepo) FindByHomeID(ctx context.Context, homeID int, limit int, beforeID *int) ([]models.ChatMessage, error) {
+// scopeConversation narrows a query to a single conversation: the shared home
+// chat (peerID nil) or the two-way direct thread between userID and peerID.
+func scopeConversation(query *gorm.DB, homeID, userID int, peerID *int) *gorm.DB {
+	query = query.Where("home_id = ?", homeID)
+	if peerID == nil {
+		return query.Where("recipient_id IS NULL")
+	}
+	return query.Where(
+		"(created_by = ? AND recipient_id = ?) OR (created_by = ? AND recipient_id = ?)",
+		userID, *peerID, *peerID, userID,
+	)
+}
+
+func (r *chatRepo) FindConversation(ctx context.Context, homeID, userID int, peerID *int, limit int, beforeID *int) ([]models.ChatMessage, error) {
 	var messages []models.ChatMessage
 
-	query := r.db.WithContext(ctx).Where("home_id = ?", homeID)
+	query := scopeConversation(r.db.WithContext(ctx), homeID, userID, peerID)
 	if beforeID != nil {
 		query = query.Where("id < ?", *beforeID)
 	}
@@ -78,6 +94,21 @@ func (r *chatRepo) FindByHomeID(ctx context.Context, homeID int, limit int, befo
 		Find(&messages).Error
 
 	return messages, err
+}
+
+func (r *chatRepo) FindLastMessage(ctx context.Context, homeID, userID int, peerID *int) (*models.ChatMessage, error) {
+	var message models.ChatMessage
+	err := scopeConversation(r.db.WithContext(ctx), homeID, userID, peerID).
+		Preload("Creator").
+		Order("id DESC").
+		First(&message).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &message, nil
 }
 
 func (r *chatRepo) Update(ctx context.Context, message *models.ChatMessage) error {
@@ -118,11 +149,11 @@ func (r *chatRepo) Delete(ctx context.Context, id int) error {
 // MarkReadUpTo inserts a read receipt for every message in the home at or
 // below lastMessageID that the user hasn't already read. Own messages are
 // skipped - a receipt on your own message carries no information.
-func (r *chatRepo) MarkReadUpTo(ctx context.Context, homeID, userID, lastMessageID int, readAt time.Time) error {
+func (r *chatRepo) MarkReadUpTo(ctx context.Context, homeID, userID, lastMessageID int, peerID *int, readAt time.Time) error {
 	var messageIDs []int
-	if err := r.db.WithContext(ctx).
-		Model(&models.ChatMessage{}).
-		Where("home_id = ? AND id <= ? AND created_by <> ?", homeID, lastMessageID, userID).
+	query := scopeConversation(r.db.WithContext(ctx).Model(&models.ChatMessage{}), homeID, userID, peerID)
+	if err := query.
+		Where("id <= ? AND created_by <> ?", lastMessageID, userID).
 		Pluck("id", &messageIDs).Error; err != nil {
 		return err
 	}
@@ -144,11 +175,10 @@ func (r *chatRepo) MarkReadUpTo(ctx context.Context, homeID, userID, lastMessage
 		Create(&reads).Error
 }
 
-func (r *chatRepo) CountUnread(ctx context.Context, homeID, userID int) (int64, error) {
+func (r *chatRepo) CountUnread(ctx context.Context, homeID, userID int, peerID *int) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).
-		Model(&models.ChatMessage{}).
-		Where("chat_messages.home_id = ? AND chat_messages.created_by <> ?", homeID, userID).
+	err := scopeConversation(r.db.WithContext(ctx).Model(&models.ChatMessage{}), homeID, userID, peerID).
+		Where("created_by <> ?", userID).
 		Where("NOT EXISTS (SELECT 1 FROM chat_message_reads WHERE chat_message_reads.message_id = chat_messages.id AND chat_message_reads.user_id = ?)", userID).
 		Count(&count).Error
 	return count, err

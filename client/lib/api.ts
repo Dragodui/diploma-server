@@ -8,6 +8,7 @@ import type {
   AuthResponse,
   Bill,
   BillCategory,
+  ChatConversation,
   ChatMessage,
   CreateChatMessageForm,
   CreateBillForm,
@@ -1027,11 +1028,22 @@ export const ocrApi = {
 // ============ Chat API ============
 export const chatApi = {
   // Messages come back newest-first; pass beforeId to page further into history.
-  getMessages: async (homeId: number, params?: { limit?: number; beforeId?: number }): Promise<ChatMessage[]> => {
+  getMessages: async (
+    homeId: number,
+    params?: { limit?: number; beforeId?: number; peerId?: number | null },
+  ): Promise<ChatMessage[]> => {
     const response = await api.get<{ status: boolean; messages: ChatMessage[] }>(`/homes/${homeId}/chat`, {
-      params: { limit: params?.limit, before_id: params?.beforeId },
+      params: { limit: params?.limit, before_id: params?.beforeId, peer_id: params?.peerId ?? undefined },
     });
     return response.data.messages || [];
+  },
+
+  // The shared home chat plus a direct chat with every other member.
+  getConversations: async (homeId: number): Promise<ChatConversation[]> => {
+    const response = await api.get<{ status: boolean; conversations: ChatConversation[] }>(
+      `/homes/${homeId}/chat/conversations`,
+    );
+    return response.data.conversations || [];
   },
 
   send: async (homeId: number, data: CreateChatMessageForm): Promise<ChatMessage> => {
@@ -1048,12 +1060,15 @@ export const chatApi = {
     await api.delete(`/homes/${homeId}/chat/${messageId}`);
   },
 
-  markRead: async (homeId: number, lastMessageId: number): Promise<void> => {
-    await api.post(`/homes/${homeId}/chat/read`, { lastMessageId });
+  markRead: async (homeId: number, lastMessageId: number, peerId?: number | null): Promise<void> => {
+    await api.post(`/homes/${homeId}/chat/read`, { lastMessageId, recipientId: peerId ?? null });
   },
 
-  getUnreadCount: async (homeId: number): Promise<number> => {
-    const response = await api.get<{ status: boolean; count: number }>(`/homes/${homeId}/chat/unread`);
+  // Omit peerId for the home chat's unread count.
+  getUnreadCount: async (homeId: number, peerId?: number | null): Promise<number> => {
+    const response = await api.get<{ status: boolean; count: number }>(`/homes/${homeId}/chat/unread`, {
+      params: { peer_id: peerId ?? undefined },
+    });
     return response.data.count || 0;
   },
 };
@@ -1064,6 +1079,7 @@ export type {
   AuditEvent,
   Bill,
   BillSplit,
+  ChatConversation,
   ChatMessage,
   ChatMessageRead,
   ControlDeviceRequest,

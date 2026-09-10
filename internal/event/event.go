@@ -67,3 +67,14 @@ func SendEvent(ctx context.Context, cache *redis.Client, channel string, event *
 func SendHomeEvent(ctx context.Context, cache *redis.Client, homeID int, event *RealTimeEvent) {
 	SendEvent(ctx, cache, HomeChannel(homeID), event)
 }
+
+// UserChannel returns the Redis pub/sub channel name for a single user.
+func UserChannel(userID int) string {
+	return fmt.Sprintf("user:%d:updates", userID)
+}
+
+// SendUserEvent publishes an event only that user's sockets receive - used for
+// private payloads such as direct messages, which must not reach the whole home.
+func SendUserEvent(ctx context.Context, cache *redis.Client, userID int, event *RealTimeEvent) {
+	SendEvent(ctx, cache, UserChannel(userID), event)
+}

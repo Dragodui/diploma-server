@@ -76,7 +76,8 @@ function RootLayoutNav() {
         <Stack.Screen name="members" options={{ headerShown: false }} />
         <Stack.Screen name="member-profile" options={{ headerShown: false }} />
         <Stack.Screen name="smarthome/index" options={{ headerShown: false }} />
-        <Stack.Screen name="chat" options={{ headerShown: false }} />
+        <Stack.Screen name="chat/index" options={{ headerShown: false }} />
+        <Stack.Screen name="chat/[peer]" options={{ headerShown: false }} />
       </Stack>
     </>
   );

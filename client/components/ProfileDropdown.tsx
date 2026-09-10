@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Colors from "@/constants/colors";
 import { chatApi, notificationApi } from "@/lib/api";
+import type { ChatConversation } from "@/lib/types";
 import { useAuth } from "@/stores/authStore";
 import { useHome } from "@/stores/homeStore";
 import { useI18n } from "@/stores/i18nStore";
@@ -50,7 +51,12 @@ export default function ProfileDropdown() {
       const allNotifs = [...(userNotifs || []), ...(homeNotifs || [])];
       setUnreadCount(allNotifs.filter((n) => !n.read).length);
 
-      const chatUnread = await chatApi.getUnreadCount(home.id).catch(() => 0);
+      // Badge covers every conversation - home chat plus each direct chat.
+      const conversations = await chatApi.getConversations(home.id).catch(() => [] as ChatConversation[]);
+      let chatUnread = 0;
+      for (const conversation of conversations) {
+        chatUnread += conversation.unreadCount || 0;
+      }
       setChatUnreadCount(chatUnread);
     } catch (error) {
       console.error(`error while load notifications: ${error}`);

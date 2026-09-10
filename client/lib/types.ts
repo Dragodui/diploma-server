@@ -451,6 +451,7 @@ export interface ChatMessage {
   homeId: number;
   createdBy: number;
   content: string;
+  recipientId?: number | null;
   imageUrl?: string | null;
   editedAt?: string | null;
   createdAt: string;
@@ -469,6 +470,7 @@ export interface ChatMessage {
 
 export interface CreateChatMessageForm {
   content: string;
+  recipientId?: number | null;
   imageUrl?: string | null;
   mentionsAll?: boolean;
   mentionedUserIds?: number[];
@@ -478,6 +480,13 @@ export interface CreateChatMessageForm {
   mentionedNoteCategoryIds?: number[];
   mentionedBillCategoryIds?: number[];
   mentionedShoppingCategoryIds?: number[];
+}
+
+export interface ChatConversation {
+  peerId?: number | null;
+  peer?: User;
+  lastMessage?: ChatMessage | null;
+  unreadCount: number;
 }
 
 export interface UpdateChatMessageForm {

@@ -1,5 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
   Check,
@@ -72,9 +72,12 @@ type Suggestion =
   | { key: string; name: string; kind: "step"; step: SuggestionStep }
   | { key: string; name: string; kind: "value"; prefix: string };
 
-export default function ChatScreen() {
+export default function ChatThreadScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // "home" is the shared chat; any other value is the peer user's id.
+  const { peer } = useLocalSearchParams<{ peer: string }>();
+  const peerId = peer && peer !== "home" ? Number(peer) : null;
   const { theme } = useTheme();
   const { t, language } = useI18n();
   const { home } = useHome();
@@ -111,6 +114,12 @@ export default function ChatScreen() {
 
   const inputRef = useRef<TextInput>(null);
 
+  // The person on the other side of a direct chat, for the header.
+  const peerUser = useMemo(
+    () => (peerId === null ? undefined : members.find((m) => m.id === peerId)),
+    [members, peerId],
+  );
+
   // router.back() is a no-op when nothing is on the stack (chat opened via a
   // direct link or after a reload), so fall back to the home tab.
   const goBack = useCallback(() => {
@@ -118,13 +127,13 @@ export default function ChatScreen() {
       router.back();
       return;
     }
-    router.replace("/(tabs)/home");
+    router.replace("/chat");
   }, [router]);
 
   const loadMessages = useCallback(async () => {
     if (!home) return;
     try {
-      const data = await chatApi.getMessages(home.id, { limit: PAGE_SIZE });
+      const data = await chatApi.getMessages(home.id, { limit: PAGE_SIZE, peerId });
       setMessages(data);
       setHasMore(data.length === PAGE_SIZE);
     } catch (error) {
@@ -132,7 +141,7 @@ export default function ChatScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [home]);
+  }, [home, peerId]);
 
   const loadMentionSources = useCallback(async () => {
     if (!home) return;
@@ -174,15 +183,15 @@ export default function ChatScreen() {
   const newestId = messages.length > 0 ? messages[0].id : null;
   useEffect(() => {
     if (!home || newestId === null) return;
-    chatApi.markRead(home.id, newestId).catch(() => {});
-  }, [home, newestId]);
+    chatApi.markRead(home.id, newestId, peerId).catch(() => {});
+  }, [home, newestId, peerId]);
 
   const handleLoadMore = async () => {
     if (!home || loadingMore || !hasMore || messages.length === 0) return;
     setLoadingMore(true);
     try {
       const oldestId = messages[messages.length - 1].id;
-      const older = await chatApi.getMessages(home.id, { limit: PAGE_SIZE, beforeId: oldestId });
+      const older = await chatApi.getMessages(home.id, { limit: PAGE_SIZE, beforeId: oldestId, peerId });
       setMessages((prev) => [...prev, ...older]);
       setHasMore(older.length === PAGE_SIZE);
     } catch (error) {
@@ -438,7 +447,7 @@ export default function ChatScreen() {
         await chatApi.update(home.id, editingId, { content, imageUrl: attachedImage ?? "", ...mentions });
         setEditingId(null);
       } else {
-        await chatApi.send(home.id, { content, imageUrl: attachedImage, ...mentions });
+        await chatApi.send(home.id, { content, imageUrl: attachedImage, recipientId: peerId, ...mentions });
       }
       setDraft("");
       setAttachedImage(null);
@@ -688,9 +697,15 @@ export default function ChatScreen() {
           <ArrowLeft size={22} color={theme.text} />
         </TouchableOpacity>
         <View className="flex-1">
-          <Text className="text-2xl font-manrope-bold" style={{ color: theme.text }}>
-            {home?.name || ""} <Text className="font-manrope-light text-2xl">{t.chat.title}</Text>
-          </Text>
+          {peerId === null ? (
+            <Text className="text-2xl font-manrope-bold" style={{ color: theme.text }}>
+              {home?.name || ""} <Text className="font-manrope-light text-2xl">{t.chat.title}</Text>
+            </Text>
+          ) : (
+            <Text className="text-2xl font-manrope-bold" numberOfLines={1} style={{ color: theme.text }}>
+              {peerUser?.name || peerUser?.username || ""}
+            </Text>
+          )}
         </View>
       </View>
 

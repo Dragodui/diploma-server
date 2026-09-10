@@ -30,11 +30,12 @@ type ChatService struct {
 
 type IChatService interface {
 	SendMessage(ctx context.Context, homeID, createdBy int, req models.CreateChatMessageRequest) (*models.ChatMessage, error)
-	GetMessages(ctx context.Context, homeID, limit int, beforeID *int) ([]models.ChatMessage, error)
+	GetMessages(ctx context.Context, homeID, userID int, peerID *int, limit int, beforeID *int) ([]models.ChatMessage, error)
 	UpdateMessage(ctx context.Context, id, homeID, userID int, req models.UpdateChatMessageRequest) (*models.ChatMessage, error)
 	DeleteMessage(ctx context.Context, id, homeID, userID int) error
-	MarkRead(ctx context.Context, homeID, userID, lastMessageID int) error
-	GetUnreadCount(ctx context.Context, homeID, userID int) (int64, error)
+	MarkRead(ctx context.Context, homeID, userID, lastMessageID int, peerID *int) error
+	GetUnreadCount(ctx context.Context, homeID, userID int, peerID *int) (int64, error)
+	GetConversations(ctx context.Context, homeID, userID int) ([]models.ChatConversationSummary, error)
 }
 
 func NewChatService(
@@ -191,13 +192,16 @@ func attachMentions(
 	}
 }
 
-// notifyMentioned pings the people a message called out: everyone in the home
-// for @all, or just the named users otherwise. The author is never notified
-// about their own message.
+// notifyMentioned pings the people a message called out: in the home chat that
+// is everyone for @all or just the named users, while a direct message always
+// notifies its recipient. The author is never notified about their own message.
 func (s *ChatService) notifyMentioned(ctx context.Context, message *models.ChatMessage, authorName string) {
 	recipients := make(map[int]bool)
+	isDirect := message.RecipientID != nil
 
-	if message.MentionsAll {
+	if isDirect {
+		recipients[*message.RecipientID] = true
+	} else if message.MentionsAll {
 		members, err := s.homeRepo.GetMembers(ctx, message.HomeID)
 		if err == nil {
 			for _, m := range members {
@@ -206,6 +210,10 @@ func (s *ChatService) notifyMentioned(ctx context.Context, message *models.ChatM
 		}
 	}
 	for _, u := range message.MentionedUsers {
+		// Mentions in a direct chat can't drag in anyone outside it.
+		if isDirect && u.ID != *message.RecipientID {
+			continue
+		}
 		recipients[u.ID] = true
 	}
 	delete(recipients, message.CreatedBy)
@@ -221,7 +229,11 @@ func (s *ChatService) notifyMentioned(ctx context.Context, message *models.ChatM
 	if len(preview) > 80 {
 		preview = preview[:80] + "..."
 	}
+
 	description := fmt.Sprintf("%s mentioned you in the home chat: %s", authorName, preview)
+	if isDirect {
+		description = fmt.Sprintf("%s: %s", authorName, preview)
+	}
 
 	from := message.CreatedBy
 	for userID := range recipients {
@@ -229,10 +241,34 @@ func (s *ChatService) notifyMentioned(ctx context.Context, message *models.ChatM
 	}
 }
 
+// publishChatEvent routes a chat event to the whole home for the shared chat,
+// or only to the two participants for a direct message - otherwise a private
+// message would be pushed over websockets to every member of the home.
+func (s *ChatService) publishChatEvent(ctx context.Context, message *models.ChatMessage, action event.Action, data any) {
+	evt := &event.RealTimeEvent{Module: event.ModuleChat, Action: action, Data: data}
+
+	if message.RecipientID == nil {
+		event.SendHomeEvent(ctx, s.cache, message.HomeID, evt)
+		return
+	}
+	event.SendUserEvent(ctx, s.cache, message.CreatedBy, evt)
+	event.SendUserEvent(ctx, s.cache, *message.RecipientID, evt)
+}
+
 func (s *ChatService) SendMessage(ctx context.Context, homeID, createdBy int, req models.CreateChatMessageRequest) (*models.ChatMessage, error) {
 	// A message needs to carry something - text, an image, or both.
 	if strings.TrimSpace(req.Content) == "" && (req.ImageURL == nil || *req.ImageURL == "") {
 		return nil, errors.New("message must have text or an image")
+	}
+
+	// A direct message must go to another member of the same home.
+	if req.RecipientID != nil {
+		if *req.RecipientID == createdBy {
+			return nil, errors.New("cannot send a direct message to yourself")
+		}
+		if err := s.assertMember(ctx, homeID, *req.RecipientID); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := s.validateMentions(
@@ -247,6 +283,7 @@ func (s *ChatService) SendMessage(ctx context.Context, homeID, createdBy int, re
 		HomeID:      homeID,
 		CreatedBy:   createdBy,
 		Content:     req.Content,
+		RecipientID: req.RecipientID,
 		ImageURL:    req.ImageURL,
 		MentionsAll: req.MentionsAll,
 		CreatedAt:   time.Now(),
@@ -276,20 +313,87 @@ func (s *ChatService) SendMessage(ctx context.Context, homeID, createdBy int, re
 	}
 	s.notifyMentioned(ctx, saved, authorName)
 
-	event.SendHomeEvent(ctx, s.cache, homeID, &event.RealTimeEvent{
-		Module: event.ModuleChat,
-		Action: event.ActionCreated,
-		Data:   saved,
-	})
+	s.publishChatEvent(ctx, saved, event.ActionCreated, saved)
 
 	return saved, nil
 }
 
-func (s *ChatService) GetMessages(ctx context.Context, homeID, limit int, beforeID *int) ([]models.ChatMessage, error) {
+func (s *ChatService) GetMessages(ctx context.Context, homeID, userID int, peerID *int, limit int, beforeID *int) ([]models.ChatMessage, error) {
 	if limit <= 0 || limit > 200 {
 		limit = defaultChatPageSize
 	}
-	return s.repo.FindByHomeID(ctx, homeID, limit, beforeID)
+	if peerID != nil {
+		if err := s.assertMember(ctx, homeID, *peerID); err != nil {
+			return nil, err
+		}
+	}
+	return s.repo.FindConversation(ctx, homeID, userID, peerID, limit, beforeID)
+}
+
+// assertMember rejects peers who don't belong to the home, so a direct chat
+// can't be opened with someone outside it.
+func (s *ChatService) assertMember(ctx context.Context, homeID, userID int) error {
+	members, err := s.homeRepo.GetMembers(ctx, homeID)
+	if err != nil {
+		return err
+	}
+	for _, m := range members {
+		if m.UserID == userID {
+			return nil
+		}
+	}
+	return fmt.Errorf("user %d is not a member of this home", userID)
+}
+
+// GetConversations lists the shared home chat plus a direct chat with every
+// other member, each with its last message and unread count.
+func (s *ChatService) GetConversations(ctx context.Context, homeID, userID int) ([]models.ChatConversationSummary, error) {
+	members, err := s.homeRepo.GetMembers(ctx, homeID)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]models.ChatConversationSummary, 0, len(members))
+
+	homeLast, err := s.repo.FindLastMessage(ctx, homeID, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	homeUnread, err := s.repo.CountUnread(ctx, homeID, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	summaries = append(summaries, models.ChatConversationSummary{
+		PeerID:      nil,
+		LastMessage: homeLast,
+		UnreadCount: homeUnread,
+	})
+
+	for i := range members {
+		member := members[i]
+		if member.UserID == userID {
+			continue
+		}
+		peerID := member.UserID
+
+		last, err := s.repo.FindLastMessage(ctx, homeID, userID, &peerID)
+		if err != nil {
+			return nil, err
+		}
+		unread, err := s.repo.CountUnread(ctx, homeID, userID, &peerID)
+		if err != nil {
+			return nil, err
+		}
+
+		summaries = append(summaries, models.ChatConversationSummary{
+			PeerID:      &peerID,
+			Peer:        member.User,
+			LastMessage: last,
+			UnreadCount: unread,
+		})
+	}
+
+	return summaries, nil
 }
 
 func (s *ChatService) UpdateMessage(ctx context.Context, id, homeID, userID int, req models.UpdateChatMessageRequest) (*models.ChatMessage, error) {
@@ -351,11 +455,9 @@ func (s *ChatService) UpdateMessage(ctx context.Context, id, homeID, userID int,
 		return nil, err
 	}
 
-	event.SendHomeEvent(ctx, s.cache, homeID, &event.RealTimeEvent{
-		Module: event.ModuleChat,
-		Action: event.ActionUpdated,
-		Data:   saved,
-	})
+	if saved != nil {
+		s.publishChatEvent(ctx, saved, event.ActionUpdated, saved)
+	}
 
 	return saved, nil
 }
@@ -376,32 +478,34 @@ func (s *ChatService) DeleteMessage(ctx context.Context, id, homeID, userID int)
 		return err
 	}
 
-	event.SendHomeEvent(ctx, s.cache, homeID, &event.RealTimeEvent{
-		Module: event.ModuleChat,
-		Action: event.ActionDeleted,
-		Data:   map[string]int{"message_id": id},
-	})
+	s.publishChatEvent(ctx, message, event.ActionDeleted, map[string]int{"message_id": id})
 
 	return nil
 }
 
-func (s *ChatService) MarkRead(ctx context.Context, homeID, userID, lastMessageID int) error {
-	if err := s.repo.MarkReadUpTo(ctx, homeID, userID, lastMessageID, time.Now()); err != nil {
+func (s *ChatService) MarkRead(ctx context.Context, homeID, userID, lastMessageID int, peerID *int) error {
+	if err := s.repo.MarkReadUpTo(ctx, homeID, userID, lastMessageID, peerID, time.Now()); err != nil {
 		return err
 	}
 
-	// Tell everyone else so their "read by" rows update live.
-	event.SendHomeEvent(ctx, s.cache, homeID, &event.RealTimeEvent{
+	// Tell the other side so their "read by" rows update live.
+	readEvent := &event.RealTimeEvent{
 		Module: event.ModuleChat,
 		Action: event.ActionMarkRead,
-		Data:   map[string]int{"user_id": userID, "last_message_id": lastMessageID},
-	})
+		Data:   map[string]any{"user_id": userID, "last_message_id": lastMessageID, "peer_id": peerID},
+	}
+	if peerID == nil {
+		event.SendHomeEvent(ctx, s.cache, homeID, readEvent)
+	} else {
+		event.SendUserEvent(ctx, s.cache, userID, readEvent)
+		event.SendUserEvent(ctx, s.cache, *peerID, readEvent)
+	}
 
 	return nil
 }
 
-func (s *ChatService) GetUnreadCount(ctx context.Context, homeID, userID int) (int64, error) {
-	return s.repo.CountUnread(ctx, homeID, userID)
+func (s *ChatService) GetUnreadCount(ctx context.Context, homeID, userID int, peerID *int) (int64, error) {
+	return s.repo.CountUnread(ctx, homeID, userID, peerID)
 }
 
 // derefIDs returns the slice a pointer field holds, or nil when it was omitted.

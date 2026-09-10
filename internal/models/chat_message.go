@@ -6,17 +6,21 @@ import "time"
 // same many2many pattern as notes, so the client can render and link them the
 // same way it already does for note content.
 type ChatMessage struct {
-	ID        int        `gorm:"autoIncrement; primaryKey" json:"id"`
-	HomeID    int        `gorm:"not null;index" json:"home_id"`
-	CreatedBy int        `gorm:"not null" json:"created_by"`
-	Content   string     `gorm:"not null" json:"content"`
-	ImageURL  *string    `json:"image_url"`
-	EditedAt  *time.Time `json:"edited_at"`
-	CreatedAt time.Time  `gorm:"autoCreateTime;index" json:"created_at"`
+	ID        int    `gorm:"autoIncrement; primaryKey" json:"id"`
+	HomeID    int    `gorm:"not null;index" json:"home_id"`
+	CreatedBy int    `gorm:"not null" json:"created_by"`
+	Content   string `gorm:"not null" json:"content"`
+	// RecipientID is nil for the shared home chat, and set to the other
+	// member's id for a one-to-one conversation inside the home.
+	RecipientID *int       `gorm:"index" json:"recipient_id"`
+	ImageURL    *string    `json:"image_url"`
+	EditedAt    *time.Time `json:"edited_at"`
+	CreatedAt   time.Time  `gorm:"autoCreateTime;index" json:"created_at"`
 
 	// relations
-	Home    *Home `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
-	Creator *User `gorm:"foreignKey:CreatedBy;constraint:OnDelete:CASCADE" json:"creator,omitempty"`
+	Home      *Home `gorm:"foreignKey:HomeID;constraint:OnDelete:CASCADE" json:"home,omitempty"`
+	Creator   *User `gorm:"foreignKey:CreatedBy;constraint:OnDelete:CASCADE" json:"creator,omitempty"`
+	Recipient *User `gorm:"foreignKey:RecipientID;constraint:OnDelete:CASCADE" json:"recipient,omitempty"`
 
 	// MentionsAll is set when the message used @all to ping every member.
 	MentionsAll bool `gorm:"default:false" json:"mentions_all"`
@@ -48,7 +52,10 @@ type ChatMessageRead struct {
 }
 
 type CreateChatMessageRequest struct {
-	Content                      string  `json:"content"`
+	Content string `json:"content"`
+	// RecipientID targets a direct conversation; omit it to post to the
+	// shared home chat.
+	RecipientID                  *int    `json:"recipient_id"`
 	ImageURL                     *string `json:"image_url"`
 	MentionsAll                  bool    `json:"mentions_all"`
 	MentionedUserIDs             []int   `json:"mentioned_user_ids"`
@@ -77,4 +84,16 @@ type UpdateChatMessageRequest struct {
 // LastMessageID as read by the caller.
 type MarkChatReadRequest struct {
 	LastMessageID int `json:"last_message_id" validate:"required"`
+	// RecipientID scopes the read receipt to one direct conversation; omit
+	// it to mark the shared home chat as read.
+	RecipientID *int `json:"recipient_id"`
+}
+
+// ChatConversationSummary is one row of the conversation list: the shared home
+// chat (PeerID nil) or a direct chat with one member.
+type ChatConversationSummary struct {
+	PeerID      *int         `json:"peer_id"`
+	Peer        *User        `json:"peer,omitempty"`
+	LastMessage *ChatMessage `json:"last_message,omitempty"`
+	UnreadCount int64        `json:"unread_count"`
 }

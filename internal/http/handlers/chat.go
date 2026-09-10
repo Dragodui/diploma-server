@@ -22,6 +22,20 @@ func NewChatHandler(svc services.IChatService, homeRepo repository.HomeRepositor
 	return &ChatHandler{svc: svc, homeRepo: homeRepo}
 }
 
+// peerIDFromQuery reads the optional peer_id query param that scopes a request
+// to one direct conversation; absent means the shared home chat.
+func peerIDFromQuery(r *http.Request) *int {
+	raw := r.URL.Query().Get("peer_id")
+	if raw == "" {
+		return nil
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil {
+		return nil
+	}
+	return &parsed
+}
+
 // SendMessage godoc
 // @Summary      Send a chat message
 // @Description  Post a message to the home chat, optionally mentioning users, tasks, bills, shopping items and categories
@@ -104,7 +118,7 @@ func (h *ChatHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	messages, err := h.svc.GetMessages(r.Context(), homeID, limit, beforeID)
+	messages, err := h.svc.GetMessages(r.Context(), homeID, userID, peerIDFromQuery(r), limit, beforeID)
 	if err != nil {
 		utils.SafeError(w, err, "Failed to get messages", http.StatusInternalServerError)
 		return
@@ -238,7 +252,7 @@ func (h *ChatHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.MarkRead(r.Context(), homeID, userID, req.LastMessageID); err != nil {
+	if err := h.svc.MarkRead(r.Context(), homeID, userID, req.LastMessageID, req.RecipientID); err != nil {
 		utils.SafeError(w, err, "Failed to mark messages as read", http.StatusBadRequest)
 		return
 	}
@@ -270,7 +284,7 @@ func (h *ChatHandler) GetUnreadCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count, err := h.svc.GetUnreadCount(r.Context(), homeID, userID)
+	count, err := h.svc.GetUnreadCount(r.Context(), homeID, userID, peerIDFromQuery(r))
 	if err != nil {
 		utils.SafeError(w, err, "Failed to get unread count", http.StatusInternalServerError)
 		return
@@ -279,5 +293,41 @@ func (h *ChatHandler) GetUnreadCount(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"status": true,
 		"count":  count,
+	})
+}
+
+// GetConversations godoc
+// @Summary      List chat conversations
+// @Description  The shared home chat plus a direct chat with every other member, each with its last message and unread count
+// @Tags         chat
+// @Produce      json
+// @Security     BearerAuth
+// @Param        home_id path int true "Home ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /homes/{home_id}/chat/conversations [get]
+func (h *ChatHandler) GetConversations(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	if userID == 0 {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	homeID, err := strconv.Atoi(chi.URLParam(r, "home_id"))
+	if err != nil {
+		utils.JSONError(w, "Invalid home ID", http.StatusBadRequest)
+		return
+	}
+
+	conversations, err := h.svc.GetConversations(r.Context(), homeID, userID)
+	if err != nil {
+		utils.SafeError(w, err, "Failed to get conversations", http.StatusInternalServerError)
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"status":        true,
+		"conversations": conversations,
 	})
 }
