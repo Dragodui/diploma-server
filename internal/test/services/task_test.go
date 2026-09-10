@@ -26,6 +26,7 @@ type mockTaskRepo struct {
 	FindAssignmentsForUserFunc             func(ctx context.Context, userID int, homeID int) (*[]models.TaskAssignment, error)
 	FindClosestAssignmentForUserFunc       func(ctx context.Context, userID int) (*models.TaskAssignment, error)
 	FindClosestAssignmentForUserInHomeFunc func(ctx context.Context, userID, homeID int) (*models.TaskAssignment, error)
+	FindClosestUnassignedTaskInHomeFunc    func(ctx context.Context, homeID int) (*models.Task, error)
 	FindAssignmentsNeedingReminderFunc     func(ctx context.Context, windowStart, windowEnd time.Time) ([]models.TaskAssignment, error)
 	FindAssignmentByTaskAndUserFunc        func(ctx context.Context, taskID, userID int) (*models.TaskAssignment, error)
 	FindAssignmentByIDFunc                 func(ctx context.Context, assignmentID int) (*models.TaskAssignment, error)
@@ -107,6 +108,13 @@ func (m *mockTaskRepo) FindClosestAssignmentForUserInHome(ctx context.Context, u
 	}
 	if m.FindClosestAssignmentForUserFunc != nil {
 		return m.FindClosestAssignmentForUserFunc(ctx, userID)
+	}
+	return nil, nil
+}
+
+func (m *mockTaskRepo) FindClosestUnassignedTaskInHome(ctx context.Context, homeID int) (*models.Task, error) {
+	if m.FindClosestUnassignedTaskInHomeFunc != nil {
+		return m.FindClosestUnassignedTaskInHomeFunc(ctx, homeID)
 	}
 	return nil, nil
 }

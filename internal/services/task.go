@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -102,7 +101,7 @@ func (s *TaskService) CreateTask(ctx context.Context, homeID int, roomID *int, n
 		if err := utils.DeleteFromCache(ctx, userAssignmentsKey, s.cache); err != nil {
 			logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 		}
-		userClosestKey := utils.GetClosestAssignmentsForUserKey(uid)
+		userClosestKey := utils.GetClosestAssignmentsForUserKey(uid, homeID)
 		if err := utils.DeleteFromCache(ctx, userClosestKey, s.cache); err != nil {
 			logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestKey, err)
 		}
@@ -180,6 +179,20 @@ func (s *TaskService) DeleteTask(ctx context.Context, taskID int) error {
 	}
 	if task == nil {
 		return errors.New("task not found")
+	}
+
+	// delete each assigned user's assignments/closest-assignment cache
+	// before the row is gone, else a deleted task's assignment lingers in
+	// their cache indefinitely (never invalidated by anything else).
+	for _, a := range task.TaskAssignments {
+		userAssignmentsKey := utils.GetAssignmentsForUserKey(a.UserID, task.HomeID)
+		if err := utils.DeleteFromCache(ctx, userAssignmentsKey, s.cache); err != nil {
+			logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
+		}
+		userClosestKey := utils.GetClosestAssignmentsForUserKey(a.UserID, task.HomeID)
+		if err := utils.DeleteFromCache(ctx, userClosestKey, s.cache); err != nil {
+			logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestKey, err)
+		}
 	}
 
 	if err := s.repo.Delete(ctx, taskID); err != nil {
@@ -329,6 +342,17 @@ func (s *TaskService) AssignUser(ctx context.Context, taskID, userID, homeID int
 		logger.Info.Printf("Failed to delete redis cache for home %d: %v", homeID, err)
 	}
 
+	// delete the assigned user's assignments/closest-assignment cache, else
+	// their task list and home widget stay stale until TTL expiry
+	userAssignmentsKey := utils.GetAssignmentsForUserKey(userID, homeID)
+	if err := utils.DeleteFromCache(ctx, userAssignmentsKey, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
+	}
+	userClosestKey := utils.GetClosestAssignmentsForUserKey(userID, homeID)
+	if err := utils.DeleteFromCache(ctx, userClosestKey, s.cache); err != nil {
+		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestKey, err)
+	}
+
 	if err := s.repo.AssignUser(ctx, taskID, userID, date); err != nil {
 		return err
 	}
@@ -372,19 +396,29 @@ func (s *TaskService) GetAssignmentsForUser(ctx context.Context, userID int, hom
 
 func (s *TaskService) GetClosestAssignmentForUser(ctx context.Context, userID, homeID int) (*models.TaskAssignment, error) {
 	// get assignment form cache if exists
-	key := fmt.Sprintf("%s:%d", utils.GetClosestAssignmentsForUserKey(userID), homeID)
+	key := utils.GetClosestAssignmentsForUserKey(userID, homeID)
 	cached, err := utils.GetFromCache[models.TaskAssignment](ctx, key, s.cache)
 	if cached != nil && err == nil {
 		return cached, nil
 	}
 	assignment, err := s.repo.FindClosestAssignmentForUserInHome(ctx, userID, homeID)
-	ass_str, _ := json.Marshal(assignment)
-	logger.Info.Printf("%s", string(ass_str))
 	if err != nil {
 		return nil, err
 	}
 	if assignment == nil {
-		return nil, nil
+		// No personal assignment - fall back to the nearest-due shared task
+		// nobody's claimed yet, so the dashboard isn't just empty.
+		unassignedTask, err := s.repo.FindClosestUnassignedTaskInHome(ctx, homeID)
+		if err != nil {
+			return nil, err
+		}
+		if unassignedTask == nil {
+			return nil, nil
+		}
+		// Not cached (see key above, which is per-user) since this result
+		// isn't user-specific and cache invalidation on task creation only
+		// targets assigned users' keys, not every home member's.
+		return &models.TaskAssignment{TaskID: unassignedTask.ID, Task: unassignedTask}, nil
 	}
 
 	// save to cache
@@ -421,7 +455,7 @@ func (s *TaskService) MarkAssignmentCompleted(ctx context.Context, assignmentID 
 	}
 
 	// delete closest user assignment from cache
-	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID)
+	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID, assignment.Task.HomeID)
 	if err := utils.DeleteFromCache(ctx, userClosestAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}
@@ -469,7 +503,7 @@ func (s *TaskService) MarkAssignmentUncompleted(ctx context.Context, assignmentI
 	}
 
 	// delete closest user assignment from cache
-	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID)
+	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID, assignment.Task.HomeID)
 	if err := utils.DeleteFromCache(ctx, userClosestAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}
@@ -534,7 +568,7 @@ func (s *TaskService) MarkTaskCompletedForUser(ctx context.Context, taskID, user
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userAssignmentsKey, err)
 	}
 
-	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(userID)
+	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(userID, homeID)
 	if err := utils.DeleteFromCache(ctx, userClosestAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}
@@ -579,7 +613,7 @@ func (s *TaskService) DeleteAssignment(ctx context.Context, assignmentID int) er
 	}
 
 	// delete closest user assignment from cache
-	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID)
+	userClosestAssignmentsKey := utils.GetClosestAssignmentsForUserKey(assignment.UserID, assignment.Task.HomeID)
 	if err := utils.DeleteFromCache(ctx, userClosestAssignmentsKey, s.cache); err != nil {
 		logger.Info.Printf("Failed to delete redis cache for key %s: %v", userClosestAssignmentsKey, err)
 	}

@@ -2114,14 +2114,13 @@ export default function BudgetScreen() {
         </View>
 
         <View className="flex-row gap-3 pt-4">
-          <TouchableOpacity
-            className="flex-1 h-14 rounded-full justify-center items-center"
-            style={{ backgroundColor: newCategoryName.trim() ? theme.text : theme.textSecondary }}
+          <Button
+            title={t.budget.newCategory}
+            icon={<Check size={20} color={theme.isDark ? "#1C1C1E" : "#FFFFFF"} />}
             onPress={handleCreateCategory}
             disabled={!newCategoryName.trim() || creatingCategory}
-          >
-            <Check size={24} color={theme.background} />
-          </TouchableOpacity>
+            className="flex-1"
+          />
         </View>
       </Modal>
 
@@ -2534,14 +2533,13 @@ export default function BudgetScreen() {
               ))}
             </View>
           </ScrollView>
-          <TouchableOpacity
-            className="h-14 rounded-full justify-center items-center mt-auto"
-            style={{ backgroundColor: newCategoryName.trim() ? theme.text : theme.textSecondary }}
+          <Button
+            title={t.common.save}
+            icon={<Check size={20} color={theme.isDark ? "#1C1C1E" : "#FFFFFF"} />}
             onPress={handleEditCategory}
             disabled={!newCategoryName.trim() || savingCategoryEdit}
-          >
-            <Check size={24} color={theme.background} />
-          </TouchableOpacity>
+            className="mt-auto"
+          />
         </View>
       </Modal>
 
@@ -2625,14 +2623,13 @@ export default function BudgetScreen() {
               ))}
             </View>
           </ScrollView>
-          <TouchableOpacity
-            className="h-14 rounded-full justify-center items-center mt-auto"
-            style={{ backgroundColor: editBillAmount ? theme.text : theme.textSecondary }}
+          <Button
+            title={t.common.save}
+            icon={<Check size={20} color={theme.isDark ? "#1C1C1E" : "#FFFFFF"} />}
             onPress={handleEditBill}
             disabled={!editBillAmount || savingBillEdit}
-          >
-            <Check size={24} color={theme.background} />
-          </TouchableOpacity>
+            className="mt-auto"
+          />
         </View>
       </Modal>
 

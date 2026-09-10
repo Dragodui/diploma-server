@@ -355,15 +355,9 @@ func (h *TaskHandler) GetClosestAssignmentForUser(w http.ResponseWriter, r *http
 		return
 	}
 
-	var responseAssignment interface{} = assignment
-
-	if assignment == nil || assignment.ID == 0 {
-		responseAssignment = nil
-	}
-
 	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"status":     true,
-		"assignment": responseAssignment,
+		"assignment": assignment,
 	})
 }
 

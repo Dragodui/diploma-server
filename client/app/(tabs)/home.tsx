@@ -155,6 +155,7 @@ export default function HomeScreen() {
     const timeStr = date.toLocaleTimeString(language, {
       hour: "numeric",
       minute: "2-digit",
+      hour12: false,
     });
 
     if (date.toDateString() === today.toDateString()) {
@@ -242,7 +243,7 @@ export default function HomeScreen() {
                   <View className="flex-row justify-between items-center" style={{ marginTop: "auto" }}>
                     <View className="bg-black/[0.08] px-4 py-3 rounded-14">
                       <Text className="text-sm font-manrope-semibold text-primary">
-                        {formatTaskTime(nextAssignment.assignedDate)}
+                        {nextAssignment.task?.dueDate ? formatTaskTime(nextAssignment.task.dueDate) : t.tasks.noDueDate}
                       </Text>
                     </View>
                     <ArrowRight size={24} color="#1C1C1E" />
@@ -336,7 +337,7 @@ export default function HomeScreen() {
             </View>
 
             <Card
-              variant="white"
+              variant="surface"
               borderRadius={32}
               padding={28}
               onPress={() => router.push("/(tabs)/budget")}

@@ -384,7 +384,7 @@ export default function TasksScreen() {
   const getTaskDueText = (task: Task) => {
     if (task.dueDate) {
       const date = new Date(task.dueDate);
-      return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
     }
     return t.tasks.noDueDate;
   };
@@ -406,7 +406,7 @@ export default function TasksScreen() {
 
     if (assignment?.completeDate) {
       const date = new Date(assignment.completeDate);
-      return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
     }
     return "";
   };

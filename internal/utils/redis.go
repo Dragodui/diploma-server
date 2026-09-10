@@ -95,8 +95,8 @@ func GetAssignmentsForUserKey(userID int, homeID int) string {
 	return "assignments:user:" + strconv.Itoa(userID) + ":home:" + strconv.Itoa(homeID)
 }
 
-func GetClosestAssignmentsForUserKey(userID int) string {
-	return "assignment:user:" + strconv.Itoa(userID)
+func GetClosestAssignmentsForUserKey(userID int, homeID int) string {
+	return "assignment:user:" + strconv.Itoa(userID) + ":home:" + strconv.Itoa(homeID)
 }
 
 func GetBillKey(billID int) string {

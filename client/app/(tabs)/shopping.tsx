@@ -37,7 +37,6 @@ import { useAlert } from "@/components/ui/alert";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import Modal from "@/components/ui/modal";
-import Colors from "@/constants/colors";
 import { shoppingApi } from "@/lib/api";
 import type { ShoppingCategory, ShoppingItem } from "@/lib/types";
 import { useRealtimeRefresh } from "@/lib/useRealtimeRefresh";
@@ -623,8 +622,8 @@ export default function ShoppingScreen() {
               title={t.common.add}
               onPress={handleAddPendingItem}
               disabled={!newItemName.trim() || creatingItem}
-              variant="secondary"
-              style={{ marginBottom: 16, backgroundColor: Colors.accentYellow }}
+              variant="yellow"
+              style={{ marginBottom: 16 }}
             />
 
             {pendingItemNames.length > 0 && (
@@ -844,14 +843,13 @@ export default function ShoppingScreen() {
         </View>
 
         <View className="flex-row gap-3 pt-4">
-          <TouchableOpacity
-            className="flex-1 h-14 rounded-full justify-center items-center"
-            style={{ backgroundColor: newCategoryName ? theme.text : theme.textSecondary }}
+          <Button
+            title={editingCategoryId ? t.common.save : t.shopping.newList}
+            icon={<Check size={20} color={theme.isDark ? "#1C1C1E" : "#FFFFFF"} />}
             onPress={handleCreateCategory}
             disabled={!newCategoryName.trim() || creatingCategory}
-          >
-            <Check size={24} color={theme.background} />
-          </TouchableOpacity>
+            className="flex-1"
+          />
         </View>
       </Modal>
 

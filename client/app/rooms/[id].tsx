@@ -195,7 +195,7 @@ export default function RoomDetailScreen() {
   const formatTaskDueText = (task: Task) => {
     if (!task.dueDate) return t.tasks.noDueDate;
     const dueDate = new Date(task.dueDate);
-    return `${dueDate.toLocaleDateString()} ${dueDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    return `${dueDate.toLocaleDateString()} ${dueDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
   };
 
   const taskStats = tasks.reduce(

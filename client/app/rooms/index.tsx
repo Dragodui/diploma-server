@@ -375,14 +375,13 @@ export default function RoomsScreen() {
         </View>
 
         <View className="flex-row gap-3 pt-4">
-          <TouchableOpacity
-            className="flex-1 h-14 rounded-full justify-center items-center"
-            style={{ backgroundColor: roomName.trim() ? theme.text : theme.textSecondary }}
+          <Button
+            title={editingRoomId ? t.common.save : t.rooms.createRoom}
+            icon={<Check size={20} color={theme.isDark ? "#1C1C1E" : "#FFFFFF"} />}
             onPress={handleSaveRoom}
             disabled={!roomName.trim() || isLoading}
-          >
-            <Check size={24} color={theme.background} />
-          </TouchableOpacity>
+            className="flex-1"
+          />
         </View>
       </Modal>
 

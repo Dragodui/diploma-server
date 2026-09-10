@@ -69,7 +69,7 @@ export default function TaskDetailScreen() {
   const dueText = useMemo(() => {
     if (!task?.dueDate) return t.tasks.noDueDate;
     const date = new Date(task.dueDate);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
   }, [task?.dueDate, t.tasks.noDueDate]);
 
   const reminderText = useMemo(() => {
