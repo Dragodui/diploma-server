@@ -130,8 +130,8 @@ export default function ProfileDropdown() {
   };
 
   const menuItems = [
-    { icon: MessageCircle, label: t.chat.title, path: "/chat", badge: chatUnreadCount },
     { icon: User, label: t.tabs.profile || "Profile", path: "/(tabs)/profile" },
+    { icon: MessageCircle, label: t.chat.title, path: "/chat", badge: chatUnreadCount },
     { icon: Notebook, label: t.tabs.notes || "Notes", path: "/(tabs)/notes" },
     { icon: ChartColumn, label: t.tabs.polls || "Polls", path: "/(tabs)/polls" },
     { icon: DoorOpen, label: t.rooms.title || "Rooms", path: "/rooms" },

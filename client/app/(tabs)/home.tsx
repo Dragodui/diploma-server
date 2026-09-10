@@ -337,11 +337,14 @@ export default function HomeScreen() {
             </View>
 
             <Card
-              variant="surface"
+              variant="white"
               borderRadius={32}
               padding={28}
               onPress={() => router.push("/(tabs)/budget")}
               className="mb-6"
+              // Stays white in dark mode; in light mode a plain white card washes
+              // out against the background, so it's nudged to the surface tone.
+              style={theme.isDark ? undefined : { backgroundColor: theme.surface }}
             >
               <View className="flex-row justify-between items-start mb-2">
                 <Text className="text-xs font-manrope-semibold text-muted tracking-widest">{t.home.monthlySpend}</Text>

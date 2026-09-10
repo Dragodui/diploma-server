@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Dragodui/diploma-server/internal/event"
@@ -214,6 +215,9 @@ func (s *ChatService) notifyMentioned(ctx context.Context, message *models.ChatM
 	}
 
 	preview := message.Content
+	if strings.TrimSpace(preview) == "" && message.ImageURL != nil {
+		preview = "[image]"
+	}
 	if len(preview) > 80 {
 		preview = preview[:80] + "..."
 	}
@@ -226,6 +230,11 @@ func (s *ChatService) notifyMentioned(ctx context.Context, message *models.ChatM
 }
 
 func (s *ChatService) SendMessage(ctx context.Context, homeID, createdBy int, req models.CreateChatMessageRequest) (*models.ChatMessage, error) {
+	// A message needs to carry something - text, an image, or both.
+	if strings.TrimSpace(req.Content) == "" && (req.ImageURL == nil || *req.ImageURL == "") {
+		return nil, errors.New("message must have text or an image")
+	}
+
 	if err := s.validateMentions(
 		ctx, homeID,
 		req.MentionedUserIDs, req.MentionedTaskIDs, req.MentionedBillIDs, req.MentionedShoppingItemIDs,
@@ -238,6 +247,7 @@ func (s *ChatService) SendMessage(ctx context.Context, homeID, createdBy int, re
 		HomeID:      homeID,
 		CreatedBy:   createdBy,
 		Content:     req.Content,
+		ImageURL:    req.ImageURL,
 		MentionsAll: req.MentionsAll,
 		CreatedAt:   time.Now(),
 	}
@@ -306,6 +316,14 @@ func (s *ChatService) UpdateMessage(ctx context.Context, id, homeID, userID int,
 
 	if req.Content != nil {
 		message.Content = *req.Content
+	}
+	if req.ImageURL != nil {
+		// An empty string clears the attachment.
+		if *req.ImageURL == "" {
+			message.ImageURL = nil
+		} else {
+			message.ImageURL = req.ImageURL
+		}
 	}
 	if req.MentionsAll != nil {
 		message.MentionsAll = *req.MentionsAll

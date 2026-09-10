@@ -10,6 +10,7 @@ type ChatMessage struct {
 	HomeID    int        `gorm:"not null;index" json:"home_id"`
 	CreatedBy int        `gorm:"not null" json:"created_by"`
 	Content   string     `gorm:"not null" json:"content"`
+	ImageURL  *string    `json:"image_url"`
 	EditedAt  *time.Time `json:"edited_at"`
 	CreatedAt time.Time  `gorm:"autoCreateTime;index" json:"created_at"`
 
@@ -47,19 +48,21 @@ type ChatMessageRead struct {
 }
 
 type CreateChatMessageRequest struct {
-	Content                      string `json:"content" validate:"required,min=1"`
-	MentionsAll                  bool   `json:"mentions_all"`
-	MentionedUserIDs             []int  `json:"mentioned_user_ids"`
-	MentionedTaskIDs             []int  `json:"mentioned_task_ids"`
-	MentionedBillIDs             []int  `json:"mentioned_bill_ids"`
-	MentionedShoppingItemIDs     []int  `json:"mentioned_shopping_item_ids"`
-	MentionedNoteCategoryIDs     []int  `json:"mentioned_note_category_ids"`
-	MentionedBillCategoryIDs     []int  `json:"mentioned_bill_category_ids"`
-	MentionedShoppingCategoryIDs []int  `json:"mentioned_shopping_category_ids"`
+	Content                      string  `json:"content"`
+	ImageURL                     *string `json:"image_url"`
+	MentionsAll                  bool    `json:"mentions_all"`
+	MentionedUserIDs             []int   `json:"mentioned_user_ids"`
+	MentionedTaskIDs             []int   `json:"mentioned_task_ids"`
+	MentionedBillIDs             []int   `json:"mentioned_bill_ids"`
+	MentionedShoppingItemIDs     []int   `json:"mentioned_shopping_item_ids"`
+	MentionedNoteCategoryIDs     []int   `json:"mentioned_note_category_ids"`
+	MentionedBillCategoryIDs     []int   `json:"mentioned_bill_category_ids"`
+	MentionedShoppingCategoryIDs []int   `json:"mentioned_shopping_category_ids"`
 }
 
 type UpdateChatMessageRequest struct {
 	Content                      *string `json:"content" validate:"omitempty,min=1"`
+	ImageURL                     *string `json:"image_url"`
 	MentionsAll                  *bool   `json:"mentions_all"`
 	MentionedUserIDs             *[]int  `json:"mentioned_user_ids"`
 	MentionedTaskIDs             *[]int  `json:"mentioned_task_ids"`

@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
   ArrowLeft,
@@ -5,6 +6,7 @@ import {
   CheckCheck,
   CheckCircle,
   DollarSign,
+  ImagePlus,
   MessageCircle,
   Send,
   ShoppingBag,
@@ -28,7 +30,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAlert } from "@/components/ui/alert";
 import Modal from "@/components/ui/modal";
-import { billApi, billCategoryApi, chatApi, homeApi, noteApi, shoppingApi, taskApi } from "@/lib/api";
+import { billApi, billCategoryApi, chatApi, homeApi, imageApi, noteApi, shoppingApi, taskApi } from "@/lib/api";
 import type {
   Bill,
   BillCategory,
@@ -47,6 +49,18 @@ import { useI18n } from "@/stores/i18nStore";
 import { useTheme } from "@/stores/themeStore";
 
 const PAGE_SIZE = 50;
+
+// Mention chips stay in one purple family - only the shade changes per kind -
+// so a message with several mentions doesn't turn into a rainbow.
+const MENTION_SHADES = {
+  all: "#9B95CC",
+  user: "#B8B4DC",
+  task: "#CBC6F2",
+  bill: "#D8D4FC",
+  item: "#E2DFFF",
+  category: "#A9A3D6",
+};
+const MENTION_TEXT = "#1C1C1E";
 
 // Matches the same mention syntax notes use: @user:"Name", @task:Name, @Name, @all
 const MENTION_REGEX = /@(user|task|bill|item|category):(?:"([^"]+)"|(\S+))|@(?:"([^"]+)"|([a-zA-Z0-9_-]+))/g;
@@ -75,6 +89,8 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Mention source data
   const [members, setMembers] = useState<User[]>([]);
@@ -94,6 +110,16 @@ export default function ChatScreen() {
   const [actionsMessage, setActionsMessage] = useState<ChatMessage | null>(null);
 
   const inputRef = useRef<TextInput>(null);
+
+  // router.back() is a no-op when nothing is on the stack (chat opened via a
+  // direct link or after a reload), so fall back to the home tab.
+  const goBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/(tabs)/home");
+  }, [router]);
 
   const loadMessages = useCallback(async () => {
     if (!home) return;
@@ -312,7 +338,7 @@ export default function ChatScreen() {
     if (suggestionStep === "bills") {
       return bills
         .filter((b) => (b.description || "").toLowerCase().includes(query))
-        .map((b) => ({ key: `bill-${b.id}`, name: b.description, kind: "value" as const, prefix: "bill" }));
+        .map((b) => ({ key: `bill-${b.id}`, name: b.description || "", kind: "value" as const, prefix: "bill" }));
     }
     if (suggestionStep === "items") {
       return items
@@ -369,20 +395,53 @@ export default function ChatScreen() {
     setShowSuggestions(false);
   };
 
+  // Picks an image and uploads it right away, so sending stays instant and the
+  // composer can show a preview of what's attached.
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.6,
+      });
+      if (result.canceled || !result.assets[0]?.uri) return;
+
+      setUploadingImage(true);
+      const uri = result.assets[0].uri;
+      const formData = new FormData();
+
+      if (Platform.OS === "web") {
+        const blob = await (await fetch(uri)).blob();
+        formData.append("image", blob, "chat.jpg");
+      } else {
+        // @ts-expect-error - React Native FormData expects this shape
+        formData.append("image", { uri, name: "chat.jpg", type: "image/jpeg" });
+      }
+
+      const uploaded = await imageApi.upload(formData);
+      if (uploaded.url) setAttachedImage(uploaded.url);
+    } catch (error) {
+      console.error("Failed to attach image:", error);
+      alert(t.common.error, t.chat.failedToSend);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSend = async () => {
-    if (!home || !draft.trim() || sending) return;
-    setSending(true);
     const content = draft.trim();
+    if (!home || sending || (!content && !attachedImage)) return;
+    setSending(true);
     const mentions = resolveMentions(content);
 
     try {
       if (editingId !== null) {
-        await chatApi.update(home.id, editingId, { content, ...mentions });
+        await chatApi.update(home.id, editingId, { content, imageUrl: attachedImage ?? "", ...mentions });
         setEditingId(null);
       } else {
-        await chatApi.send(home.id, { content, ...mentions });
+        await chatApi.send(home.id, { content, imageUrl: attachedImage, ...mentions });
       }
       setDraft("");
+      setAttachedImage(null);
       setShowSuggestions(false);
       await loadMessages();
     } catch (error) {
@@ -418,6 +477,7 @@ export default function ChatScreen() {
     setActionsMessage(null);
     setEditingId(message.id);
     setDraft(message.content);
+    setAttachedImage(message.imageUrl ?? null);
     inputRef.current?.focus();
   };
 
@@ -440,54 +500,64 @@ export default function ChatScreen() {
     let lastIndex = 0;
     let key = 0;
 
+    // Plain text goes in word by word so the wrapping row can break lines
+    // naturally - one long Text inside a flex-wrap row would not wrap.
+    const pushWords = (text: string) => {
+      for (const word of text.split(/(\s+)/)) {
+        if (word.trim() === "") continue;
+        parts.push(
+          <Text key={key++} className="font-manrope text-base" style={{ color: baseColor }}>
+            {word}
+          </Text>,
+        );
+      }
+    };
+
     while (true) {
       const match = regex.exec(message.content);
       if (match === null) break;
 
       if (match.index > lastIndex) {
-        parts.push(
-          <Text key={key++} className="font-manrope text-base" style={{ color: baseColor }}>
-            {message.content.substring(lastIndex, match.index)}
-          </Text>,
-        );
+        pushWords(message.content.substring(lastIndex, match.index));
       }
 
       const prefixType = match[1];
       const name = match[2] || match[3] || match[4] || match[5] || "";
 
-      let badgeBg = "";
+      let badgeColor = "";
       let icon: React.ReactNode = null;
       let matched = false;
+      const chipText = MENTION_TEXT;
 
       if (!prefixType && name.toLowerCase() === "all") {
         matched = true;
-        badgeBg = "bg-accent-pink/20 text-accent-pink";
-        icon = <Users size={12} color={theme.accent.pink} />;
+        badgeColor = MENTION_SHADES.all;
+        icon = <Users size={12} color={chipText} />;
       } else if (
         prefixType === "user" ||
         (!prefixType && message.mentionedUsers?.some((u) => u.username === name || u.name === name))
       ) {
         matched = true;
-        badgeBg = "bg-accent-purple/20 text-accent-purple";
-        icon = <UserIcon size={12} color={theme.accent.purple} />;
+        badgeColor = MENTION_SHADES.user;
+        icon = <UserIcon size={12} color={chipText} />;
       } else if (prefixType === "task" || (!prefixType && message.mentionedTasks?.some((task) => task.name === name))) {
         matched = true;
-        badgeBg = "bg-accent-mint/20 text-accent-mint";
-        icon = <CheckCircle size={12} color={theme.accent.mint} />;
+        badgeColor = MENTION_SHADES.task;
+        icon = <CheckCircle size={12} color={chipText} />;
       } else if (
         prefixType === "bill" ||
         (!prefixType && message.mentionedBills?.some((b) => b.description === name))
       ) {
         matched = true;
-        badgeBg = "bg-accent-yellow/20 text-accent-yellow";
-        icon = <DollarSign size={12} color={theme.accent.yellow} />;
+        badgeColor = MENTION_SHADES.bill;
+        icon = <DollarSign size={12} color={chipText} />;
       } else if (
         prefixType === "item" ||
         (!prefixType && message.mentionedShoppingItems?.some((i) => i.name === name))
       ) {
         matched = true;
-        badgeBg = "bg-accent-cyan/20 text-accent-cyan";
-        icon = <ShoppingBag size={12} color={theme.accent.cyan} />;
+        badgeColor = MENTION_SHADES.item;
+        icon = <ShoppingBag size={12} color={chipText} />;
       } else if (
         prefixType === "category" ||
         (!prefixType &&
@@ -496,61 +566,80 @@ export default function ChatScreen() {
             message.mentionedShoppingCategories?.some((c) => c.name === name)))
       ) {
         matched = true;
-        badgeBg = "bg-accent-pink/20 text-accent-pink";
-        icon = <Tag size={12} color={theme.accent.pink} />;
+        badgeColor = MENTION_SHADES.category;
+        icon = <Tag size={12} color={chipText} />;
       }
 
       if (matched) {
+        // A real View chip, not a nested Text: an icon element or vertical
+        // padding inside a Text breaks React Native's inline line box, which
+        // is what made chips wrap onto their own broken line.
         parts.push(
-          <Text
+          <View
             key={key++}
-            className={`font-manrope-semibold text-sm px-2 py-0.5 rounded-full overflow-hidden ${badgeBg}`}
+            className="flex-row items-center gap-1 px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: badgeColor }}
           >
-            {icon} {name}
-          </Text>,
+            {icon}
+            <Text className="font-manrope-semibold text-sm" style={{ color: chipText }}>
+              {name}
+            </Text>
+          </View>,
         );
       } else {
-        parts.push(
-          <Text key={key++} className="font-manrope text-base" style={{ color: baseColor }}>
-            {match[0]}
-          </Text>,
-        );
+        pushWords(match[0]);
       }
       lastIndex = regex.lastIndex;
     }
 
     if (lastIndex < message.content.length) {
-      parts.push(
-        <Text key={key++} className="font-manrope text-base" style={{ color: baseColor }}>
-          {message.content.substring(lastIndex)}
-        </Text>,
-      );
+      pushWords(message.content.substring(lastIndex));
     }
 
-    return <Text className="leading-6">{parts}</Text>;
+    return <View className="flex-row flex-wrap items-center gap-x-1 gap-y-1">{parts}</View>;
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isOwn = item.createdBy === user?.id;
     const readCount = item.reads?.length || 0;
 
+    const author = item.creator;
+    const initials = (author?.name || author?.username || "?").slice(0, 2).toUpperCase();
+
     return (
-      <View className={`mb-3 flex-row ${isOwn ? "justify-end" : "justify-start"}`}>
+      <View className={`mb-3 flex-row items-end gap-2 ${isOwn ? "justify-end" : "justify-start"}`}>
+        {!isOwn && (
+          <View
+            className="w-9 h-9 rounded-full justify-center items-center overflow-hidden"
+            style={{ backgroundColor: theme.surface }}
+          >
+            {author?.avatar ? (
+              <Image source={{ uri: author.avatar }} className="w-full h-full" />
+            ) : (
+              <Text className="text-[10px] font-manrope-bold" style={{ color: theme.text }}>
+                {initials}
+              </Text>
+            )}
+          </View>
+        )}
         <TouchableOpacity
           activeOpacity={0.9}
           onLongPress={() => isOwn && setActionsMessage(item)}
-          className="max-w-[85%]"
+          className="max-w-[75%]"
         >
           {!isOwn && (
             <Text className="text-xs font-manrope-semibold mb-1 ml-1" style={{ color: theme.textSecondary }}>
-              {item.creator?.name || item.creator?.username || ""}
+              {author?.name || author?.username || ""}
             </Text>
           )}
           <View
             className="px-4 py-3 rounded-2xl"
             style={{ backgroundColor: isOwn ? theme.accent.cyan : theme.surface }}
           >
-            {renderContent(item)}
+            {item.imageUrl && (
+              <Image source={{ uri: item.imageUrl }} className="w-56 h-56 rounded-xl mb-2" resizeMode="cover" />
+            )}
+            {item.content.trim().length > 0 && renderContent(item)}
             <View className="flex-row items-center justify-end gap-1.5 mt-1">
               {item.editedAt && (
                 <Text className="text-[10px] font-manrope" style={{ color: isOwn ? "#1C1C1E99" : theme.textSecondary }}>
@@ -566,6 +655,20 @@ export default function ChatScreen() {
             </View>
           </View>
         </TouchableOpacity>
+        {isOwn && (
+          <View
+            className="w-9 h-9 rounded-full justify-center items-center overflow-hidden"
+            style={{ backgroundColor: theme.surface }}
+          >
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} className="w-full h-full" />
+            ) : (
+              <Text className="text-[10px] font-manrope-bold" style={{ color: theme.text }}>
+                {(user?.name || user?.username || "?").slice(0, 2).toUpperCase()}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -580,19 +683,14 @@ export default function ChatScreen() {
         <TouchableOpacity
           className="w-12 h-12 rounded-2xl justify-center items-center"
           style={{ backgroundColor: theme.surface }}
-          onPress={() => router.back()}
+          onPress={goBack}
         >
           <ArrowLeft size={22} color={theme.text} />
         </TouchableOpacity>
         <View className="flex-1">
           <Text className="text-2xl font-manrope-bold" style={{ color: theme.text }}>
-            {t.chat.title}
+            {home?.name || ""} <Text className="font-manrope-light text-2xl">{t.chat.title}</Text>
           </Text>
-          {home?.name && (
-            <Text className="text-sm font-manrope" numberOfLines={1} style={{ color: theme.textSecondary }}>
-              {home.name}
-            </Text>
-          )}
         </View>
       </View>
 
@@ -660,6 +758,22 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* Attached image preview */}
+        {attachedImage && (
+          <View className="px-4 mb-2 flex-row">
+            <View className="relative">
+              <Image source={{ uri: attachedImage }} className="w-20 h-20 rounded-xl" resizeMode="cover" />
+              <TouchableOpacity
+                className="absolute -top-2 -right-2 w-6 h-6 rounded-full justify-center items-center"
+                style={{ backgroundColor: theme.accent.pink }}
+                onPress={() => setAttachedImage(null)}
+              >
+                <X size={14} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Composer */}
         <View
           className="flex-row items-end gap-2 pt-2"
@@ -669,6 +783,18 @@ export default function ChatScreen() {
             backgroundColor: theme.background,
           }}
         >
+          <TouchableOpacity
+            className="w-12 h-12 rounded-2xl justify-center items-center"
+            style={{ backgroundColor: theme.surface }}
+            onPress={pickImage}
+            disabled={uploadingImage}
+          >
+            {uploadingImage ? (
+              <ActivityIndicator color={theme.textSecondary} />
+            ) : (
+              <ImagePlus size={20} color={theme.textSecondary} />
+            )}
+          </TouchableOpacity>
           {editingId !== null && (
             <TouchableOpacity
               className="w-12 h-12 rounded-2xl justify-center items-center"
@@ -676,6 +802,7 @@ export default function ChatScreen() {
               onPress={() => {
                 setEditingId(null);
                 setDraft("");
+                setAttachedImage(null);
               }}
             >
               <X size={20} color={theme.textSecondary} />
@@ -693,14 +820,14 @@ export default function ChatScreen() {
           />
           <TouchableOpacity
             className="w-12 h-12 rounded-2xl justify-center items-center"
-            style={{ backgroundColor: draft.trim() ? theme.accent.cyan : theme.surface }}
+            style={{ backgroundColor: draft.trim() || attachedImage ? theme.accent.cyan : theme.surface }}
             onPress={handleSend}
-            disabled={!draft.trim() || sending}
+            disabled={(!draft.trim() && !attachedImage) || sending}
           >
             {sending ? (
               <ActivityIndicator color="#1C1C1E" />
             ) : (
-              <Send size={20} color={draft.trim() ? "#1C1C1E" : theme.textSecondary} />
+              <Send size={20} color={draft.trim() || attachedImage ? "#1C1C1E" : theme.textSecondary} />
             )}
           </TouchableOpacity>
         </View>
