@@ -665,6 +665,71 @@ export default function ShoppingScreen() {
             />
           </View>
         </Modal>
+
+        <Modal
+          visible={showItemActionsModal}
+          onClose={() => {
+            setShowItemActionsModal(false);
+            setSelectedItemForActions(null);
+          }}
+          title={selectedItemForActions?.name || t.shopping.addItem}
+          height="auto"
+        >
+          <View className="gap-3">
+            <TouchableOpacity
+              className="h-12 rounded-xl justify-center items-center"
+              style={{ backgroundColor: theme.surface }}
+              onPress={() => {
+                const item = selectedItemForActions;
+                setShowItemActionsModal(false);
+                if (item) {
+                  setEditItemName(item.name);
+                  setShowEditItemModal(true);
+                }
+              }}
+            >
+              <Text className="font-manrope-semibold" style={{ color: theme.text }}>
+                {t.common.edit}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="h-12 rounded-xl justify-center items-center"
+              style={{ backgroundColor: theme.accent.dangerLight }}
+              onPress={() => {
+                const item = selectedItemForActions;
+                setShowItemActionsModal(false);
+                setSelectedItemForActions(null);
+                if (item) handleDeleteItem(item.id);
+              }}
+            >
+              <Text className="font-manrope-semibold text-white">{t.common.delete}</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={showEditItemModal}
+          onClose={() => {
+            setShowEditItemModal(false);
+            setSelectedItemForActions(null);
+          }}
+          title={t.shopping.editItem}
+          height="auto"
+        >
+          <View className="gap-4">
+            <Input value={editItemName} onChangeText={setEditItemName} placeholder={t.shopping.itemNamePlaceholder} />
+            <TouchableOpacity
+              className="h-12 rounded-xl justify-center items-center"
+              style={{ backgroundColor: editItemName.trim() ? theme.text : theme.textSecondary }}
+              onPress={handleEditItem}
+              disabled={!editItemName.trim() || savingItemEdit}
+            >
+              <Text className="font-manrope-semibold" style={{ color: theme.background }}>
+                {t.common.save}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </View>
     );
   }

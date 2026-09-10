@@ -88,7 +88,7 @@ export const accentColors = {
 
   // Danger/Logout
   danger: "#8B3A3A",
-  dangerLight: "rgba(139, 58, 58, 0.8)",
+  dangerLight: "rgba(199, 58, 58, 0.9)",
 };
 
 // Status colors
