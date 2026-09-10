@@ -586,6 +586,25 @@ export default {
     install: "Installa",
   },
 
+  chat: {
+    title: "Chat",
+    placeholder: "Messaggio...",
+    send: "Invia",
+    noMessages: "Nessun messaggio",
+    noMessagesDescription: "Inizia la conversazione con la tua casa.",
+    edited: "modificato",
+    editMessage: "Modifica messaggio",
+    deleteMessage: "Eliminare il messaggio?",
+    deleteConfirm: "Il messaggio sarà rimosso per tutti.",
+    readBy: "Letto da",
+    noReads: "Non ancora letto",
+    mentionAll: "Tutti",
+    loadMore: "Carica messaggi precedenti",
+    failedToSend: "Impossibile inviare il messaggio.",
+    failedToDelete: "Impossibile eliminare il messaggio.",
+    failedToUpdate: "Impossibile modificare il messaggio.",
+  },
+
   notes: {
     title: "Notes",
     noNotes: "No Notes Yet",

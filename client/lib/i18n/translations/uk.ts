@@ -584,6 +584,25 @@ export default {
     install: "Встановити",
   },
 
+  chat: {
+    title: "Чат",
+    placeholder: "Повідомлення...",
+    send: "Надіслати",
+    noMessages: "Ще немає повідомлень",
+    noMessagesDescription: "Почніть розмову зі своїм домом.",
+    edited: "відредаговано",
+    editMessage: "Редагувати повідомлення",
+    deleteMessage: "Видалити повідомлення?",
+    deleteConfirm: "Повідомлення буде видалено для всіх.",
+    readBy: "Прочитали",
+    noReads: "Ще не прочитано",
+    mentionAll: "Усі",
+    loadMore: "Завантажити давніші повідомлення",
+    failedToSend: "Не вдалося надіслати повідомлення.",
+    failedToDelete: "Не вдалося видалити повідомлення.",
+    failedToUpdate: "Не вдалося відредагувати повідомлення.",
+  },
+
   notes: {
     title: "Notes",
     noNotes: "No Notes Yet",

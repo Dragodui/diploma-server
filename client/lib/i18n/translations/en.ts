@@ -583,6 +583,25 @@ export default {
     install: "Install",
   },
 
+  chat: {
+    title: "Chat",
+    placeholder: "Message...",
+    send: "Send",
+    noMessages: "No Messages Yet",
+    noMessagesDescription: "Start the conversation with your home.",
+    edited: "edited",
+    editMessage: "Edit message",
+    deleteMessage: "Delete message?",
+    deleteConfirm: "This message will be removed for everyone.",
+    readBy: "Read by",
+    noReads: "Not read yet",
+    mentionAll: "Everyone",
+    loadMore: "Load earlier messages",
+    failedToSend: "Failed to send message.",
+    failedToDelete: "Failed to delete message.",
+    failedToUpdate: "Failed to edit message.",
+  },
+
   notes: {
     title: "Notes",
     noNotes: "No Notes Yet",

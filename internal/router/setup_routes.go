@@ -45,6 +45,7 @@ type HandlerSet struct {
 	SmartHome    *handlers.SmartHomeHandler
 	PushSub      *handlers.PushSubscriptionHandler
 	Note         *handlers.NoteHandler
+	Chat         *handlers.ChatHandler
 }
 
 // SetupRoutes configures all application routes.
@@ -247,6 +248,11 @@ func SetupRoutes(deps RoutesDeps) http.Handler {
 						// Note Categories
 						r.Route("/note_categories", func(r chi.Router) {
 							mountNoteCategoryRoutes(r, deps)
+						})
+
+						// Home chat
+						r.Route("/chat", func(r chi.Router) {
+							mountChatRoutes(r, deps)
 						})
 
 						// Smart Home (Home Assistant integration)

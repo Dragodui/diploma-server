@@ -4,6 +4,7 @@ import {
   ChartColumn,
   DoorOpen,
   Home as HomeIcon,
+  MessageCircle,
   Notebook,
   Settings,
   Tv,
@@ -14,7 +15,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Colors from "@/constants/colors";
-import { notificationApi } from "@/lib/api";
+import { chatApi, notificationApi } from "@/lib/api";
 import { useAuth } from "@/stores/authStore";
 import { useHome } from "@/stores/homeStore";
 import { useI18n } from "@/stores/i18nStore";
@@ -32,6 +33,7 @@ export default function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const { home, isLoading: homeLoading } = useHome();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [menuHeight, setMenuHeight] = useState(0);
 
@@ -47,6 +49,9 @@ export default function ProfileDropdown() {
 
       const allNotifs = [...(userNotifs || []), ...(homeNotifs || [])];
       setUnreadCount(allNotifs.filter((n) => !n.read).length);
+
+      const chatUnread = await chatApi.getUnreadCount(home.id).catch(() => 0);
+      setChatUnreadCount(chatUnread);
     } catch (error) {
       console.error(`error while load notifications: ${error}`);
     }
@@ -125,6 +130,7 @@ export default function ProfileDropdown() {
   };
 
   const menuItems = [
+    { icon: MessageCircle, label: t.chat.title, path: "/chat", badge: chatUnreadCount },
     { icon: User, label: t.tabs.profile || "Profile", path: "/(tabs)/profile" },
     { icon: Notebook, label: t.tabs.notes || "Notes", path: "/(tabs)/notes" },
     { icon: ChartColumn, label: t.tabs.polls || "Polls", path: "/(tabs)/polls" },
@@ -230,22 +236,30 @@ function MenuContent({
   theme,
   onPress,
 }: {
-  items: { icon: any; label: string; path: string }[];
+  items: { icon: any; label: string; path: string; badge?: number }[];
   theme: any;
   onPress: (path: string) => void;
 }) {
   return (
     <>
-      {items.map(({ icon: Icon, label, path }, i) => (
+      {items.map(({ icon: Icon, label, path, badge }, i) => (
         <TouchableOpacity
           key={path}
           onPress={() => onPress(path)}
           className={`flex-row items-center gap-3 p-2.5 rounded-2xl${i > 0 ? " mt-0.5" : ""}`}
         >
           <Icon size={18} color={theme.text} />
-          <Text className="text-sm font-manrope-semibold" style={{ color: theme.text }}>
+          <Text className="flex-1 text-sm font-manrope-semibold" style={{ color: theme.text }}>
             {label}
           </Text>
+          {badge != null && badge > 0 && (
+            <View
+              className="min-w-5 h-5 rounded-full justify-center items-center px-1.5"
+              style={{ backgroundColor: theme.accent.pink }}
+            >
+              <Text className="text-[10px] font-manrope-bold text-white">{badge > 99 ? "99+" : badge}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       ))}
     </>

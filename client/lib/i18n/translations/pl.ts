@@ -584,6 +584,25 @@ export default {
     install: "Zainstaluj",
   },
 
+  chat: {
+    title: "Czat",
+    placeholder: "Wiadomość...",
+    send: "Wyślij",
+    noMessages: "Brak wiadomości",
+    noMessagesDescription: "Rozpocznij rozmowę ze swoim domem.",
+    edited: "edytowano",
+    editMessage: "Edytuj wiadomość",
+    deleteMessage: "Usunąć wiadomość?",
+    deleteConfirm: "Wiadomość zostanie usunięta dla wszystkich.",
+    readBy: "Przeczytane przez",
+    noReads: "Jeszcze nieprzeczytane",
+    mentionAll: "Wszyscy",
+    loadMore: "Wczytaj starsze wiadomości",
+    failedToSend: "Nie udało się wysłać wiadomości.",
+    failedToDelete: "Nie udało się usunąć wiadomości.",
+    failedToUpdate: "Nie udało się edytować wiadomości.",
+  },
+
   notes: {
     title: "Notes",
     noNotes: "No Notes Yet",

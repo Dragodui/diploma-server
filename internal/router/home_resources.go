@@ -127,6 +127,16 @@ func mountNoteRoutes(r chi.Router, deps RoutesDeps) {
 	r.With(middleware.RequireMember(homeRepo)).Delete("/{note_id}", deps.Handlers.Note.DeleteNote)
 }
 
+func mountChatRoutes(r chi.Router, deps RoutesDeps) {
+	homeRepo := deps.HomeRepo
+	r.With(middleware.RequireMember(homeRepo)).Get("/", deps.Handlers.Chat.GetMessages)
+	r.With(middleware.RequireMember(homeRepo)).Post("/", deps.Handlers.Chat.SendMessage)
+	r.With(middleware.RequireMember(homeRepo)).Get("/unread", deps.Handlers.Chat.GetUnreadCount)
+	r.With(middleware.RequireMember(homeRepo)).Post("/read", deps.Handlers.Chat.MarkRead)
+	r.With(middleware.RequireMember(homeRepo)).Put("/{message_id}", deps.Handlers.Chat.UpdateMessage)
+	r.With(middleware.RequireMember(homeRepo)).Delete("/{message_id}", deps.Handlers.Chat.DeleteMessage)
+}
+
 func mountNoteCategoryRoutes(r chi.Router, deps RoutesDeps) {
 	homeRepo := deps.HomeRepo
 	r.With(middleware.RequireMember(homeRepo)).Get("/", deps.Handlers.Note.GetCategoriesByHomeID)

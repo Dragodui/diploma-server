@@ -16,7 +16,10 @@ export type EventModule =
   | "SHOPPING_CATEGORY"
   | "SHOPPING_ITEM"
   | "TASK"
-  | "USER";
+  | "USER"
+  | "NOTE"
+  | "NOTE_CATEGORY"
+  | "CHAT";
 
 export type EventAction =
   | "CREATED"

@@ -31,5 +31,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.PushSubscription{},
 		&models.NoteCategory{},
 		&models.Note{},
+		&models.ChatMessage{},
+		&models.ChatMessageRead{},
 	)
 }

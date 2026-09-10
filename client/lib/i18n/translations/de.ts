@@ -586,6 +586,25 @@ export default {
     install: "Installieren",
   },
 
+  chat: {
+    title: "Chat",
+    placeholder: "Nachricht...",
+    send: "Senden",
+    noMessages: "Noch keine Nachrichten",
+    noMessagesDescription: "Beginne das Gespräch mit deinem Zuhause.",
+    edited: "bearbeitet",
+    editMessage: "Nachricht bearbeiten",
+    deleteMessage: "Nachricht löschen?",
+    deleteConfirm: "Die Nachricht wird für alle entfernt.",
+    readBy: "Gelesen von",
+    noReads: "Noch nicht gelesen",
+    mentionAll: "Alle",
+    loadMore: "Ältere Nachrichten laden",
+    failedToSend: "Nachricht konnte nicht gesendet werden.",
+    failedToDelete: "Nachricht konnte nicht gelöscht werden.",
+    failedToUpdate: "Nachricht konnte nicht bearbeitet werden.",
+  },
+
   notes: {
     title: "Notes",
     noNotes: "No Notes Yet",

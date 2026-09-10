@@ -437,6 +437,59 @@ export interface UpdateNoteForm {
   mentionedShoppingCategoryIds?: number[];
 }
 
+// Chat types
+export interface ChatMessageRead {
+  id: number;
+  messageId: number;
+  userId: number;
+  readAt: string;
+  user?: User;
+}
+
+export interface ChatMessage {
+  id: number;
+  homeId: number;
+  createdBy: number;
+  content: string;
+  editedAt?: string | null;
+  createdAt: string;
+  mentionsAll: boolean;
+  creator?: User;
+  reads?: ChatMessageRead[];
+
+  mentionedUsers?: User[];
+  mentionedTasks?: Task[];
+  mentionedBills?: Bill[];
+  mentionedShoppingItems?: ShoppingItem[];
+  mentionedNoteCategories?: NoteCategory[];
+  mentionedBillCategories?: BillCategory[];
+  mentionedShoppingCategories?: ShoppingCategory[];
+}
+
+export interface CreateChatMessageForm {
+  content: string;
+  mentionsAll?: boolean;
+  mentionedUserIds?: number[];
+  mentionedTaskIds?: number[];
+  mentionedBillIds?: number[];
+  mentionedShoppingItemIds?: number[];
+  mentionedNoteCategoryIds?: number[];
+  mentionedBillCategoryIds?: number[];
+  mentionedShoppingCategoryIds?: number[];
+}
+
+export interface UpdateChatMessageForm {
+  content?: string;
+  mentionsAll?: boolean;
+  mentionedUserIds?: number[];
+  mentionedTaskIds?: number[];
+  mentionedBillIds?: number[];
+  mentionedShoppingItemIds?: number[];
+  mentionedNoteCategoryIds?: number[];
+  mentionedBillCategoryIds?: number[];
+  mentionedShoppingCategoryIds?: number[];
+}
+
 export interface CreateNoteCategoryForm {
   name: string;
   icon?: string;

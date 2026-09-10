@@ -24,6 +24,7 @@ const (
 	ModuleUser             Module = "USER"
 	ModuleNote             Module = "NOTE"
 	ModuleNoteCategory     Module = "NOTE_CATEGORY"
+	ModuleChat             Module = "CHAT"
 )
 
 type Action string

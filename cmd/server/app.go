@@ -39,6 +39,7 @@ type repositories struct {
 	taskSchedule repository.TaskScheduleRepository
 	pushSub      repository.PushSubscriptionRepository
 	note         repository.NoteRepository
+	chat         repository.ChatRepository
 }
 
 type serviceSet struct {
@@ -59,6 +60,7 @@ type serviceSet struct {
 	smartHome    services.ISmartHomeService
 	taskSchedule *services.TaskScheduleService
 	note         *services.NoteService
+	chat         *services.ChatService
 }
 
 type handlerSet struct {
@@ -79,6 +81,7 @@ type handlerSet struct {
 	smartHome    *handlers.SmartHomeHandler
 	pushSub      *handlers.PushSubscriptionHandler
 	note         *handlers.NoteHandler
+	chat         *handlers.ChatHandler
 }
 
 func newAppDeps(cfg *config.Config, db *gorm.DB, cache *redis.Client) (*appDeps, error) {
@@ -116,6 +119,7 @@ func newRepositories(db *gorm.DB) repositories {
 		taskSchedule: repository.NewTaskScheduleRepository(db),
 		pushSub:      repository.NewPushSubscriptionRepository(db),
 		note:         repository.NewNoteRepository(db),
+		chat:         repository.NewChatRepository(db),
 	}
 }
 
@@ -152,6 +156,18 @@ func newServices(cfg *config.Config, cache *redis.Client, repos repositories) (s
 		cache,
 	)
 
+	chatSvc := services.NewChatService(
+		repos.chat,
+		repos.home,
+		repos.task,
+		repos.bill,
+		repos.billCategory,
+		repos.shopping,
+		repos.note,
+		cache,
+		notificationSvc,
+	)
+
 	imageSvc, err := services.NewImageService(cfg.R2S3Bucket, cfg.R2Region, cfg.R2AccountID, cfg.R2AccessKeyID, cfg.R2SecretAccessKey, cfg.R2PublicUrl)
 	if err != nil {
 		return serviceSet{}, err
@@ -175,6 +191,7 @@ func newServices(cfg *config.Config, cache *redis.Client, repos repositories) (s
 		smartHome:    services.NewSmartHomeService(repos.smartHome, cache, cfg.HAEncryptionKey),
 		taskSchedule: services.NewTaskScheduleService(repos.taskSchedule, repos.task, cache, notificationSvc),
 		note:         noteSvc,
+		chat:         chatSvc,
 	}, nil
 }
 
@@ -203,6 +220,7 @@ func newHandlers(cfg *config.Config, repos repositories, services serviceSet) ha
 		smartHome:    handlers.NewSmartHomeHandler(services.smartHome),
 		pushSub:      handlers.NewPushSubscriptionHandler(services.pushSub),
 		note:         handlers.NewNoteHandler(services.note, repos.home),
+		chat:         handlers.NewChatHandler(services.chat, repos.home),
 	}
 }
 
@@ -225,5 +243,6 @@ func (h handlerSet) RouterHandlers() router.HandlerSet {
 		SmartHome:    h.smartHome,
 		PushSub:      h.pushSub,
 		Note:         h.note,
+		Chat:         h.chat,
 	}
 }

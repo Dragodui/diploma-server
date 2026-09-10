@@ -8,6 +8,8 @@ import type {
   AuthResponse,
   Bill,
   BillCategory,
+  ChatMessage,
+  CreateChatMessageForm,
   CreateBillForm,
   CreateCategoryForm,
   CreateItemForm,
@@ -33,6 +35,7 @@ import type {
   Task,
   TaskAssignment,
   TaskSchedule,
+  UpdateChatMessageForm,
   UpdateDeviceRequest,
   UpdateNoteCategoryForm,
   UpdateNoteForm,
@@ -1021,12 +1024,48 @@ export const ocrApi = {
   },
 };
 
+// ============ Chat API ============
+export const chatApi = {
+  // Messages come back newest-first; pass beforeId to page further into history.
+  getMessages: async (homeId: number, params?: { limit?: number; beforeId?: number }): Promise<ChatMessage[]> => {
+    const response = await api.get<{ status: boolean; messages: ChatMessage[] }>(`/homes/${homeId}/chat`, {
+      params: { limit: params?.limit, before_id: params?.beforeId },
+    });
+    return response.data.messages || [];
+  },
+
+  send: async (homeId: number, data: CreateChatMessageForm): Promise<ChatMessage> => {
+    const response = await api.post<{ status: boolean; data: ChatMessage }>(`/homes/${homeId}/chat`, data);
+    return response.data.data;
+  },
+
+  update: async (homeId: number, messageId: number, data: UpdateChatMessageForm): Promise<ChatMessage> => {
+    const response = await api.put<{ status: boolean; data: ChatMessage }>(`/homes/${homeId}/chat/${messageId}`, data);
+    return response.data.data;
+  },
+
+  delete: async (homeId: number, messageId: number): Promise<void> => {
+    await api.delete(`/homes/${homeId}/chat/${messageId}`);
+  },
+
+  markRead: async (homeId: number, lastMessageId: number): Promise<void> => {
+    await api.post(`/homes/${homeId}/chat/read`, { lastMessageId });
+  },
+
+  getUnreadCount: async (homeId: number): Promise<number> => {
+    const response = await api.get<{ status: boolean; count: number }>(`/homes/${homeId}/chat/unread`);
+    return response.data.count || 0;
+  },
+};
+
 // Re-export types for convenience
 export type {
   AddDeviceRequest,
   AuditEvent,
   Bill,
   BillSplit,
+  ChatMessage,
+  ChatMessageRead,
   ControlDeviceRequest,
   HAState,
   Home,
